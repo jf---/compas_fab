@@ -1,0 +1,4 @@
+compas==1.7
+roslibpy==1.2
+pybullet==3.1
+pyserial==3.5

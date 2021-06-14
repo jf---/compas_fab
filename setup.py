@@ -9,12 +9,7 @@ from os.path import abspath, basename, dirname, join, splitext
 
 from setuptools import find_packages, setup
 
-requirements = [
-    'compas>=1.7,<2.0',
-    'roslibpy>=1.1.0',
-    'pybullet',
-    'pyserial',
-]
+requirements = open("requirements.txt", "r").read().splitlines()
 keywords_list = ['robotic fabrication', 'digital fabrication', 'architecture', 'robotics', 'ros']
 
 here = abspath(dirname(__file__))
