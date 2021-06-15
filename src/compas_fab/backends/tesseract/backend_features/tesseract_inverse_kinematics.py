@@ -7,12 +7,8 @@ import sys
 
 from compas.robots import Joint
 from compas_fab.backends.interfaces import InverseKinematics
-from compas_fab.backends.pybullet.conversions import pose_from_frame
-from compas_fab.backends.pybullet.exceptions import InverseKinematicsError
-from compas_fab.utilities import LazyLoader
-
-pybullet = LazyLoader('pybullet', globals(), 'pybullet')
-
+from compas_fab.backends.tesseract.conversions import pose_from_frame
+from compas_fab.backends.tesseract.exceptions import InverseKinematicsError
 
 __all__ = [
     'TesseractInverseKinematics',
@@ -62,71 +58,75 @@ class TesseractInverseKinematics(InverseKinematics):
         ------
         :class:`compas_fab.backends.InverseKinematicsError`
         """
-        options = options or {}
-        link_name = options.get('link_name') or robot.get_end_effector_link_name(group)
-        cached_robot = self.client.get_cached_robot(robot)
-        body_id = self.client.get_uid(cached_robot)
-        link_id = self.client._get_link_id_by_name(link_name, cached_robot)
-        point, orientation = pose_from_frame(frame_WCF)
 
-        joints = cached_robot.get_configurable_joints()
-        joints.sort(key=lambda j: j.attr['pybullet']['id'])
-        joint_names = [joint.name for joint in joints]
 
-        if start_configuration:
-            start_configuration = self.client.set_robot_configuration(robot, start_configuration, group)
 
-        called_from_test = 'pytest' in sys.modules
-        if options.get('enforce_joint_limits', True) and not called_from_test:
-            lower_limits = [joint.limit.lower if joint.type != Joint.CONTINUOUS else 0 for joint in joints]
-            upper_limits = [joint.limit.upper if joint.type != Joint.CONTINUOUS else 2 * math.pi for joint in joints]
-            # I don't know what jointRanges needs to be.  Erwin Coumans knows, but he isn't telling.
-            # https://stackoverflow.com/questions/49674179/understanding-inverse-kinematics-pybullet
-            # https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA/preview?pru=AAABc7276PI*zazLer2rlZ8tAUI8lF98Kw#heading=h.9i02ojf4k3ve
-            joint_ranges = [u - l for u, l in zip(upper_limits, lower_limits)]
-            rest_configuration = start_configuration or robot.zero_configuration()
-            rest_poses = self._get_rest_poses(joint_names, rest_configuration)
 
-            if options.get('semi-constrained'):
-                joint_positions = pybullet.calculateInverseKinematics(
-                    body_id,
-                    link_id,
-                    point,
-                    lowerLimits=lower_limits,
-                    upperLimits=upper_limits,
-                    jointRanges=joint_ranges,
-                    restPoses=rest_poses,
-                )
-            else:
-                joint_positions = pybullet.calculateInverseKinematics(
-                    body_id,
-                    link_id,
-                    point,
-                    orientation,
-                    lowerLimits=lower_limits,
-                    upperLimits=upper_limits,
-                    jointRanges=joint_ranges,
-                    restPoses=rest_poses,
-                )
-        else:
-            if options.get('semi-constrained'):
-                joint_positions = pybullet.calculateInverseKinematics(
-                    body_id,
-                    link_id,
-                    point,
-                )
-            else:
-                joint_positions = pybullet.calculateInverseKinematics(
-                    body_id,
-                    link_id,
-                    point,
-                    orientation,
-                )
-
-        if not joint_positions:
-            raise InverseKinematicsError()
-
-        return joint_positions, joint_names
+        # options = options or {}
+        # link_name = options.get('link_name') or robot.get_end_effector_link_name(group)
+        # cached_robot = self.client.get_cached_robot(robot)
+        # body_id = self.client.get_uid(cached_robot)
+        # link_id = self.client._get_link_id_by_name(link_name, cached_robot)
+        # point, orientation = pose_from_frame(frame_WCF)
+        #
+        # joints = cached_robot.get_configurable_joints()
+        # joints.sort(key=lambda j: j.attr['pybullet']['id'])
+        # joint_names = [joint.name for joint in joints]
+        #
+        # if start_configuration:
+        #     start_configuration = self.client.set_robot_configuration(robot, start_configuration, group)
+        #
+        # called_from_test = 'pytest' in sys.modules
+        # if options.get('enforce_joint_limits', True) and not called_from_test:
+        #     lower_limits = [joint.limit.lower if joint.type != Joint.CONTINUOUS else 0 for joint in joints]
+        #     upper_limits = [joint.limit.upper if joint.type != Joint.CONTINUOUS else 2 * math.pi for joint in joints]
+        #     # I don't know what jointRanges needs to be.  Erwin Coumans knows, but he isn't telling.
+        #     # https://stackoverflow.com/questions/49674179/understanding-inverse-kinematics-pybullet
+        #     # https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA/preview?pru=AAABc7276PI*zazLer2rlZ8tAUI8lF98Kw#heading=h.9i02ojf4k3ve
+        #     joint_ranges = [u - l for u, l in zip(upper_limits, lower_limits)]
+        #     rest_configuration = start_configuration or robot.zero_configuration()
+        #     rest_poses = self._get_rest_poses(joint_names, rest_configuration)
+        #
+        #     if options.get('semi-constrained'):
+        #         joint_positions = pybullet.calculateInverseKinematics(
+        #             body_id,
+        #             link_id,
+        #             point,
+        #             lowerLimits=lower_limits,
+        #             upperLimits=upper_limits,
+        #             jointRanges=joint_ranges,
+        #             restPoses=rest_poses,
+        #         )
+        #     else:
+        #         joint_positions = pybullet.calculateInverseKinematics(
+        #             body_id,
+        #             link_id,
+        #             point,
+        #             orientation,
+        #             lowerLimits=lower_limits,
+        #             upperLimits=upper_limits,
+        #             jointRanges=joint_ranges,
+        #             restPoses=rest_poses,
+        #         )
+        # else:
+        #     if options.get('semi-constrained'):
+        #         joint_positions = pybullet.calculateInverseKinematics(
+        #             body_id,
+        #             link_id,
+        #             point,
+        #         )
+        #     else:
+        #         joint_positions = pybullet.calculateInverseKinematics(
+        #             body_id,
+        #             link_id,
+        #             point,
+        #             orientation,
+        #         )
+        #
+        # if not joint_positions:
+        #     raise InverseKinematicsError()
+        #
+        # return joint_positions, joint_names
 
     def _get_rest_poses(self, joint_names, configuration):
         name_value_map = {configuration.joint_names[i]: configuration.joint_values[i] for i in range(len(configuration.joint_names))}

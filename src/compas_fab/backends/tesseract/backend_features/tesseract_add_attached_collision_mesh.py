@@ -13,10 +13,6 @@ from compas.robots import Mass
 from compas.robots import Origin
 
 from compas_fab.backends.interfaces import AddAttachedCollisionMesh
-from compas_fab.utilities import LazyLoader
-
-pybullet = LazyLoader('pybullet', globals(), 'pybullet')
-
 
 __all__ = [
     'TesseractAddAttachedCollisionMesh',
