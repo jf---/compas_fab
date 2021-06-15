@@ -4,14 +4,21 @@ from __future__ import print_function
 
 import logging
 import os
+import re
 import sys
+import traceback
 from contextlib import contextmanager
+from pathlib import Path
+
+from tesseract.tesseract_common import FilesystemPath
+from tesseract.tesseract_environment import Environment
+from tesseract.tesseract_scene_graph import SimpleResourceLocatorFn, SimpleResourceLocator
 
 
-__all__ = [
-    'LOG',
-    'redirect_stdout',
-]
+# __all__ = [
+#     'LOG',
+#     'redirect_stdout',
+# ]
 
 
 @contextmanager
@@ -30,6 +37,7 @@ def redirect_stdout(to=os.devnull, enabled=True):
     ...     print("from Python")                                         # doctest: +SKIP
     ...     os.system("echo non-Python applications are also supported") # doctest: +SKIP
     """
+
     def _redirect_stdout(to_):
         sys.stdout.close()  # + implicit flush()
         os.dup2(to_.fileno(), fd)
@@ -76,4 +84,33 @@ def get_logger(name):
     return logger
 
 
+def path_to_filesystempath(pth: Path) -> FilesystemPath:
+    return FilesystemPath(str(pth))
+
+
+def load_env(path_urdf: Path, path_srdf: Path) -> Environment:
+    locate_resource_fn = SimpleResourceLocatorFn(_locate_resource)
+    locator = SimpleResourceLocator(locate_resource_fn)
+    env = Environment()
+    assert path_urdf.is_file(), f"{path_urdf} invalid path"
+
+    assert path_srdf.is_file(), f"{path_srdf} invalid path"
+
+    assert env.init(path_to_filesystempath(path_urdf), path_to_filesystempath(path_srdf), locator)
+    return env
+
+
 LOG = get_logger(__name__)
+
+
+def _locate_resource(url):
+    try:
+        url_match = re.match(r"^package:\/\/tesseract_support\/(.*)$", url)
+        if (url_match is None):
+            return ""
+        if not "TESSERACT_SUPPORT_DIR" in os.environ:
+            return ""
+        tesseract_support = os.environ["TESSERACT_SUPPORT_DIR"]
+        return os.path.join(tesseract_support, os.path.normpath(url_match.group(1)))
+    except:
+        traceback.print_exc()

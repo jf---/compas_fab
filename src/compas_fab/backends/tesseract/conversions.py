@@ -79,7 +79,7 @@ def tesseract_mesh_to_compas_mesh(_mesh: TaMesh) -> Mesh:
     return msh
 
 
-def tesseract_link_to_compas_link(_link: tesseract_scene_graph.Link) -> Link:
+def tesseract_link_to_compas_link(_link: tesseract_scene_graph.Link, use_mesh=True) -> Link:
     visual_meshes: List[Visual] = []
     collision_meshes: List[Collision] = []
 
@@ -89,7 +89,13 @@ def tesseract_link_to_compas_link(_link: tesseract_scene_graph.Link) -> Link:
         _visual: tesseract_scene_graph.Visual = ta_visual
         # _visual_mat = material_from_tesseract_visual()
         _visual_geom: TaMesh = ta_visual.geometry
-        _visual_mesh = tesseract_mesh_to_compas_mesh(_visual_geom)
+
+        if use_mesh:
+            _visual_mesh = tesseract_mesh_to_compas_mesh(_visual_geom)
+        else:
+            # construct a line representing the link
+            pass
+
         # TODO: sort out origin
         visual = Visual(geometry=_visual_mesh, origin=None, name=_link.getName())
         visual_meshes.append(visual)
@@ -129,6 +135,7 @@ def origin_from_tesseract_joint(joint: tesseract_scene_graph.Joint) -> Origin:
 
 
 def material_from_tesseract_visual(viz: tesseract_scene_graph.Visual) -> Material:
+    # TODO: a component missing from RGBA
     color = Color.from_data()
     material: tesseract_scene_graph.Material = viz.getMaterial()
     color: ndarray = material.getBaseColorFactor()
@@ -137,17 +144,14 @@ def material_from_tesseract_visual(viz: tesseract_scene_graph.Visual) -> Materia
     mat = Material()
     return mat
 
-
-def robot_from_tesseract_env(env: Environment) -> RobotModel:
+def robot_from_tesseract_env(env: Environment, use_mesh=True) -> RobotModel:
     _link_names = env.getLinkNames()
-
-    print(_link_names)
 
     links: Dict[str: Link] = {}
 
     for name in _link_names:
         ta_link: tesseract_scene_graph.Link = env.getLink(name)
-        link = tesseract_link_to_compas_link(ta_link)
+        link = tesseract_link_to_compas_link(ta_link, use_mesh=use_mesh)
         # TODO: material
         links[name] = link
 
@@ -174,5 +178,8 @@ def robot_from_tesseract_env(env: Environment) -> RobotModel:
     # ~0.7s for loading with tesseract
     # ~24.5s for recreating the compas Robot from tesseract data...
     rm = RobotModel(env.getName(), joints, links.values())  # , materials=materials)
+
+    # pffff, better to inherit?
+    rm.tesseract_env: Environment = env
 
     return rm
