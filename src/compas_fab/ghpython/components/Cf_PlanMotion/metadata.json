@@ -3,7 +3,7 @@
     "nickname": "Plan Motion",
     "category": "COMPAS FAB",
     "subcategory": "Planning",
-    "description": "Calculate a motion path.",
+    "description": "Calculate a motion plan.",
     "exposure": 4,
 
     "ghpython": {
@@ -11,7 +11,8 @@
         "inputParameters": [
             {
                 "name": "robot",
-                "description": "The robot."
+                "description": "The robot.",
+                "wireDisplay": "hidden"
             },
             {
                 "name": "goal_constraints",
