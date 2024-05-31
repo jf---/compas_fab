@@ -1,3 +1,4 @@
 def pytest_configure(config):
-    from twisted.internet import selectreactor
-    selectreactor.install()
+    # from twisted.internet import selectreactor
+    # selectreactor.install()
+    pass

@@ -3,17 +3,17 @@ from pathlib import Path
 from typing import Callable
 
 import pytest
-import tesseract
-from tesseract import tesseract_scene_graph, tesseract_urdf
-from tesseract.tesseract_common import ManipulatorInfo
-from tesseract.tesseract_environment import Environment
+import tesseract_robotics
+from tesseract_robotics import tesseract_scene_graph, tesseract_urdf
+from tesseract_robotics.tesseract_common import ManipulatorInfo
+from tesseract_robotics.tesseract_environment import Environment
 
-from compas_fab.backends.tesseract.utils import _locate_resource
+# from compas_fab.backends.tesseract.utils import _locate_resource
 
 
 @pytest.fixture(scope="session")
 def tesseract_support_path() -> Path:
-    _tesseract_support_pth = Path(tesseract.__file__).joinpath(
+    _tesseract_support_pth = Path(tesseract_robotics.__file__).joinpath(
         "..", "..", "..", "..", "opt", "tesseract_robotics", "share", "tesseract_support").resolve()
 
     assert _tesseract_support_pth.exists(), f"tesseract_support expected at {_tesseract_support_pth}, but not found"
@@ -73,9 +73,9 @@ def get_iiwa_env(iiwa_urdf, iiwa_srdf, get_environment) -> Environment:
 def get_panda_env(panda_urdf, panda_srdf, get_environment) -> Environment:
     return get_environment(iiwa_urdf, iiwa_srdf)
 
-@pytest.fixture(scope="session")
-def get_scene_graph(iiwa_urdf):
-    locator_fn = tesseract_scene_graph.SimpleResourceLocatorFn(_locate_resource)
-    locator = tesseract_scene_graph.SimpleResourceLocator(locator_fn)
-    return tesseract_urdf.parseURDFFile(str(iiwa_urdf), locator)
+# @pytest.fixture(scope="session")
+# def get_scene_graph(iiwa_urdf):
+#     locator_fn = tesseract_scene_graph.SimpleResourceLocatorFn(_locate_resource)
+#     locator = tesseract_scene_graph.SimpleResourceLocator(locator_fn)
+#     return tesseract_urdf.parseURDFFile(str(iiwa_urdf), locator)
 

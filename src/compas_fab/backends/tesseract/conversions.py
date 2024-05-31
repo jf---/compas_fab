@@ -5,19 +5,30 @@ from __future__ import print_function
 from collections import deque
 from typing import List, Dict
 
+from compas.colors import Color
 from compas.datastructures import Mesh
 from compas.geometry import Frame
 
 __all__ = ['pose_from_frame', 'frame_from_pose']
 
-from compas.robots import Link, Visual, Collision, Axis, Origin, Material, RobotModel, Joint, ParentLink, ChildLink, Color
-from numpy import ndarray
-from tesseract import tesseract_scene_graph
-from tesseract.tesseract_common import Isometry3d
-from tesseract.tesseract_environment import Environment
-from tesseract.tesseract_geometry import CONVEX_MESH, MESH
-from tesseract_robotics.tesseract_geometry import Mesh as TaMesh
+from compas_robots import RobotModel
 
+print("ppppoooop")
+
+from compas_robots.model import Link, Visual, Collision, Axis, Material, Joint, ParentLink, ChildLink
+
+# Origin
+
+
+from compas_robots.scene import *
+from compas_robots.data import *
+
+from numpy import ndarray
+from tesseract_robotics import tesseract_scene_graph
+from tesseract_robotics.tesseract_common import Isometry3d
+from tesseract_robotics.tesseract_environment import Environment
+from tesseract_robotics.tesseract_geometry import CONVEX_MESH, MESH
+from tesseract_robotics.tesseract_geometry import Mesh as TaMesh
 
 def pose_from_frame(frame):
     """Returns a Tesseract pose from a frame.
@@ -128,11 +139,11 @@ def axis_from_tesseract_joint(joint: tesseract_scene_graph.Joint) -> Axis:
     return axis
 
 
-def origin_from_tesseract_joint(joint: tesseract_scene_graph.Joint) -> Origin:
+def origin_from_tesseract_joint(joint: tesseract_scene_graph.Joint): # Origin
     iso: Isometry3d = joint.parent_to_joint_origin_transform
-    origin = Origin.from_matrix(iso.matrix().tolist())
-    return origin
-
+    # origin = Origin.from_matrix(iso.matrix().tolist())
+    # return origin
+    raise NotImplementedError
 
 def material_from_tesseract_visual(viz: tesseract_scene_graph.Visual) -> Material:
     # TODO: a component missing from RGBA
@@ -183,3 +194,6 @@ def robot_from_tesseract_env(env: Environment, use_mesh=True) -> RobotModel:
     rm.tesseract_env: Environment = env
 
     return rm
+
+
+print("ppppoooop")

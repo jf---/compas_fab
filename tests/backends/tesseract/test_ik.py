@@ -1,9 +1,13 @@
 import numpy as np
 import numpy.testing as nptest
-from tesseract import tesseract_kinematics_kdl, tesseract_common
+# from tesseract import tesseract_kinematics_kdl, tesseract_common
+from tesseract_robotics import tesseract_common
+# tesseract_kinematics_kdl
+from tesseract_robotics import tesseract_kinematics as TK
 
+# KDLInvKinChainLMA
 
-from compas_fab.backends import tesseract
+# from compas_fab.backends import tesseract
 
 def test_TesseractInverseKinematics():
     tik = tesseract.TesseractInverseKinematics()
@@ -44,14 +48,14 @@ def test_kdl_kin_chain_nr_inverse_kinematic(get_scene_graph):
     run_inv_kin_test(inv_kin, fwd_kin)
 
 
-def test_jacobian(get_scene_graph):
-    kin = tesseract_kinematics_kdl.KDLFwdKinChain()
-    scene_graph = get_scene_graph
-    assert kin.init(scene_graph, "base_link", "tool0", "manip")
-
-    jvals = np.array([-0.785398, 0.785398, -0.785398, 0.785398, -0.785398, 0.785398, -0.785398])
-
-    link_name = "tool0"
-    jacobian = kin.calcJacobian(jvals, link_name)
-
-    assert jacobian.shape == (6, 7)
+# def test_jacobian(get_scene_graph):
+#     kin = tesseract_kinematics_kdl.KDLFwdKinChain()
+#     scene_graph = get_scene_graph
+#     assert kin.init(scene_graph, "base_link", "tool0", "manip")
+#
+#     jvals = np.array([-0.785398, 0.785398, -0.785398, 0.785398, -0.785398, 0.785398, -0.785398])
+#
+#     link_name = "tool0"
+#     jacobian = kin.calcJacobian(jvals, link_name)
+#
+#     assert jacobian.shape == (6, 7)

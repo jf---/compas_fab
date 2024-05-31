@@ -1,9 +1,10 @@
-from compas.robots import RobotModel
-from tesseract import tesseract_kinematics, tesseract_environment
-from tesseract.tesseract_common import Isometry3d, ManipulatorInfo
-from tesseract.tesseract_environment import Environment
+from tesseract_robotics import tesseract_kinematics, tesseract_environment
+from tesseract_robotics.tesseract_common import Isometry3d, ManipulatorInfo
+from tesseract_robotics.tesseract_environment import Environment
 
-from compas_fab.backends.tesseract import TesseractInverseKinematics
+# from compas_robots import RobotModel
+
+# from compas_fab.backends.tesseract import TesseractInverseKinematics
 from compas_fab.backends.tesseract.conversions import robot_from_tesseract_env
 
 
