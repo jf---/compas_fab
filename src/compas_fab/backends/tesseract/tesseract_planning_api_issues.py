@@ -165,6 +165,35 @@ def issue_6_tesseract_support_path_discovery():
     print()
 
 
+def issue_7_fcl_continuous_collision_not_exposed():
+    """
+    Issue 7: FCL continuous collision detection not exposed.
+
+    FCL supports continuous collision detection (CCD), but tesseract only
+    wraps FCL's discrete collision checking. Only Bullet is available for
+    continuous collision.
+
+    tesseract_collision/fcl/fcl_factories.h only has:
+        FCLDiscreteBVHManagerFactory : public DiscreteContactManagerFactory
+        // No FCLContinuousFactory exists
+
+    Suggested fix: Wrap FCL's CCD in FCLContinuousContactManager factory.
+    """
+    print("Issue 7: FCL continuous collision detection not exposed")
+    print("  FCL supports CCD, but tesseract only wraps discrete collision:")
+    print()
+    print("  tesseract_collision/fcl/fcl_factories.h:")
+    print("    FCLDiscreteBVHManagerFactory  // discrete only")
+    print("    // No FCLContinuousFactory exists")
+    print()
+    print("  Current contact_manager_plugins options:")
+    print("    Discrete:   FCL (fast) or Bullet")
+    print("    Continuous: Bullet only")
+    print()
+    print("  Suggestion: Wrap FCL CCD in FCLContinuousContactManager factory")
+    print()
+
+
 def main():
     """Run all issue demonstrations."""
     print("=" * 70)
@@ -191,6 +220,7 @@ def main():
 
     issue_5_no_ompl_configuration_examples()
     issue_6_tesseract_support_path_discovery()
+    issue_7_fcl_continuous_collision_not_exposed()
 
     print("=" * 70)
     print("Report these issues to:")

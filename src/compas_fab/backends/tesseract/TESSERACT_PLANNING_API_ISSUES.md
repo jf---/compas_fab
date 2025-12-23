@@ -2,6 +2,14 @@
 
 Report for: https://github.com/tesseract-robotics/tesseract_python_nanobind
 
+
+---
+
+- expose `num_threads`
+    - set a useful default
+- make sure that FCL not bullet is the default collision checker
+- address installation for `ws/install/share/tesseract_support/*`
+
 ---
 
 ## 1. TaskComposer Constructor Doesn't Accept Environment
@@ -94,3 +102,21 @@ TESSERACT_SUPPORT_DIR=/path/to/ws/install/share/tesseract_support
 - Auto-detect `ws/install/share` relative to `tesseract_robotics.__file__`
 - Add `resource_path` parameter to `Robot.from_files()`
 - Improve error message to explain required environment variables
+
+---
+
+## 7. FCL Continuous Collision Detection Not Exposed
+
+**Problem:** FCL supports continuous collision detection (CCD), but tesseract only exposes FCL's discrete collision checking. Only Bullet is available for continuous collision:
+
+```
+tesseract_collision/fcl/fcl_factories.h:
+  FCLDiscreteBVHManagerFactory : public DiscreteContactManagerFactory
+  // No FCLContinuousFactory exists
+```
+
+Current `contact_manager_plugins.yaml` options:
+- **Discrete:** FCL (fast) or Bullet
+- **Continuous:** Bullet only
+
+**Suggestion:** Wrap FCL's CCD capabilities in a `FCLContinuousContactManager` factory, allowing users to use FCL for both discrete and continuous collision checking.
