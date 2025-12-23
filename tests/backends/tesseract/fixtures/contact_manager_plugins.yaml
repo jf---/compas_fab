@@ -3,7 +3,7 @@ contact_manager_plugins:
     - tesseract_collision_bullet_factories
     - tesseract_collision_fcl_factories
   discrete_plugins:
-    default: BulletDiscreteBVHManager
+    default: FCLDiscreteBVHManager
     plugins:
       BulletDiscreteBVHManager:
         class: BulletDiscreteBVHManagerFactory
