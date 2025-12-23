@@ -133,7 +133,7 @@ def client():
 
 
 # Use simplified URDF/SRDF fixtures without mesh dependencies
-_fixtures_dir = Path(__file__).parent.parent.parent.parent / "src" / "compas_fab" / "backends" / "tesseract" / "tests" / "fixtures"
+_fixtures_dir = Path(__file__).parent / "fixtures"
 urdf_filename = str(_fixtures_dir / "ur5.urdf")
 srdf_filename = str(_fixtures_dir / "ur5.srdf")
 
