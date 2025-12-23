@@ -184,15 +184,14 @@ def composite_instruction_to_trajectory(
     # Import tesseract helpers for cross-module type recovery
     from tesseract_robotics.tesseract_command_language import (
         InstructionPoly_as_MoveInstructionPoly,
-        flattenProgram,
+        WaypointPoly_as_StateWaypointPoly,
+        WaypointPoly_as_JointWaypointPoly,
     )
-
-    # Flatten the composite instruction to a simple sequence
-    flattened = flattenProgram(composite)
 
     trajectory_points = []
 
-    for i, instruction in enumerate(flattened):
+    # Iterate directly over the composite instruction
+    for instruction in composite:
         if not instruction.isMoveInstruction():
             continue
 
@@ -202,12 +201,12 @@ def composite_instruction_to_trajectory(
 
         # Extract joint values based on waypoint type
         if waypoint.isStateWaypoint():
-            state_wp = waypoint.as_StateWaypointPoly()
+            state_wp = WaypointPoly_as_StateWaypointPoly(waypoint)
             positions = list(state_wp.getPosition())
             velocities = list(state_wp.getVelocity()) if hasattr(state_wp, 'getVelocity') else None
             accelerations = list(state_wp.getAcceleration()) if hasattr(state_wp, 'getAcceleration') else None
         elif waypoint.isJointWaypoint():
-            joint_wp = waypoint.as_JointWaypointPoly()
+            joint_wp = WaypointPoly_as_JointWaypointPoly(waypoint)
             positions = list(joint_wp.getPosition())
             velocities = None
             accelerations = None

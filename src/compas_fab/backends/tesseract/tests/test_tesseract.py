@@ -182,7 +182,6 @@ class TestKinematics:
 class TestPlanning:
     """Tests for motion planning."""
 
-    @pytest.mark.skip(reason="OMPL planning requires task composer config not yet set up")
     def test_plan_motion_ompl(self, skip_without_tesseract, urdf_path, srdf_path):
         """Test OMPL motion planning."""
         if urdf_path is None:

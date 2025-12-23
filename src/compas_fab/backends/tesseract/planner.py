@@ -326,23 +326,22 @@ class TesseractPlanner:
         group: str,
         options: Dict
     ) -> 'JointTrajectory':
-        """Plan motion using OMPL planner."""
-        from tesseract_robotics.tesseract_motion_planners_ompl import (
-            OMPLMotionPlanner,
-            OMPLRealVectorPlanProfile,
-            ProfileDictionary_addOMPLProfile,
+        """Plan motion using OMPL planner (low-level API)."""
+        from tesseract_robotics.tesseract_common import (
+            Isometry3d, ManipulatorInfo
+        )
+        from tesseract_robotics.tesseract_command_language import (
+            CartesianWaypoint, CartesianWaypointPoly_wrap_CartesianWaypoint,
+            JointWaypointPoly_wrap_JointWaypoint,
+            MoveInstruction, MoveInstructionPoly_wrap_MoveInstruction,
+            CompositeInstruction, MoveInstructionType_FREESPACE, ProfileDictionary,
         )
         from tesseract_robotics.tesseract_motion_planners import PlannerRequest
-        from tesseract_robotics.tesseract_command_language import (
-            CompositeInstruction,
-            MoveInstruction,
-            MoveInstructionType_FREESPACE,
-            JointWaypointPoly_wrap_JointWaypoint,
-            MoveInstructionPoly_wrap_MoveInstruction,
-            ProfileDictionary,
+        from tesseract_robotics.tesseract_motion_planners_ompl import (
+            OMPLMotionPlanner, OMPLRealVectorPlanProfile, ProfileDictionary_addOMPLProfile
         )
-        from tesseract_robotics.tesseract_common import ManipulatorInfo
         from .conversions import (
+            frame_to_isometry,
             configuration_to_joint_waypoint,
             composite_instruction_to_trajectory,
         )
@@ -350,43 +349,58 @@ class TesseractPlanner:
         OMPL_DEFAULT_NAMESPACE = "OMPLMotionPlannerTask"
         joint_names = self.client.get_joint_names(group)
 
-        # Create profile dictionary with default OMPL profile
-        profile_dict = ProfileDictionary()
-        ompl_profile = OMPLRealVectorPlanProfile()
-        ProfileDictionary_addOMPLProfile(profile_dict, OMPL_DEFAULT_NAMESPACE, "DEFAULT", ompl_profile)
-
-        # Create manipulator info for the planning group
+        # Setup manipulator info
         manip_info = ManipulatorInfo()
-        manip_info.manipulator = group
         manip_info.tcp_frame = "tool0"
+        manip_info.manipulator = group
         manip_info.working_frame = "base_link"
 
-        # Create composite instruction (program)
+        # Set initial state
+        if start_configuration is not None:
+            if start_configuration.joint_names:
+                joint_dict = start_configuration.joint_dict
+                start_values = np.array([joint_dict.get(name, 0.0) for name in joint_names])
+            else:
+                start_values = np.array(start_configuration.joint_values)
+            self.environment.setState(joint_names, start_values)
+
+        # Get goal configuration via IK
+        goal_config = self._constraints_to_configuration(goal_constraints, joint_names, robot, group)
+
+        # Create start and goal waypoints
+        start_wp = configuration_to_joint_waypoint(start_configuration, joint_names)
+        goal_wp = configuration_to_joint_waypoint(goal_config, joint_names)
+
+        # Create instructions
+        start_instr = MoveInstruction(
+            JointWaypointPoly_wrap_JointWaypoint(start_wp),
+            MoveInstructionType_FREESPACE, "DEFAULT"
+        )
+        goal_instr = MoveInstruction(
+            JointWaypointPoly_wrap_JointWaypoint(goal_wp),
+            MoveInstructionType_FREESPACE, "DEFAULT"
+        )
+
+        # Create program
         program = CompositeInstruction("DEFAULT")
         program.setManipulatorInfo(manip_info)
-
-        # Set start state (first instruction in program)
-        if start_configuration is not None:
-            start_wp = configuration_to_joint_waypoint(start_configuration, joint_names)
-            start_wp_poly = JointWaypointPoly_wrap_JointWaypoint(start_wp)
-            start_instr = MoveInstruction(start_wp_poly, MoveInstructionType_FREESPACE, "DEFAULT")
-            program.appendMoveInstruction(MoveInstructionPoly_wrap_MoveInstruction(start_instr))
-
-        # Convert goal constraints to waypoints
-        goal_wp = self._constraints_to_waypoint(goal_constraints, joint_names, robot, group)
-        goal_wp_poly = JointWaypointPoly_wrap_JointWaypoint(goal_wp)
-        goal_instr = MoveInstruction(goal_wp_poly, MoveInstructionType_FREESPACE, "DEFAULT")
+        program.appendMoveInstruction(MoveInstructionPoly_wrap_MoveInstruction(start_instr))
         program.appendMoveInstruction(MoveInstructionPoly_wrap_MoveInstruction(goal_instr))
 
-        # Create planner request
+        # Setup OMPL planner
+        plan_profile = OMPLRealVectorPlanProfile()
+        profiles = ProfileDictionary()
+        ProfileDictionary_addOMPLProfile(profiles, OMPL_DEFAULT_NAMESPACE, "DEFAULT", plan_profile)
+
+        # Create request
         request = PlannerRequest()
         request.instructions = program
         request.env = self.environment
-        request.profiles = profile_dict
+        request.profiles = profiles
 
-        # Create and run planner
-        planner = OMPLMotionPlanner(OMPL_DEFAULT_NAMESPACE)
-        response = planner.solve(request)
+        # Solve
+        ompl_planner = OMPLMotionPlanner(OMPL_DEFAULT_NAMESPACE)
+        response = ompl_planner.solve(request)
 
         if not response.successful:
             raise RuntimeError(f"OMPL planning failed: {response.message}")
@@ -591,7 +605,50 @@ class TesseractPlanner:
                 return JointWaypoint(joint_names, np.array(constraint.joint_values))
                 
         raise ValueError("Could not extract goal from constraints")
-        
+
+    def _constraints_to_configuration(
+        self,
+        constraints: List,
+        joint_names: List[str],
+        robot: 'Robot',
+        group: str
+    ) -> 'Configuration':
+        """Convert compas_fab constraints to a Configuration.
+
+        This handles both frame-based and joint-based constraints.
+        """
+        from compas_robots import Configuration
+        from compas.geometry import Frame
+
+        # Check constraint types
+        if not constraints:
+            raise ValueError("No constraints provided")
+
+        # Simple case: if constraints contain a Frame directly
+        if isinstance(constraints, Frame):
+            # Use IK to get joint configuration
+            config = self.inverse_kinematics(robot, constraints, group=group)
+            if config is None:
+                raise RuntimeError("Could not find IK solution for goal frame")
+            return config
+
+        # If it's a list of constraints from compas_fab
+        # Extract the goal frame or joint values
+        for constraint in constraints:
+            if hasattr(constraint, 'frame'):
+                config = self.inverse_kinematics(robot, constraint.frame, group=group)
+                if config is None:
+                    raise RuntimeError("Could not find IK solution for goal frame")
+                return config
+            elif hasattr(constraint, 'joint_values'):
+                return Configuration(
+                    joint_values=list(constraint.joint_values),
+                    joint_types=[0] * len(joint_names),
+                    joint_names=joint_names,
+                )
+
+        raise ValueError("Could not extract goal from constraints")
+
     # =========================================================================
     # Cartesian Motion Planning
     # =========================================================================

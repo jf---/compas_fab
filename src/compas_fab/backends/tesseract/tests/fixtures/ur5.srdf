@@ -3,6 +3,9 @@
   <!-- Reference kinematics plugin configuration -->
   <kinematics_plugin_config filename="ur5_plugins.yaml"/>
 
+  <!-- Reference contact manager plugin configuration -->
+  <contact_managers_plugin_config filename="contact_manager_plugins.yaml"/>
+
   <!-- Define the main manipulator group -->
   <group name="manipulator">
     <chain base_link="base_link" tip_link="tool0"/>
