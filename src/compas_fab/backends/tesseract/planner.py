@@ -120,7 +120,7 @@ class TesseractPlanner:
         options: Optional[Dict] = None
     ) -> 'Configuration':
         """Calculate the robot's inverse kinematics.
-        
+
         Parameters
         ----------
         robot : :class:`compas_fab.robots.Robot`
@@ -135,49 +135,53 @@ class TesseractPlanner:
             Additional options:
             - 'max_results': int - Maximum IK solutions to return.
             - 'return_all': bool - Return all solutions as generator.
-            
+
         Returns
         -------
         :class:`compas_fab.robots.Configuration`
             A valid configuration, or None if no solution found.
         """
         from compas_robots import Configuration
+        from tesseract_robotics.tesseract_common import Isometry3d
+        from tesseract_robotics.tesseract_kinematics import KinGroupIKInput
         from .conversions import frame_to_isometry
-        
+
         options = options or {}
         group = group or robot.main_group_name
-        
-        # Get kinematic group
-        kin_group = self.client.get_kinematic_group(group)
-        joint_names = list(kin_group.getJointNames())
-        
+
+        # Get joint names
+        tesseract_robot = self.client.tesseract_robot
+        joint_names = tesseract_robot.get_joint_names(group)
+
         # Convert frame to isometry
-        target_pose = frame_to_isometry(frame_WCF)
-        
+        target_matrix = frame_to_isometry(frame_WCF)
+        target_iso = Isometry3d(target_matrix)
+
         # Get seed values
         if start_configuration is not None:
             if start_configuration.joint_names:
                 joint_dict = start_configuration.joint_dict
-                seed = np.array([joint_dict.get(name, 0.0) for name in joint_names])
+                seed = np.array([joint_dict.get(name, 0.0) for name in joint_names], dtype=np.float64)
             else:
-                seed = np.array(start_configuration.joint_values)
+                seed = np.array(start_configuration.joint_values, dtype=np.float64)
         else:
-            seed = np.zeros(len(joint_names))
-            
-        # Create IK input
-        from tesseract_robotics.tesseract_kinematics import KinGroupIKInput
-        
-        ik_input = KinGroupIKInput(target_pose, kin_group.getBaseLinkName(), kin_group.getTipLinkName())
-        
-        # Solve IK
-        solutions = kin_group.calcInvKin([ik_input], seed)
-        
-        if not solutions:
+            seed = np.zeros(len(joint_names), dtype=np.float64)
+
+        # Get kinematic group info
+        kin_group = self.environment.getKinematicGroup(group)
+        base_link = kin_group.getBaseLinkName()
+        tip_link = list(kin_group.getActiveLinkNames())[-1]
+
+        # Create IK input and solve
+        ik_input = KinGroupIKInput(target_iso, base_link, tip_link)
+        solutions = kin_group.calcInvKin(ik_input, seed)
+
+        if not solutions or len(solutions) == 0:
             return None
-            
+
         # Return first solution as Configuration
         solution = solutions[0]
-        
+
         return Configuration(
             joint_values=list(solution),
             joint_types=[0] * len(solution),  # Assume revolute
@@ -193,7 +197,7 @@ class TesseractPlanner:
         options: Optional[Dict] = None
     ) -> Generator['Configuration', None, None]:
         """Iterate over all IK solutions.
-        
+
         Parameters
         ----------
         robot : :class:`compas_fab.robots.Robot`
@@ -207,48 +211,52 @@ class TesseractPlanner:
         options : dict, optional
             Additional options:
             - 'max_results': int - Maximum solutions to yield.
-            
+
         Yields
         ------
         :class:`compas_fab.robots.Configuration`
             Valid configurations.
         """
         from compas_robots import Configuration
+        from tesseract_robotics.tesseract_common import Isometry3d
+        from tesseract_robotics.tesseract_kinematics import KinGroupIKInput
         from .conversions import frame_to_isometry
-        
+
         options = options or {}
         group = group or robot.main_group_name
         max_results = options.get('max_results', 8)
-        
-        # Get kinematic group
-        kin_group = self.client.get_kinematic_group(group)
-        joint_names = list(kin_group.getJointNames())
-        
+
+        # Get joint names
+        tesseract_robot = self.client.tesseract_robot
+        joint_names = tesseract_robot.get_joint_names(group)
+
         # Convert frame to isometry
-        target_pose = frame_to_isometry(frame_WCF)
-        
+        target_matrix = frame_to_isometry(frame_WCF)
+        target_iso = Isometry3d(target_matrix)
+
         # Get seed values
         if start_configuration is not None:
             if start_configuration.joint_names:
                 joint_dict = start_configuration.joint_dict
-                seed = np.array([joint_dict.get(name, 0.0) for name in joint_names])
+                seed = np.array([joint_dict.get(name, 0.0) for name in joint_names], dtype=np.float64)
             else:
-                seed = np.array(start_configuration.joint_values)
+                seed = np.array(start_configuration.joint_values, dtype=np.float64)
         else:
-            seed = np.zeros(len(joint_names))
-            
-        # Create IK input
-        from tesseract_robotics.tesseract_kinematics import KinGroupIKInput
-        
-        ik_input = KinGroupIKInput(target_pose, kin_group.getBaseLinkName(), kin_group.getTipLinkName())
-        
-        # Solve IK
-        solutions = kin_group.calcInvKin([ik_input], seed)
-        
+            seed = np.zeros(len(joint_names), dtype=np.float64)
+
+        # Get kinematic group info
+        kin_group = self.environment.getKinematicGroup(group)
+        base_link = kin_group.getBaseLinkName()
+        tip_link = list(kin_group.getActiveLinkNames())[-1]
+
+        # Create IK input and solve
+        ik_input = KinGroupIKInput(target_iso, base_link, tip_link)
+        solutions = kin_group.calcInvKin(ik_input, seed)
+
         for i, solution in enumerate(solutions):
             if i >= max_results:
                 break
-                
+
             yield Configuration(
                 joint_values=list(solution),
                 joint_types=[0] * len(solution),
@@ -333,6 +341,7 @@ class TesseractPlanner:
             MoveInstructionPoly_wrap_MoveInstruction,
             ProfileDictionary,
         )
+        from tesseract_robotics.tesseract_common import ManipulatorInfo
         from .conversions import (
             configuration_to_joint_waypoint,
             composite_instruction_to_trajectory,
@@ -346,8 +355,15 @@ class TesseractPlanner:
         ompl_profile = OMPLRealVectorPlanProfile()
         ProfileDictionary_addOMPLProfile(profile_dict, OMPL_DEFAULT_NAMESPACE, "DEFAULT", ompl_profile)
 
+        # Create manipulator info for the planning group
+        manip_info = ManipulatorInfo()
+        manip_info.manipulator = group
+        manip_info.tcp_frame = "tool0"
+        manip_info.working_frame = "base_link"
+
         # Create composite instruction (program)
         program = CompositeInstruction("DEFAULT")
+        program.setManipulatorInfo(manip_info)
 
         # Set start state (first instruction in program)
         if start_configuration is not None:
@@ -366,7 +382,6 @@ class TesseractPlanner:
         request = PlannerRequest()
         request.instructions = program
         request.env = self.environment
-        request.env_state = self.environment.getState()
         request.profiles = profile_dict
 
         # Create and run planner
@@ -408,6 +423,7 @@ class TesseractPlanner:
             MoveInstructionPoly_wrap_MoveInstruction,
             ProfileDictionary,
         )
+        from tesseract_robotics.tesseract_common import ManipulatorInfo
         from .conversions import (
             configuration_to_joint_waypoint,
             composite_instruction_to_trajectory,
@@ -426,8 +442,15 @@ class TesseractPlanner:
         ProfileDictionary_addTrajOptPlanProfile(profile_dict, TRAJOPT_DEFAULT_NAMESPACE, "DEFAULT", plan_profile)
         ProfileDictionary_addTrajOptCompositeProfile(profile_dict, TRAJOPT_DEFAULT_NAMESPACE, "DEFAULT", composite_profile)
 
+        # Create manipulator info for the planning group
+        manip_info = ManipulatorInfo()
+        manip_info.manipulator = group
+        manip_info.tcp_frame = "tool0"
+        manip_info.working_frame = "base_link"
+
         # Create composite instruction
         program = CompositeInstruction("DEFAULT")
+        program.setManipulatorInfo(manip_info)
 
         # Set start state
         if start_configuration is not None:
@@ -446,7 +469,6 @@ class TesseractPlanner:
         request = PlannerRequest()
         request.instructions = program
         request.env = self.environment
-        request.env_state = self.environment.getState()
         request.profiles = profile_dict
 
         # Create and run planner
@@ -481,6 +503,7 @@ class TesseractPlanner:
             MoveInstructionPoly_wrap_MoveInstruction,
             ProfileDictionary,
         )
+        from tesseract_robotics.tesseract_common import ManipulatorInfo
         from .conversions import (
             configuration_to_joint_waypoint,
             composite_instruction_to_trajectory,
@@ -488,8 +511,15 @@ class TesseractPlanner:
 
         joint_names = self.client.get_joint_names(group)
 
+        # Create manipulator info for the planning group
+        manip_info = ManipulatorInfo()
+        manip_info.manipulator = group
+        manip_info.tcp_frame = "tool0"
+        manip_info.working_frame = "base_link"
+
         # Create composite instruction
         program = CompositeInstruction("DEFAULT")
+        program.setManipulatorInfo(manip_info)
 
         # Set start state
         if start_configuration is not None:
@@ -509,7 +539,6 @@ class TesseractPlanner:
         request = PlannerRequest()
         request.instructions = program
         request.env = self.environment
-        request.env_state = self.environment.getState()
         request.profiles = profile_dict
 
         planner = SimpleMotionPlanner()
@@ -610,6 +639,7 @@ class TesseractPlanner:
             MoveInstructionPoly_wrap_MoveInstruction,
             ProfileDictionary,
         )
+        from tesseract_robotics.tesseract_common import ManipulatorInfo
         from .conversions import (
             frame_to_isometry,
             configuration_to_joint_waypoint,
@@ -620,8 +650,15 @@ class TesseractPlanner:
         group = group or robot.main_group_name
         joint_names = self.client.get_joint_names(group)
 
+        # Create manipulator info for the planning group
+        manip_info = ManipulatorInfo()
+        manip_info.manipulator = group
+        manip_info.tcp_frame = "tool0"
+        manip_info.working_frame = "base_link"
+
         # Create composite instruction
         program = CompositeInstruction("DEFAULT")
+        program.setManipulatorInfo(manip_info)
 
         # Set start state
         if start_configuration is not None:
@@ -642,7 +679,6 @@ class TesseractPlanner:
         request = PlannerRequest()
         request.instructions = program
         request.env = self.environment
-        request.env_state = self.environment.getState()
         request.profiles = profile_dict
 
         # Solve

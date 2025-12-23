@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<robot name="ur5_robot">
+  <!-- Reference kinematics plugin configuration -->
+  <kinematics_plugin_config filename="ur5_plugins.yaml"/>
+
+  <!-- Define the main manipulator group -->
+  <group name="manipulator">
+    <chain base_link="base_link" tip_link="tool0"/>
+  </group>
+
+  <!-- Define group states -->
+  <group_state group="manipulator" name="home">
+    <joint name="shoulder_pan_joint" value="0"/>
+    <joint name="shoulder_lift_joint" value="-1.5707"/>
+    <joint name="elbow_joint" value="1.5707"/>
+    <joint name="wrist_1_joint" value="-1.5707"/>
+    <joint name="wrist_2_joint" value="-1.5707"/>
+    <joint name="wrist_3_joint" value="0"/>
+  </group_state>
+
+  <group_state group="manipulator" name="up">
+    <joint name="shoulder_pan_joint" value="0"/>
+    <joint name="shoulder_lift_joint" value="0"/>
+    <joint name="elbow_joint" value="0"/>
+    <joint name="wrist_1_joint" value="0"/>
+    <joint name="wrist_2_joint" value="0"/>
+    <joint name="wrist_3_joint" value="0"/>
+  </group_state>
+
+  <!-- End effector definition -->
+  <end_effector group="manipulator" name="tool0" parent_link="tool0"/>
+
+  <!-- Disable collisions between adjacent links -->
+  <disable_collisions link1="base_link" link2="shoulder_link" reason="Adjacent"/>
+  <disable_collisions link1="shoulder_link" link2="upper_arm_link" reason="Adjacent"/>
+  <disable_collisions link1="upper_arm_link" link2="forearm_link" reason="Adjacent"/>
+  <disable_collisions link1="forearm_link" link2="wrist_1_link" reason="Adjacent"/>
+  <disable_collisions link1="wrist_1_link" link2="wrist_2_link" reason="Adjacent"/>
+  <disable_collisions link1="wrist_2_link" link2="wrist_3_link" reason="Adjacent"/>
+
+</robot>
