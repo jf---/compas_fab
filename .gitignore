@@ -122,3 +122,6 @@ temp/**
 
 # Grasshopper generated objects
 src/compas_fab/ghpython/components/ghuser/*.ghuser
+
+# Local test scripts
+run_tests.sh
