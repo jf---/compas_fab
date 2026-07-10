@@ -38,14 +38,8 @@ class TesseractCartesianTargetComponent(Grasshopper.Kernel.GH_ScriptInstance):
         try:
             connected_move_type = optional_connected_input(ghenv.Component, "move_type", move_type)  # noqa: F821
             connected_profile = optional_connected_input(ghenv.Component, "profile", profile)  # noqa: F821
-            native_move_type = move_type_from_name(
-                "FREESPACE"
-                if connected_move_type is None
-                else connected_move_type
-            )
-            native_profile = (
-                "DEFAULT" if connected_profile is None else connected_profile
-            )
+            native_move_type = move_type_from_name("FREESPACE" if connected_move_type is None else connected_move_type)
+            native_profile = "DEFAULT" if connected_profile is None else connected_profile
             if isinstance(pose, WorkingFramePose):
                 return cartesian_target_from_native(
                     pose,

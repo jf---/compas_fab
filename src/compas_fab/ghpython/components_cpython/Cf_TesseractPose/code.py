@@ -38,11 +38,7 @@ class TesseractPoseComponent(Grasshopper.Kernel.GH_ScriptInstance):
                 WorkingFrameUserUnits.build(
                     compas_frame,
                     metres_per_user_unit,
-                    (
-                        "base_link"
-                        if connected_working_frame is None
-                        else connected_working_frame
-                    ),
+                    ("base_link" if connected_working_frame is None else connected_working_frame),
                 )
             )
         except TesseractBackendError as backend_error:
