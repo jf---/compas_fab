@@ -3,6 +3,7 @@ from types import ModuleType
 from types import SimpleNamespace
 import sys
 
+import pytest
 from tesseract_robotics.planning import JointTarget
 from tesseract_robotics.tesseract_command_language import ProfileDictionary
 
@@ -12,14 +13,20 @@ COMPONENTS = Path(__file__).parents[3] / "src" / "compas_fab" / "ghpython" / "co
 
 
 class FakeParameter:
-    def __init__(self, name, connected):
+    def __init__(self, name, connected, persistent=False):
         self.Name = name
         self.SourceCount = 1 if connected else 0
+        self.PersistentDataCount = 1 if persistent else 0
 
 
 class FakeComponent:
     def __init__(self, connections):
-        self.Params = SimpleNamespace(Input=[FakeParameter(name, connected) for name, connected in connections.items()])
+        def parameter(name, supplied):
+            if isinstance(supplied, tuple):
+                return FakeParameter(name, supplied[0], supplied[1])
+            return FakeParameter(name, supplied)
+
+        self.Params = SimpleNamespace(Input=[parameter(name, supplied) for name, supplied in connections.items()])
 
 
 def _load_component(monkeypatch, name, class_name, connections):
@@ -54,6 +61,13 @@ def test_optional_connected_input_distinguishes_empty_from_absent():
 
     assert optional_connected_input(connected, "values", []) == []
     assert optional_connected_input(unconnected, "values", []) is None
+
+
+@pytest.mark.parametrize("value", [False, 0, "", []])
+def test_optional_connected_input_preserves_persistent_falsey_data(value):
+    persistent = FakeComponent({"value": (False, True)})
+
+    assert optional_connected_input(persistent, "value", value) == value
 
 
 def test_joint_target_connected_empty_names_fail(monkeypatch):

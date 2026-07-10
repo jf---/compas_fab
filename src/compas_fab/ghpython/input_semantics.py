@@ -15,6 +15,7 @@ class MissingGrasshopperInputError(LookupError):
 class GrasshopperInputParameter(Protocol):
     Name: str
     SourceCount: int
+    PersistentDataCount: int
 
 
 class GrasshopperInputCollection(Protocol):
@@ -41,5 +42,6 @@ def optional_connected_input(
     """
     for parameter in component.Params.Input:
         if parameter.Name == input_name:
-            return value if parameter.SourceCount > 0 else None
+            supplied = parameter.SourceCount > 0 or parameter.PersistentDataCount > 0
+            return value if supplied else None
     raise MissingGrasshopperInputError("Grasshopper component has no input named {!r}.".format(input_name))
