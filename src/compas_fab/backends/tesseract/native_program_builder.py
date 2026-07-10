@@ -15,6 +15,7 @@ from tesseract_robotics.tesseract_command_language import CompositeInstruction
 
 from .errors import InvalidTesseractMotionProgramError
 from .native_program_consistency import native_program_semantic_identity
+from .native_targets import WorkingFrameCartesianTarget
 
 NativeTarget = Union[CartesianTarget, JointTarget, StateTarget]
 _NATIVE_TARGET_TYPES = (CartesianTarget, JointTarget, StateTarget)
@@ -71,7 +72,7 @@ def build_motion_program(
     if resolved_tcp not in link_names:
         raise InvalidTesseractMotionProgramError("Native TCP frame {!r} is not a robot link.".format(resolved_tcp))
 
-    native_targets = _targets(targets, joint_names)
+    native_targets = _targets(targets, joint_names, working)
     motion_program = MotionProgram(
         group,
         tcp_frame=resolved_tcp,
@@ -110,6 +111,7 @@ def _name(value: object, kind: str) -> str:
 def _targets(
     value: object,
     joint_names: tuple[str, ...],
+    working_frame: str,
 ) -> tuple[NativeTarget, ...]:
     if isinstance(value, (str, bytes)) or not isinstance(value, Iterable):
         raise InvalidTesseractMotionProgramError("Motion program targets must be an ordered native sequence.")
@@ -122,6 +124,7 @@ def _targets(
                 raise InvalidTesseractMotionProgramError(
                     "Motion program target {} joint order {} differs from native group order {}.".format(index, tuple(target.names), joint_names)
                 )
+        _validate_target_working_frame(target, index, working_frame)
         targets.append(target)
     if not targets:
         raise InvalidTesseractMotionProgramError("Motion program requires at least one native target.")
@@ -151,6 +154,12 @@ def _validate_built_program(
         raise InvalidTesseractMotionProgramError("NativeProgramBuild program representations disagree in length.")
     if motion_program.tcp_frame != resolved_tcp:
         raise InvalidTesseractMotionProgramError("NativeProgramBuild TCP does not match its MotionProgram.")
+    for index, target in enumerate(motion_program.targets):
+        _validate_target_working_frame(
+            target,
+            index,
+            motion_program.working_frame,
+        )
     if composite_instruction.getManipulatorInfo().tcp_frame != resolved_tcp:
         raise InvalidTesseractMotionProgramError("NativeProgramBuild TCP does not match its CompositeInstruction.")
     if tuple(motion_program._joint_names or ()) != joint_names:
@@ -164,3 +173,18 @@ def _validate_built_program(
         raise InvalidTesseractMotionProgramError("NativeProgramBuild cannot regenerate its MotionProgram: {}.".format(program_error)) from program_error
     if native_program_semantic_identity(regenerated) != native_program_semantic_identity(composite_instruction):
         raise InvalidTesseractMotionProgramError("NativeProgramBuild program representations disagree in content.")
+
+
+def _validate_target_working_frame(
+    target: NativeTarget,
+    index: int,
+    working_frame: str,
+) -> None:
+    if isinstance(target, WorkingFrameCartesianTarget) and target.working_frame != working_frame:
+        raise InvalidTesseractMotionProgramError(
+            "Motion program target {} working frame {!r} differs from program working frame {!r}.".format(
+                index,
+                target.working_frame,
+                working_frame,
+            )
+        )

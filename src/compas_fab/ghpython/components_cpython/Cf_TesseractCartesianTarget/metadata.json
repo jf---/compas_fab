@@ -11,7 +11,7 @@
         "inputParameters": [
             {
                 "name": "pose",
-                "description": "Exact native tesseract_robotics.planning.Pose, normally from Tesseract Pose."
+                "description": "Exact native Pose. WorkingFramePose retains its frame identity; a plain native Pose remains accepted without COMPAS reinterpretation."
             },
             {
                 "name": "move_type",
@@ -27,7 +27,7 @@
         "outputParameters": [
             {
                 "name": "target",
-                "description": "Exact native tesseract_robotics.planning.CartesianTarget retaining the input Pose."
+                "description": "Exact native CartesianTarget retaining the input Pose and, when supplied, its working-frame identity."
             }
         ]
     }

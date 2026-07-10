@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from compas.geometry import Frame
 from tesseract_robotics.planning import CartesianTarget
 from tesseract_robotics.planning import JointTarget
 from tesseract_robotics.planning import MoveType
@@ -10,7 +11,10 @@ from compas_fab.backends.tesseract.errors import InvalidTesseractTargetError
 from compas_fab.backends.tesseract.native_quantities import NativeJointNames
 from compas_fab.backends.tesseract.native_quantities import NativeJointPositions
 from compas_fab.backends.tesseract.native_quantities import NativeJointVelocities
+from compas_fab.backends.tesseract.native_pose import WorkingFrameUserUnits
+from compas_fab.backends.tesseract.native_pose import pose_from_working_frame
 from compas_fab.backends.tesseract.native_targets import build_cartesian_target
+from compas_fab.backends.tesseract.native_targets import cartesian_target_from_native
 from compas_fab.backends.tesseract.native_targets import build_joint_target
 from compas_fab.backends.tesseract.native_targets import build_state_target
 from compas_fab.backends.tesseract.native_targets import joint_target_from_native
@@ -193,3 +197,15 @@ def test_typed_joint_target_path_rejects_wrong_quantity_type():
             MoveType.FREESPACE,
             "DEFAULT",
         )
+
+
+def test_typed_cartesian_target_retains_working_frame_identity():
+    pose = pose_from_working_frame(WorkingFrameUserUnits.build(Frame.worldXY(), 1.0, "world"))
+
+    target = cartesian_target_from_native(
+        pose,
+        MoveType.LINEAR,
+        "DEFAULT",
+    )
+
+    assert target.working_frame == "world"

@@ -3,7 +3,7 @@
     "nickname": "Tesseract Motion Program",
     "category": "COMPAS FAB",
     "subcategory": "Backends",
-    "description": "Build exact native MotionProgram and CompositeInstruction values while preserving target order and move types.",
+    "description": "Build exact native MotionProgram and CompositeInstruction values while preserving target order and move types and validating retained Cartesian working frames.",
     "exposure": 2,
     "ghpython": {
         "isAdvancedMode": true,

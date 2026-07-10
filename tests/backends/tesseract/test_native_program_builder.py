@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from compas.geometry import Frame
 from tesseract_robotics.planning import CartesianTarget
 from tesseract_robotics.planning import JointTarget
 from tesseract_robotics.planning import MotionProgram
@@ -7,10 +8,18 @@ from tesseract_robotics.planning import MoveType
 from tesseract_robotics.planning import Pose
 from tesseract_robotics.planning import StateTarget
 from tesseract_robotics.tesseract_command_language import CompositeInstruction
+from tesseract_robotics.tesseract_command_language import InstructionPoly
+from tesseract_robotics.tesseract_command_language import JointWaypoint
+from tesseract_robotics.tesseract_command_language import JointWaypointPoly_wrap_JointWaypoint
+from tesseract_robotics.tesseract_command_language import StateWaypoint
+from tesseract_robotics.tesseract_command_language import StateWaypointPoly_wrap_StateWaypoint
 
 from compas_fab.backends.tesseract.errors import InvalidTesseractMotionProgramError
 from compas_fab.backends.tesseract.native_program_builder import NativeProgramBuild
 from compas_fab.backends.tesseract.native_program_builder import build_motion_program
+from compas_fab.backends.tesseract.native_pose import WorkingFrameUserUnits
+from compas_fab.backends.tesseract.native_pose import pose_from_working_frame
+from compas_fab.backends.tesseract.native_targets import cartesian_target_from_native
 
 
 def test_builder_resolves_group_joint_order_and_tcp(tesseract_robot):
@@ -82,6 +91,55 @@ def test_builder_preserves_order_and_all_native_target_types(
     assert first.move_type is MoveType.FREESPACE
     assert second.move_type is MoveType.LINEAR
     assert third.move_type is MoveType.CIRCULAR
+
+
+def test_builder_rejects_typed_cartesian_target_frame_mismatch(
+    tesseract_robot,
+):
+    pose = pose_from_working_frame(WorkingFrameUserUnits.build(Frame.worldXY(), 1.0, "world"))
+    target = cartesian_target_from_native(
+        pose,
+        MoveType.LINEAR,
+        "DEFAULT",
+    )
+
+    with pytest.raises(
+        InvalidTesseractMotionProgramError,
+        match="working frame",
+    ):
+        build_motion_program(
+            tesseract_robot,
+            [target],
+            "manipulator",
+            None,
+            "base",
+            "DEFAULT",
+        )
+
+
+def test_raw_build_rejects_typed_cartesian_target_frame_mismatch():
+    pose = pose_from_working_frame(WorkingFrameUserUnits.build(Frame.worldXY(), 1.0, "world"))
+    target = cartesian_target_from_native(
+        pose,
+        MoveType.LINEAR,
+        "DEFAULT",
+    )
+    motion_program = MotionProgram(
+        "manipulator",
+        tcp_frame="tip",
+        working_frame="base",
+        profile="DEFAULT",
+    ).set_joint_names(["joint1"])
+    motion_program.add_target(target)
+    composite = motion_program.to_composite_instruction(["joint1"], "tip")
+
+    with pytest.raises(InvalidTesseractMotionProgramError, match="working frame"):
+        NativeProgramBuild(
+            motion_program,
+            composite,
+            ("joint1",),
+            "tip",
+        )
 
 
 @pytest.mark.parametrize(
@@ -199,4 +257,58 @@ def test_raw_build_result_rejects_mixed_same_length_programs(
             second.composite_instruction,
             first.joint_names,
             first.tcp_frame,
+        )
+
+
+def test_raw_build_result_rejects_changed_joint_tolerances(
+    tesseract_robot,
+):
+    built = build_motion_program(
+        tesseract_robot,
+        [JointTarget([0.0])],
+        "manipulator",
+        None,
+        "base",
+        "DEFAULT",
+    )
+    waypoint = JointWaypoint(
+        ["joint1"],
+        np.asarray([0.0]),
+        np.asarray([-0.1]),
+        np.asarray([0.1]),
+    )
+    move = built.composite_instruction[0].asMoveInstruction()
+    move.assignJointWaypoint(JointWaypointPoly_wrap_JointWaypoint(waypoint))
+    built.composite_instruction.setInstructions([InstructionPoly(move)])
+
+    with pytest.raises(InvalidTesseractMotionProgramError, match="content"):
+        NativeProgramBuild(
+            built.motion_program,
+            built.composite_instruction,
+            built.joint_names,
+            built.tcp_frame,
+        )
+
+
+def test_raw_build_result_rejects_changed_state_effort(tesseract_robot):
+    built = build_motion_program(
+        tesseract_robot,
+        [StateTarget([0.0])],
+        "manipulator",
+        None,
+        "base",
+        "DEFAULT",
+    )
+    waypoint = StateWaypoint(["joint1"], np.asarray([0.0]))
+    waypoint.setEffort(np.asarray([0.5]))
+    move = built.composite_instruction[0].asMoveInstruction()
+    move.assignStateWaypoint(StateWaypointPoly_wrap_StateWaypoint(waypoint))
+    built.composite_instruction.setInstructions([InstructionPoly(move)])
+
+    with pytest.raises(InvalidTesseractMotionProgramError, match="content"):
+        NativeProgramBuild(
+            built.motion_program,
+            built.composite_instruction,
+            built.joint_names,
+            built.tcp_frame,
         )

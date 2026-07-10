@@ -15,6 +15,8 @@ from tesseract_robotics.planning import Pose
 from tesseract_robotics.planning import StateTarget
 
 from .errors import InvalidTesseractTargetError
+from .native_pose import WorkingFrameName
+from .native_pose import WorkingFramePose
 from .native_quantities import NativeJointAcceleration as NativeJointAcceleration
 from .native_quantities import NativeJointAccelerations
 from .native_quantities import NativeJointNames
@@ -24,6 +26,23 @@ from .native_quantities import NativeJointVelocities
 from .native_quantities import NativeJointVelocity as NativeJointVelocity
 from .native_quantities import NativeTime
 from .native_quantities import NativeTimeSeconds
+
+
+class WorkingFrameCartesianTarget(CartesianTarget):
+    """Native CartesianTarget retaining the pose working-frame identity."""
+
+    working_frame: WorkingFrameName
+
+    def __init__(
+        self,
+        pose: WorkingFramePose,
+        move_type: MoveType,
+        profile: str,
+    ) -> None:
+        if not isinstance(pose, WorkingFramePose):
+            raise InvalidTesseractTargetError("Typed Cartesian target requires WorkingFramePose, got {}.".format(type(pose).__name__))
+        super().__init__(pose=pose, move_type=move_type, profile=profile)
+        self.working_frame = pose.working_frame
 
 
 def move_type_from_name(value: object) -> MoveType:
@@ -52,17 +71,17 @@ def build_cartesian_target(
 
 
 def cartesian_target_from_native(
-    pose: Pose,
+    pose: WorkingFramePose,
     move_type: MoveType,
     profile: str,
-) -> CartesianTarget:
+) -> WorkingFrameCartesianTarget:
     """Build from exact native pose, move enum, and profile types."""
-    if not isinstance(pose, Pose):
-        raise InvalidTesseractTargetError("Cartesian target requires exact native Pose, got {}.".format(type(pose).__name__))
-    return CartesianTarget(
-        pose=pose,
-        move_type=_move_type(move_type),
-        profile=_profile(profile),
+    if not isinstance(pose, WorkingFramePose):
+        raise InvalidTesseractTargetError("Typed Cartesian target requires WorkingFramePose, got {}.".format(type(pose).__name__))
+    return WorkingFrameCartesianTarget(
+        pose,
+        _move_type(move_type),
+        _profile(profile),
     )
 
 

@@ -52,11 +52,13 @@ def test_typed_working_frame_carries_frame_and_unit_scale():
     boundary = WorkingFrameUserUnits.build(
         Frame([1000.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
         0.001,
+        "base_link",
     )
 
     pose = pose_from_working_frame(boundary)
 
     np.testing.assert_array_equal(pose.translation, [1.0, 0.0, 0.0])
+    assert pose.working_frame == "base_link"
 
 
 def test_typed_pose_path_rejects_bare_frame():
@@ -66,6 +68,11 @@ def test_typed_pose_path_rejects_bare_frame():
 
 def test_typed_working_frame_raw_constructor_cannot_bypass_scale():
     with pytest.raises(InvalidTesseractPoseError):
-        WorkingFrameUserUnits(Frame.worldXY(), -1.0)
+        WorkingFrameUserUnits(Frame.worldXY(), -1.0, "base_link")
     with pytest.raises(InvalidTesseractPoseError):
-        WorkingFrameUserUnits(Frame.worldXY(), 1)
+        WorkingFrameUserUnits(Frame.worldXY(), 1, "base_link")
+
+
+def test_typed_working_frame_requires_exact_identity():
+    with pytest.raises(InvalidTesseractPoseError, match="working frame"):
+        WorkingFrameUserUnits.build(Frame.worldXY(), 1.0, "")

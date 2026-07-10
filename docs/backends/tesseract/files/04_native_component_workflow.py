@@ -40,8 +40,8 @@ robot.set_joints(start_joints, joint_names=joint_names)
 # by Tesseract Pose without approximating its transform.
 start_frame = robot_frame_from_isometry(robot.fk(MANIPULATOR, start_joints, tip_link=TCP_FRAME)).value
 goal_frame = robot_frame_from_isometry(robot.fk(MANIPULATOR, goal_joints, tip_link=TCP_FRAME)).value
-start_pose = pose_from_working_frame(WorkingFrameUserUnits.build(start_frame, 1.0))
-goal_pose = pose_from_working_frame(WorkingFrameUserUnits.build(goal_frame, 1.0))
+start_pose = pose_from_working_frame(WorkingFrameUserUnits.build(start_frame, 1.0, WORKING_FRAME))
+goal_pose = pose_from_working_frame(WorkingFrameUserUnits.build(goal_frame, 1.0, WORKING_FRAME))
 
 targets = [
     cartesian_target_from_native(

@@ -122,7 +122,7 @@ def test_rapid_emitter_component_is_pure_native_adapter():
     [
         (
             "Cf_TesseractPose",
-            ["frame", "metres_per_user_unit"],
+            ["frame", "metres_per_user_unit", "working_frame"],
             ["pose"],
             "pose_from_working_frame",
         ),

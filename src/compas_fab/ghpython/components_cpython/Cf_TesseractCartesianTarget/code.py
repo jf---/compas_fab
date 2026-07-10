@@ -14,6 +14,8 @@ import System
 from compas_ghpython import error
 
 from compas_fab.backends.tesseract.errors import TesseractBackendError
+from compas_fab.backends.tesseract.native_pose import WorkingFramePose
+from compas_fab.backends.tesseract.native_targets import build_cartesian_target
 from compas_fab.backends.tesseract.native_targets import cartesian_target_from_native
 from compas_fab.backends.tesseract.native_targets import move_type_from_name
 from compas_fab.ghpython import ensure_value_list
@@ -36,10 +38,24 @@ class TesseractCartesianTargetComponent(Grasshopper.Kernel.GH_ScriptInstance):
         try:
             connected_move_type = optional_connected_input(ghenv.Component, "move_type", move_type)  # noqa: F821
             connected_profile = optional_connected_input(ghenv.Component, "profile", profile)  # noqa: F821
-            return cartesian_target_from_native(
+            native_move_type = move_type_from_name(
+                "FREESPACE"
+                if connected_move_type is None
+                else connected_move_type
+            )
+            native_profile = (
+                "DEFAULT" if connected_profile is None else connected_profile
+            )
+            if isinstance(pose, WorkingFramePose):
+                return cartesian_target_from_native(
+                    pose,
+                    native_move_type,
+                    native_profile,
+                )
+            return build_cartesian_target(
                 pose,
-                move_type_from_name("FREESPACE" if connected_move_type is None else connected_move_type),
-                "DEFAULT" if connected_profile is None else connected_profile,
+                native_move_type,
+                native_profile,
             )
         except TesseractBackendError as backend_error:
             error(ghenv.Component, str(backend_error))  # noqa: F821

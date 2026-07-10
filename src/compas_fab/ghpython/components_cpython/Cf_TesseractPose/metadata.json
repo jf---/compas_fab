@@ -17,12 +17,17 @@
                 "name": "metres_per_user_unit",
                 "description": "Required explicit scale: one coordinate unit multiplied by this value equals metres. Use 0.001 for millimetres.",
                 "typeHintID": "float"
+            },
+            {
+                "name": "working_frame",
+                "description": "Exact Tesseract working-frame link identity. Unconnected defaults to base_link.",
+                "typeHintID": "str"
             }
         ],
         "outputParameters": [
             {
                 "name": "pose",
-                "description": "Exact native tesseract_robotics.planning.Pose with translation in metres."
+                "description": "Exact native Pose subclass with translation in metres and retained working-frame identity."
             }
         ]
     }

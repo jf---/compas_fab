@@ -153,8 +153,9 @@ The same boundaries used by the Grasshopper nodes are ordinary Python
 factories. This ABB IRB 2400 example derives reachable Cartesian poses through
 native FK, crosses the explicit COMPAS-frame/metre boundary, and retains exact
 native targets, program, profiles, request, result, and trajectory points.
-`WorkingFrameUserUnits` carries coordinate-frame and unit semantics into that
-boundary; joint/state component inputs likewise become distinct validated
+`WorkingFrameUserUnits` carries the exact working-frame link identity and unit
+semantics into that boundary. The typed native pose and Cartesian target retain
+the identity, and Motion Program rejects a mismatch. Joint/state component inputs likewise become distinct validated
 position, velocity, acceleration, name, and time types before target creation.
 Descartes owns the full local-tool-Z symmetry search at 1-degree resolution over
 the explicit -180-to-180-degree range and includes redundant joint solutions.
@@ -218,8 +219,8 @@ inspection, and pure code emission:
 2. **Tesseract Planner** caches a client by artifact identity. It outputs the
    conventional planner and an isolated native `Robot` clone.
 3. **Tesseract Pose** is the only geometry/unit boundary. It requires explicit
-   metres per Rhino/COMPAS user unit, validates a typed working-frame value,
-   and outputs an exact native `Pose`.
+   metres per Rhino/COMPAS user unit, retains the exact working-frame link
+   identity, and outputs an exact native `Pose` subclass.
 4. **Tesseract Cartesian Target**, **Tesseract Joint Target**, and **Tesseract
    State Target** output exact native target types. All expose native
    `FREESPACE`, `LINEAR`, and `CIRCULAR` move types; optional state dynamics stay
@@ -227,7 +228,9 @@ inspection, and pure code emission:
    position, velocity, acceleration, name, and time boundaries.
 5. **Tesseract Motion Program** uses the native robot to resolve group joint
    order and TCP, then outputs both exact `MotionProgram` and
-   `CompositeInstruction` values without overwriting authored move types.
+   `CompositeInstruction` values without overwriting authored move types. A
+   typed Cartesian target whose retained working frame differs from the program
+   fails before native lowering.
 6. **Tesseract Descartes Profile** exposes every released native profile-factory
    argument. Unconnected options stay `None`, preserving Tesseract defaults.
 7. **Tesseract Native Plan** requires exact pipeline and `ProfileDictionary`
