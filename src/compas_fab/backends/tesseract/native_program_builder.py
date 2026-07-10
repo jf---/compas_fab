@@ -14,6 +14,7 @@ from tesseract_robotics.planning import StateTarget
 from tesseract_robotics.tesseract_command_language import CompositeInstruction
 
 from .errors import InvalidTesseractMotionProgramError
+from .native_program_consistency import native_program_semantic_identity
 
 NativeTarget = Union[CartesianTarget, JointTarget, StateTarget]
 _NATIVE_TARGET_TYPES = (CartesianTarget, JointTarget, StateTarget)
@@ -152,3 +153,14 @@ def _validate_built_program(
         raise InvalidTesseractMotionProgramError("NativeProgramBuild TCP does not match its MotionProgram.")
     if composite_instruction.getManipulatorInfo().tcp_frame != resolved_tcp:
         raise InvalidTesseractMotionProgramError("NativeProgramBuild TCP does not match its CompositeInstruction.")
+    if tuple(motion_program._joint_names or ()) != joint_names:
+        raise InvalidTesseractMotionProgramError("NativeProgramBuild joint names do not match its MotionProgram.")
+    try:
+        regenerated = motion_program.to_composite_instruction(
+            list(joint_names),
+            resolved_tcp,
+        )
+    except (RuntimeError, TypeError, ValueError) as program_error:
+        raise InvalidTesseractMotionProgramError("NativeProgramBuild cannot regenerate its MotionProgram: {}.".format(program_error)) from program_error
+    if native_program_semantic_identity(regenerated) != native_program_semantic_identity(composite_instruction):
+        raise InvalidTesseractMotionProgramError("NativeProgramBuild program representations disagree in content.")

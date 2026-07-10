@@ -168,3 +168,35 @@ def test_raw_build_result_cannot_bypass_invariants():
             (),
             "",
         )
+
+
+def test_raw_build_result_rejects_mixed_same_length_programs(
+    tesseract_robot,
+):
+    first = build_motion_program(
+        tesseract_robot,
+        [JointTarget([0.0], profile="FIRST_TARGET")],
+        "manipulator",
+        None,
+        "base",
+        "FIRST_PROGRAM",
+    )
+    second = build_motion_program(
+        tesseract_robot,
+        [JointTarget([0.25], profile="SECOND_TARGET")],
+        "manipulator",
+        None,
+        "base",
+        "SECOND_PROGRAM",
+    )
+
+    with pytest.raises(
+        InvalidTesseractMotionProgramError,
+        match="representations disagree",
+    ):
+        NativeProgramBuild(
+            first.motion_program,
+            second.composite_instruction,
+            first.joint_names,
+            first.tcp_frame,
+        )
