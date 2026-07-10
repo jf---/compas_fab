@@ -152,6 +152,7 @@ nav:
   - Concepts: concepts.md
   - Backends:
       - Choosing a backend: backends/index.md
+      - Tesseract: backends/tesseract.md
       - Analytical IK: backends/analytical.md
       - Analytical IK + PyBullet: backends/analytical_pybullet.md
       - PyBullet: backends/pybullet.md

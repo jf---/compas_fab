@@ -1,35 +1,38 @@
 # Choosing a backend
 
-**COMPAS FAB** is one library that drives five different planning back-ends.
+**COMPAS FAB** is one library that drives six different planning back-ends.
 Pick the one that matches what you want to do.
 
 ## By intent
 
 | I want to… | Use | Why |
 |---|---|---|
+| Use in-process industrial motion planning without reducing native capabilities | [Tesseract](tesseract.md) | Native Task Composer pipelines, profiles, kinematics, and collision results remain accessible |
 | Just compute IK on a robot (e.g., UR, Staubli, ABB, etc) | [Analytical IK](analytical.md) | Closed-form, microsecond IK, no Docker, no PyBullet |
 | Compute IK *and* check collisions | [Analytical IK + PyBullet](analytical_pybullet.md) | Analytical-fast IK filtered against a real collision scene |
-| Plan motion (collisions + trajectory smoothing) without ROS | [PyBullet](pybullet.md) | In-process motion planning; runs anywhere Python runs |
+| Plan motion (collisions + trajectory smoothing) without ROS | [Tesseract](tesseract.md) | Native in-process motion planning with no planner fallback |
 | Plan motion via ROS 2 + MoveIt 2 | [ROS 2 + MoveIt 2](ros2.md) | Current ROS LTS; the recommended starting point for new ROS work |
 | Drive an existing ROS 1 + MoveIt 1 setup | [ROS 1 + MoveIt 1](ros.md) | Legacy stack; only use if you must |
 | Just model / visualize a robot cell in a CAD environment | *no backend* | The core data model works without any planner. See [Concepts](../concepts.md) |
 
 ## By capability
 
-| Capability | Analytical | Analytical + PyBullet | PyBullet | ROS 1 + MoveIt 1 | ROS 2 + MoveIt 2 |
-|---|:-:|:-:|:-:|:-:|:-:|
-| Forward kinematics | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Inverse kinematics | ✓ (closed-form) | ✓ (closed-form) | ✓ (numerical) | ✓ | ✓ |
-| Collision checking | — | ✓ | ✓ | ✓ | ✓ |
-| Point-to-point motion planning | — | — | ✓ | ✓ | ✓ |
-| Cartesian motion planning | — | ✓ (partial) | ✓ | ✓ | ✓ |
-| Visualisation | — | PyBullet GUI | PyBullet GUI | RViz | RViz |
-| Setup cost | none | `pip install pybullet` | `pip install pybullet` | Docker | Docker |
-| Usable from inside Rhino 7/8 | ✓ | — | — | ✓ (over WebSocket) | ✓ (over WebSocket) |
+| Capability | Tesseract | Analytical | Analytical + PyBullet | PyBullet | ROS 1 + MoveIt 1 | ROS 2 + MoveIt 2 |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| Forward kinematics | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Inverse kinematics | ✓ (native plugins) | ✓ (closed-form) | ✓ (closed-form) | ✓ (numerical) | ✓ | ✓ |
+| Collision checking | ✓ | — | ✓ | ✓ | ✓ | ✓ |
+| Point-to-point motion planning | ✓ | — | — | — | ✓ | ✓ |
+| Cartesian motion planning | native API; COMPAS lowering later | — | ✓ (partial) | ✓ | ✓ | ✓ |
+| Native planner programs/results | ✓ | — | — | — | — | — |
+| Visualisation | native scene access | — | PyBullet GUI | PyBullet GUI | RViz | RViz |
+| Setup cost | nanobind wheel | none | PyBullet | PyBullet | Docker | Docker |
+| Rhino 8 path | Grasshopper components | ✓ | — | — | ✓ (WebSocket) | ✓ (WebSocket) |
 
 ## Setup cost in plain words
 
 - **Analytical IK**: nothing to install beyond `compas_fab` itself.
+- **Tesseract**: the `tesseract-robotics-nanobind` wheel; no ROS server.
 - **PyBullet / Analytical + PyBullet**: one `pip install pybullet` (with a
   small workaround on macOS, see the per-backend pages).
 - **ROS 1 & ROS 2**: Docker Desktop + the per-robot compose stack in
