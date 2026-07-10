@@ -10,6 +10,7 @@ EXAMPLES = Path(__file__).parents[3] / "docs" / "backends" / "tesseract" / "file
 CONVENTIONAL_EXAMPLE = EXAMPLES / "01_compas_plan_motion.py"
 NATIVE_EXAMPLE = EXAMPLES / "02_native_program.py"
 RAPID_EXAMPLE = EXAMPLES / "03_rapid_emitter.py"
+COMPONENT_WORKFLOW_EXAMPLE = EXAMPLES / "04_native_component_workflow.py"
 
 
 def test_examples_exercise_convex_hull_loading_default():
@@ -62,3 +63,30 @@ def test_released_descartes_defaults_are_known_and_overridden_explicitly():
     assert profile.target_pose_sample_min == pytest.approx(-pi)
     assert profile.target_pose_sample_max == pytest.approx(pi / 2.0)
     assert profile.use_redundant_joint_solutions is False
+
+
+def test_component_workflow_uses_every_native_factory_and_axis_redundancy():
+    source = COMPONENT_WORKFLOW_EXAMPLE.read_text(encoding="utf-8")
+
+    for symbol in (
+        "pose_from_user_frame",
+        "build_cartesian_target",
+        "build_motion_program",
+        "build_descartes_profiles",
+        "TesseractPlanningRequest.build",
+        "TesseractNativeResultView.build",
+    ):
+        assert symbol in source
+    assert 'Robot.from_tesseract_support("abb_irb2400")' in source
+    assert 'pipeline="DescartesFPipeline"' in source
+    assert "TOOL_Z_AXIS = (0.0, 0.0, 1.0)" in source
+    assert "TOOL_AXIS_SAMPLE_STEP = Radians(radians(1.0))" in source
+    assert "TOOL_AXIS_SAMPLE_MIN = Radians(-pi)" in source
+    assert "TOOL_AXIS_SAMPLE_MAX = Radians(pi)" in source
+    assert "sample_axis=TOOL_Z_AXIS" in source
+    assert "sample_resolution=TOOL_AXIS_SAMPLE_STEP" in source
+    assert "sample_min=TOOL_AXIS_SAMPLE_MIN" in source
+    assert "sample_max=TOOL_AXIS_SAMPLE_MAX" in source
+    assert "use_redundant_joint_solutions=True" in source
+    assert "robot_frame_from_isometry" in source
+    assert "JointTrajectory" not in source

@@ -45,11 +45,11 @@ enforces the pthreads build on macOS ARM64 and Windows for both Pixi environment
 The current repository runtime baseline is macOS 14+ ARM64 with Python 3.12. Rhino
 8 component compilation is pinned to CPython 3.9, matching Rhino's embedded
 interpreter. The Grasshopper source components include an explicit
-`# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36` directive. Existing Windows CI
-compiles the `.ghuser` objects and fails unless all four Tesseract user objects are
-present before artifact upload or publication. The generic Linux Python 3.9 CI cell is excluded
-because released Linux nanobind wheels start at Python 3.10; Rhino/Windows
-remains pinned to Python 3.9.
+`# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36` directive. Windows CI
+compiles the `.ghuser` objects and fails unless all twelve Tesseract user objects
+are present before artifact upload or publication. The generic Linux Python 3.9
+CI cell is excluded because released Linux nanobind wheels start at Python 3.10;
+Rhino/Windows remains pinned to Python 3.9.
 
 ## Build the exact robot artifact
 
@@ -147,6 +147,19 @@ explicitly instead of inheriting any of those values.
 --8<-- "docs/backends/tesseract/files/02_native_program.py"
 ```
 
+### Native component workflow
+
+The same boundaries used by the Grasshopper nodes are ordinary Python
+factories. This ABB IRB 2400 example derives reachable Cartesian poses through
+native FK, crosses the explicit COMPAS-frame/metre boundary, and retains exact
+native targets, program, profiles, request, result, and trajectory points.
+Descartes owns the full local-tool-Z symmetry search at 1-degree resolution over
+the explicit -180-to-180-degree range and includes redundant joint solutions.
+
+```python
+--8<-- "docs/backends/tesseract/files/04_native_component_workflow.py"
+```
+
 ## RAPID emission
 
 `TesseractRapidEmitter` delegates one exact native `CompositeInstruction` to
@@ -193,20 +206,38 @@ robot-only query as a complete cell check.
 
 ## Grasshopper
 
-Four components separate immutable build inputs, native runtime, and pure code
-emission:
+Twelve components separate immutable inputs, exact native authoring/planning,
+inspection, and pure code emission:
 
 1. **Tesseract Robot Artifact** exposes resource roots, planning groups, mesh
    policy, KDL solver, and contact-manager selections. It outputs the full
    artifact and its SHA-256 identity.
 2. **Tesseract Planner** caches a client by artifact identity. It outputs the
-   conventional planner and an isolated native `Robot` clone for direct
-   nanobind use.
-3. **Tesseract RAPID Profile** binds exact Tesseract profile names to native
-   typed ABB speed, zone, tool, and workobject names.
-4. **Tesseract RAPID** accepts only an exact native `CompositeInstruction` and
-   outputs the `RapidProgram`, exact source, and content identity without a save
-   path or other recomputation side effect.
+   conventional planner and an isolated native `Robot` clone.
+3. **Tesseract Pose** is the only geometry/unit boundary. It requires explicit
+   metres per Rhino/COMPAS user unit and outputs an exact native `Pose`.
+4. **Tesseract Cartesian Target**, **Tesseract Joint Target**, and **Tesseract
+   State Target** output exact native target types. All expose native
+   `FREESPACE`, `LINEAR`, and `CIRCULAR` move types; optional state dynamics stay
+   absent when unconnected.
+5. **Tesseract Motion Program** uses the native robot to resolve group joint
+   order and TCP, then outputs both exact `MotionProgram` and
+   `CompositeInstruction` values without overwriting authored move types.
+6. **Tesseract Descartes Profile** exposes every released native profile-factory
+   argument. Unconnected options stay `None`, preserving Tesseract defaults.
+7. **Tesseract Native Plan** requires exact pipeline and `ProfileDictionary`
+   inputs and calls only `plan_native`.
+8. **Tesseract Native Result** retains exact request, `PlanningResult`, raw
+   program, and native points. Missing dynamics output `None`, never zeros.
+9. **Tesseract RAPID Profile** and **Tesseract RAPID** bind native ABB variables
+   and emit controller source from an authored exact `CompositeInstruction`.
+
+```text
+Plane/Frame -> Tesseract Pose -> native Target -> Tesseract Motion Program
+                                                  |             |
+                                                  v             +-> Tesseract RAPID
+Tesseract Descartes Profile -> Tesseract Native Plan -> Tesseract Native Result
+```
 
 Changing any source resource or plugin selection changes the identity and
 rebuilds the cached runtime. Direct native experiments receive a clone and
@@ -215,6 +246,12 @@ stored robot state before it is returned. Warmup can target an exact pipeline
 list or every pipeline in the retained Task Composer configuration; every
 requested warmup failure raises a named error. Python users can also supply an
 exact preconfigured native `TaskComposer` to `TesseractClient`.
+
+Native Plan caches a success only while planner identity, serialized program
+digest, pipeline, profile-object identity, and `auto_seed` all match. Changed
+inputs or failed recomputation clear stale output. Nanobind 0.35.0.6 exposes no
+way to enumerate or serialize a `ProfileDictionary`; callers mutating the same
+dictionary object directly must trigger `compute=True`.
 
 ## Current Phase 1 boundary
 
@@ -225,9 +262,10 @@ Implemented now:
 - native request/result planning and conventional free-space planning;
 - native-first FK, IK, and discrete collision checking;
 - native RAPID emission with content-addressed source artifacts;
-- four Grasshopper Tesseract component sources, with Windows Python 3.9
+- twelve Grasshopper Tesseract component sources, with Windows Python 3.9
   compilation and artifact-presence gates in CI.
 
 Deferred without fallback: Cartesian motion lowering, tools and rigid bodies in
-the native scene, mobile/VKC planning, S3 process planning,
-`tesseract_concurrent_trajopt`, and Windows runtime packaging.
+the native scene, `tesseract_3s_slicer` process planning, and remaining advanced
+planners including `tesseract_concurrent_trajopt`. Mobile/VKC remains the final
+roadmap item.
