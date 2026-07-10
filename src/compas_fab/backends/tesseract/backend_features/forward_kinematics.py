@@ -10,7 +10,6 @@ from compas.geometry import Frame  # type: ignore[import-untyped]
 from tesseract_robotics.planning import Pose
 
 from compas_fab.backends.interfaces import ForwardKinematics
-from compas_fab.robots import RobotCell
 from compas_fab.robots import RobotCellState
 from compas_fab.robots import TargetMode
 
@@ -42,7 +41,7 @@ class TesseractForwardKinematics(ForwardKinematics):
     ) -> Pose:
         """Return the exact native robot-relative metre pose for one link."""
         client: TesseractClient = self.client
-        robot_cell: RobotCell = client.robot_cell
+        robot_cell = client._require_robot_cell()
         if robot_cell is None:
             raise MissingTesseractStartStateError("Call set_robot_cell before forward kinematics.")
         require_matching_cell_state(robot_cell, robot_cell_state, "forward kinematics")
@@ -81,7 +80,7 @@ class TesseractForwardKinematics(ForwardKinematics):
         if options:
             raise UnknownTesseractOptionError("forward_kinematics accepts no Tesseract options: {}.".format(", ".join(sorted(options))))
         client: TesseractClient = self.client
-        robot_cell: RobotCell = client.robot_cell
+        robot_cell = client._require_robot_cell()
         if robot_cell is None:
             raise MissingTesseractStartStateError("Call set_robot_cell before forward kinematics.")
         group_name = group or robot_cell.main_group_name
@@ -125,7 +124,7 @@ class TesseractForwardKinematics(ForwardKinematics):
         if unknown:
             raise UnknownTesseractOptionError("Unknown forward_kinematics_to_link options: {}.".format(", ".join(unknown)))
         client: TesseractClient = self.client
-        robot_cell: RobotCell = client.robot_cell
+        robot_cell = client._require_robot_cell()
         if robot_cell is None:
             raise MissingTesseractStartStateError("Call set_robot_cell before forward kinematics.")
         group_value = values.get("group", robot_cell.main_group_name)

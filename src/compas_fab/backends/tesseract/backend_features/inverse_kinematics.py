@@ -14,7 +14,6 @@ from tesseract_robotics.tesseract_kinematics import KinGroupIKInput
 
 from compas_fab.backends.interfaces import InverseKinematics
 from compas_fab.robots import FrameTarget
-from compas_fab.robots import RobotCell
 from compas_fab.robots import RobotCellState
 from compas_fab.robots import Target
 
@@ -57,7 +56,7 @@ class TesseractInverseKinematics(InverseKinematics):
         meters_per_user_unit(target.native_scale)
 
         client: TesseractClient = self.client
-        robot_cell: RobotCell = client.robot_cell
+        robot_cell = client._require_robot_cell()
         if robot_cell is None:
             raise MissingTesseractStartStateError("Call set_robot_cell before inverse kinematics.")
         require_matching_cell_state(robot_cell, robot_cell_state, "inverse kinematics")
@@ -161,7 +160,7 @@ class TesseractInverseKinematics(InverseKinematics):
                 target_pcf,
             )
         client: TesseractClient = self.client
-        robot_cell: RobotCell = client.robot_cell
+        robot_cell = client._require_robot_cell()
         group_name = group or robot_cell.main_group_name
         client._store_robot_cell_state(robot_cell_state)
         for solution in result.native_solutions:

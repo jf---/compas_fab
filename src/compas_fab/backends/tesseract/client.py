@@ -90,6 +90,18 @@ class TesseractClient(ClientInterface):
         """Monotonic revision of exact state consumed by native clones."""
         return self._native_scene_revision
 
+    @property
+    def robot_cell(self) -> Optional[RobotCell]:  # type: ignore[override]
+        """Return a defensive copy of the installed COMPAS robot cell."""
+        cell = self._robot_cell
+        return None if cell is None else cell.copy()
+
+    @property
+    def robot_cell_state(self) -> Optional[RobotCellState]:  # type: ignore[override]
+        """Return a defensive copy; mutations never enter native clone state."""
+        state = self._robot_cell_state
+        return None if state is None else state.copy()
+
     def connect(self) -> None:
         """Initialize the exact environment and reusable Task Composer."""
         if self.is_connected:
@@ -137,6 +149,13 @@ class TesseractClient(ClientInterface):
         cell_copy = robot_cell.copy()
         state_copy = robot_cell_state.copy() if robot_cell_state is not None else None
         self._store_projection(cell_copy, state_copy)
+
+    def _require_robot_cell(self) -> RobotCell:
+        """Return the internal installed cell to trusted backend consumers."""
+        cell = self._robot_cell
+        if cell is None:
+            raise MissingTesseractStartStateError("Tesseract client has no installed RobotCell.")
+        return cell
 
     def _store_robot_cell_state(self, robot_cell_state: RobotCellState) -> None:
         """Copy a validated state and revise the native clone input exactly."""

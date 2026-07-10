@@ -11,7 +11,6 @@ from tesseract_robotics.planning import StateTarget
 from compas_fab.backends.interfaces import PlanMotion
 from compas_fab.robots import ConfigurationTarget
 from compas_fab.robots import JointTrajectory
-from compas_fab.robots import RobotCell
 from compas_fab.robots import RobotCellState
 from compas_fab.robots import Target
 
@@ -46,7 +45,7 @@ class TesseractPlanMotion(PlanMotion):
     ) -> JointTrajectory:
         """Plan through the existing COMPAS interface and return its projection."""
         result = self.plan_motion_native(target, start_state, group, options)
-        robot_cell: RobotCell = self.client.robot_cell
+        robot_cell = self.client._require_robot_cell()
         group_name = group or robot_cell.main_group_name
         joint_types = {joint.name: joint.type for joint in robot_cell.get_configurable_joints(group_name)}
         trajectory = joint_trajectory_from_result(result, joint_types)
@@ -68,7 +67,7 @@ class TesseractPlanMotion(PlanMotion):
             raise UnsupportedTesseractToleranceError("ConfigurationTarget tolerances cannot be represented by StateWaypoint.")
 
         client: TesseractClient = self.client
-        robot_cell: RobotCell = client.robot_cell
+        robot_cell = client._require_robot_cell()
         if robot_cell is None:
             raise MissingTesseractStartStateError("Call set_robot_cell before motion planning.")
         require_matching_cell_state(robot_cell, start_state, "motion planning")

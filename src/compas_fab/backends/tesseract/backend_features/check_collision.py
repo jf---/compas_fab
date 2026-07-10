@@ -10,7 +10,6 @@ from tesseract_robotics.tesseract_collision import ContactResultMap
 from tesseract_robotics.tesseract_collision import ContactTestType_ALL
 
 from compas_fab.backends.interfaces import CheckCollision
-from compas_fab.robots import RobotCell
 from compas_fab.robots import RobotCellState
 
 from ..cell_state_validation import require_matching_cell_state
@@ -41,7 +40,7 @@ class TesseractCheckCollision(CheckCollision):
         if not isinstance(request, ContactRequest):
             raise TesseractContactQueryError("Native collision request must be ContactRequest, got {}.".format(type(request).__name__))
         client: TesseractClient = self.client
-        robot_cell: RobotCell = client.robot_cell
+        robot_cell = client._require_robot_cell()
         if robot_cell is None:
             raise MissingTesseractStartStateError("Call set_robot_cell before collision checking.")
         require_matching_cell_state(robot_cell, robot_cell_state, "collision checking")

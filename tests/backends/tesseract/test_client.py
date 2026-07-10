@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from compas_robots import RobotModel
 from tesseract_robotics.planning import TaskComposer
@@ -93,6 +94,34 @@ def test_native_scene_revision_changes_only_with_exact_projection_content(
         moved.robot_base_frame.point.x = 1.0
         planner.set_robot_cell(one_joint_cell, moved)
         assert planner.native_scene_revision == 3
+
+
+def test_public_cell_state_mutation_cannot_bypass_scene_revision(
+    tesseract_artifact,
+    one_joint_cell,
+    one_joint_state,
+    tmp_path,
+):
+    one_joint_state.robot_configuration["joint1"] = 0.25
+    with TesseractClient(tesseract_artifact, cache_root=tmp_path) as client:
+        planner = TesseractPlanner(client)
+        planner.set_robot_cell(one_joint_cell, one_joint_state)
+        revision = planner.native_scene_revision
+
+        exposed_state = planner.robot_cell_state
+        exposed_cell = planner.robot_cell
+        exposed_state.robot_configuration["joint1"] = 0.75
+        exposed_cell.robot_model.name = "mutated"
+
+        clone = client.clone_robot()
+
+        assert planner.native_scene_revision == revision
+        assert planner.robot_cell_state.robot_configuration["joint1"] == 0.25
+        assert planner.robot_cell.robot_model.name != "mutated"
+        np.testing.assert_array_equal(
+            clone.get_state(["joint1"]).joint_positions,
+            [0.25],
+        )
 
 
 @pytest.mark.parametrize(
