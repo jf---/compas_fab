@@ -1,0 +1,47 @@
+{
+    "name": "Tesseract RAPID",
+    "nickname": "Tesseract RAPID",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Emit ABB RAPID from one exact native Tesseract CompositeInstruction without converting or saving it.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "program",
+                "description": "Exact native tesseract_robotics CompositeInstruction. Planning wrappers and COMPAS trajectories are rejected."
+            },
+            {
+                "name": "profile_maps",
+                "description": "Native RAPID profile maps. Duplicate Tesseract profile names fail instead of using connection order.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "module_name",
+                "description": "ABB RAPID module name. Defaults to main_program.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "procedure_name",
+                "description": "ABB RAPID procedure name. Defaults to main.",
+                "typeHintID": "str"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "rapid_program",
+                "description": "Immutable RapidProgram retaining the exact input CompositeInstruction, emitted source, names, versions, and SHA-256 identity."
+            },
+            {
+                "name": "source",
+                "description": "Exact source returned by Tesseract nanobind's native RAPID emitter."
+            },
+            {
+                "name": "program_id",
+                "description": "SHA-256 identity covering exact source, names, schema, COMPAS FAB, and nanobind versions."
+            }
+        ]
+    }
+}

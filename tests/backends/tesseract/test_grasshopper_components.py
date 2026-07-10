@@ -66,8 +66,48 @@ def test_planner_component_retains_native_access_and_manages_lifetime():
     assert "bool(warmup)" not in code
 
 
+def test_rapid_profile_component_builds_exact_native_profiles():
+    code, metadata = _component("Cf_TesseractRapidProfile")
+    inputs = [parameter["name"] for parameter in metadata["ghpython"]["inputParameters"]]
+    outputs = [parameter["name"] for parameter in metadata["ghpython"]["outputParameters"]]
+
+    assert inputs == ["profile_names", "speed", "zone", "tool", "workobject"]
+    assert outputs == ["profiles"]
+    assert "RapidProfile" in code
+    assert "SpeedName" in code
+    assert "ZoneName" in code
+    assert "ToolName" in code
+    assert "WobjName" in code
+    assert "merge_rapid_profile_maps" in code
+    assert 'speed or "v200"' in code
+    assert 'zone or "z10"' in code
+    assert 'tool or "tool0"' in code
+    assert 'workobject or "wobj0"' in code
+
+
+def test_rapid_emitter_component_is_pure_native_adapter():
+    code, metadata = _component("Cf_TesseractRapid")
+    inputs = [parameter["name"] for parameter in metadata["ghpython"]["inputParameters"]]
+    outputs = [parameter["name"] for parameter in metadata["ghpython"]["outputParameters"]]
+
+    assert inputs == ["program", "profile_maps", "module_name", "procedure_name"]
+    assert outputs == ["rapid_program", "source", "program_id"]
+    assert "TesseractRapidEmitter.emit" in code
+    assert "merge_rapid_profile_maps" in code
+    assert "RapidEmitterError" in code
+    assert ".write(" not in code
+    assert "TesseractPlanningRequest" not in code
+    assert "TesseractPlanningResult" not in code
+    assert "JointTrajectory" not in code
+
+
 def test_tesseract_components_require_nanobind_distribution_only():
-    for name in ("Cf_TesseractRobotArtifact", "Cf_TesseractPlanner"):
+    for name in (
+        "Cf_TesseractRobotArtifact",
+        "Cf_TesseractPlanner",
+        "Cf_TesseractRapidProfile",
+        "Cf_TesseractRapid",
+    ):
         code, _ = _component(name)
         assert "# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36" in code
         assert ".dev" not in code
@@ -104,11 +144,13 @@ def test_rhino_lock_contains_released_windows_python39_nanobind_wheel():
     assert all("tesseract_robotics_nanobind-0.35.0.6.dev" not in locator for locator in locators)
 
 
-def test_windows_ci_requires_both_tesseract_user_objects_before_upload():
+def test_windows_ci_requires_all_tesseract_user_objects_before_upload():
     for workflow_name in ("build.yml", "publish_yak.yml", "release.yml"):
         workflow = WORKFLOWS.joinpath(workflow_name).read_text(encoding="utf-8")
         assert "Cf_TesseractRobotArtifact.ghuser" in workflow
         assert "Cf_TesseractPlanner.ghuser" in workflow
+        assert "Cf_TesseractRapidProfile.ghuser" in workflow
+        assert "Cf_TesseractRapid.ghuser" in workflow
         assert "Test-Path" in workflow
 
     build = WORKFLOWS.joinpath("build.yml").read_text(encoding="utf-8")

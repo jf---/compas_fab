@@ -47,7 +47,9 @@ jobs:
           $target = "src/compas_fab/ghpython/components_cpython/ghuser"
           $required = @(
             "Cf_TesseractRobotArtifact.ghuser",
-            "Cf_TesseractPlanner.ghuser"
+            "Cf_TesseractPlanner.ghuser",
+            "Cf_TesseractRapidProfile.ghuser",
+            "Cf_TesseractRapid.ghuser"
           )
           foreach ($name in $required) {
             $path = Join-Path $target $name
