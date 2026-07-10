@@ -138,6 +138,10 @@ class InvalidTesseractFrameError(TesseractBackendError):
     """A frame-tagged Tesseract boundary received a non-COMPAS frame."""
 
 
+class InvalidTesseractPoseError(TesseractBackendError):
+    """A geometry/unit boundary cannot produce an exact native pose."""
+
+
 class TesseractKinematicsPluginError(TesseractBackendError):
     """A requested native kinematics group or solver cannot be loaded."""
 
