@@ -46,7 +46,7 @@ The current repository runtime baseline is macOS 14+ ARM64 with Python 3.12. Rhi
 8 component compilation is pinned to CPython 3.9, matching Rhino's embedded
 interpreter. The Grasshopper source components include an explicit
 `# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36` directive. Existing Windows CI
-compiles the `.ghuser` objects and fails unless both Tesseract user objects are
+compiles the `.ghuser` objects and fails unless all four Tesseract user objects are
 present before artifact upload or publication. The generic Linux Python 3.9 CI cell is excluded
 because released Linux nanobind wheels start at Python 3.10; Rhino/Windows
 remains pinned to Python 3.9.
@@ -132,13 +132,45 @@ prerequisite. The result retains both the exact native planning result and its
 raw output `CompositeInstruction`.
 
 The example derives two reachable UR5 Cartesian poses, then lets
-`DescartesFPipeline` sample rotations about the local TCP Z axis in 30-degree
+`DescartesFPipeline` sample rotations about the local TCP Z axis in 1-degree
 increments. `use_redundant_joint_solutions=True` also retains Tesseract's native
 joint-redundancy search. COMPAS FAB does not enumerate orientations or choose an
 inverse-kinematics branch.
 
+Released nanobind 0.35.0.6 keeps target poses fixed by default. Its dormant
+sampling values are local Z, a 90-degree step, and a -180-to-90-degree range;
+redundant joint solutions default off. The examples therefore override the
+axis, 1-degree step, full -180-to-180-degree range, and redundancy flag
+explicitly instead of inheriting any of those values.
+
 ```python
 --8<-- "docs/backends/tesseract/files/02_native_program.py"
+```
+
+## RAPID emission
+
+`TesseractRapidEmitter` delegates one exact native `CompositeInstruction` to
+the RAPID emitter shipped by `tesseract-robotics-nanobind`. It does not accept
+planning requests, planning results, or COMPAS trajectories, and it does not
+walk instructions, convert units, or format RAPID itself. Native
+`RapidEmitterError` subclasses therefore propagate unchanged.
+
+The profile map binds exact Tesseract motion-profile names to native ABB
+`RapidProfile` values. Emission returns an immutable `RapidProgram` containing
+the exact input program reference, byte-identical native source, and a SHA-256
+identity covering source, names, schema, COMPAS FAB version, and nanobind
+version. `RapidProgram.write(Path)` is the only file-writing operation; neither
+emission nor Grasshopper recomputation saves automatically.
+
+Planning and code emission remain independent. This ABB IRB 2400 example lets
+native Descartes sample the full -180-to-180-degree local-TCP-Z rotation range
+in 1-degree steps and enumerate
+redundant joint solutions, then emits the authored Cartesian
+`CompositeInstruction` as `MoveL` statements. It does not reinterpret the
+dense `StateWaypoint` planning result as controller code.
+
+```python
+--8<-- "docs/backends/tesseract/files/03_rapid_emitter.py"
 ```
 
 ## Kinematics and collision
@@ -161,7 +193,8 @@ robot-only query as a complete cell check.
 
 ## Grasshopper
 
-Two components separate immutable build inputs from the native runtime:
+Four components separate immutable build inputs, native runtime, and pure code
+emission:
 
 1. **Tesseract Robot Artifact** exposes resource roots, planning groups, mesh
    policy, KDL solver, and contact-manager selections. It outputs the full
@@ -169,6 +202,11 @@ Two components separate immutable build inputs from the native runtime:
 2. **Tesseract Planner** caches a client by artifact identity. It outputs the
    conventional planner and an isolated native `Robot` clone for direct
    nanobind use.
+3. **Tesseract RAPID Profile** binds exact Tesseract profile names to native
+   typed ABB speed, zone, tool, and workobject names.
+4. **Tesseract RAPID** accepts only an exact native `CompositeInstruction` and
+   outputs the `RapidProgram`, exact source, and content identity without a save
+   path or other recomputation side effect.
 
 Changing any source resource or plugin selection changes the identity and
 rebuilds the cached runtime. Direct native experiments receive a clone and
@@ -186,7 +224,8 @@ Implemented now:
 - explicit KDL and Bullet/FCL plugin configuration;
 - native request/result planning and conventional free-space planning;
 - native-first FK, IK, and discrete collision checking;
-- Grasshopper artifact and planner component sources, with Windows Python 3.9
+- native RAPID emission with content-addressed source artifacts;
+- four Grasshopper Tesseract component sources, with Windows Python 3.9
   compilation and artifact-presence gates in CI.
 
 Deferred without fallback: Cartesian motion lowering, tools and rigid bodies in

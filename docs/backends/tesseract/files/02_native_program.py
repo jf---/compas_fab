@@ -1,5 +1,7 @@
+from math import pi
 from math import radians
 from pathlib import Path
+from typing import NewType
 
 import numpy as np
 from tesseract_robotics.planning import CartesianTarget
@@ -18,8 +20,12 @@ from compas_fab.backends.tesseract.native import TesseractPlanningRequest
 from compas_fab.backends.tesseract.planner import TesseractPlanner
 from compas_fab.robots.robot_library import RobotCellLibrary
 
+Radians = NewType("Radians", float)
+
 TOOL_Z_AXIS = (0.0, 0.0, 1.0)
-TOOL_AXIS_SAMPLE_STEP = radians(30.0)
+TOOL_AXIS_SAMPLE_STEP = Radians(radians(1.0))
+TOOL_AXIS_SAMPLE_MIN = Radians(-pi)
+TOOL_AXIS_SAMPLE_MAX = Radians(pi)
 
 robot_cell, start_state = RobotCellLibrary.ur5(load_geometry=False)
 start_state.robot_configuration = robot_cell.get_configuration_from_group_state("manipulator", "up")
@@ -64,6 +70,8 @@ with TesseractClient(artifact) as client:
     profiles = create_descartes_pipeline_profiles(
         sample_axis=TOOL_Z_AXIS,
         sample_resolution=TOOL_AXIS_SAMPLE_STEP,
+        sample_min=TOOL_AXIS_SAMPLE_MIN,
+        sample_max=TOOL_AXIS_SAMPLE_MAX,
         use_redundant_joint_solutions=True,
     )
     request = TesseractPlanningRequest.build(

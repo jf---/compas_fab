@@ -19,7 +19,7 @@ The selected policy remains part of the content-addressed artifact through the c
 
 - The conventional example remains the Phase 1 `ConfigurationTarget` baseline and loads through the convex-hull default.
 - The native example derives two reachable Cartesian poses from UR5 forward kinematics, then submits them as an exact `MotionProgram` to `DescartesFPipeline`.
-- `create_descartes_pipeline_profiles(sample_axis=(0, 0, 1), sample_resolution=radians(30), use_redundant_joint_solutions=True)` delegates both local tool-Z rotational sampling and redundant joint-solution enumeration to Tesseract 0.35.0.6.
+- `create_descartes_pipeline_profiles(sample_axis=(0, 0, 1), sample_resolution=radians(1), sample_min=-pi, sample_max=pi, use_redundant_joint_solutions=True)` delegates the full local tool-Z rotation range and redundant joint-solution enumeration to Tesseract 0.35.0.6 instead of inheriting its fixed-pose defaults.
 - The backend must not discretize rotations, select an inverse-kinematics branch, or lower the native program through a COMPAS target type.
 
 This deliberately keeps conventional Cartesian lowering out of Phase 1. Adding it now would create a second semantics path before COMPAS has a type capable of expressing axis symmetry without losing Tesseract controls.

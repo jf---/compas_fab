@@ -135,7 +135,7 @@ Expected: all tests pass.
 
 **Interfaces:**
 - Consumes: `TesseractPlanner.plan_native`, `TesseractPlanningRequest.build`, native `MotionProgram`, `CartesianTarget`, and `create_descartes_pipeline_profiles` from 0.35.0.6.
-- Produces: an executable UR5 native example using `DescartesFPipeline`, local TCP Z sampling, a named 30-degree angular step, and native redundant joint solutions.
+- Produces: an executable UR5 native example using `DescartesFPipeline`, local TCP Z sampling, a named 1-degree angular step, and native redundant joint solutions.
 
 - [x] **Step 1: Write failing source-contract test**
 
@@ -144,9 +144,13 @@ def test_native_example_uses_tesseract_axis_symmetry():
     source = NATIVE_EXAMPLE.read_text(encoding="utf-8")
     assert "DescartesFPipeline" in source
     assert "TOOL_Z_AXIS = (0.0, 0.0, 1.0)" in source
-    assert "TOOL_AXIS_SAMPLE_STEP = radians(30.0)" in source
+    assert "TOOL_AXIS_SAMPLE_STEP = Radians(radians(1.0))" in source
+    assert "TOOL_AXIS_SAMPLE_MIN = Radians(-pi)" in source
+    assert "TOOL_AXIS_SAMPLE_MAX = Radians(pi)" in source
     assert "sample_axis=TOOL_Z_AXIS" in source
     assert "sample_resolution=TOOL_AXIS_SAMPLE_STEP" in source
+    assert "sample_min=TOOL_AXIS_SAMPLE_MIN" in source
+    assert "sample_max=TOOL_AXIS_SAMPLE_MAX" in source
     assert "use_redundant_joint_solutions=True" in source
 ```
 
@@ -164,11 +168,15 @@ Use the stored UR5 `up` configuration and a second known joint configuration to 
 
 ```python
 TOOL_Z_AXIS = (0.0, 0.0, 1.0)
-TOOL_AXIS_SAMPLE_STEP = radians(30.0)
+TOOL_AXIS_SAMPLE_STEP = Radians(radians(1.0))
+TOOL_AXIS_SAMPLE_MIN = Radians(-pi)
+TOOL_AXIS_SAMPLE_MAX = Radians(pi)
 
 profiles = create_descartes_pipeline_profiles(
     sample_axis=TOOL_Z_AXIS,
     sample_resolution=TOOL_AXIS_SAMPLE_STEP,
+    sample_min=TOOL_AXIS_SAMPLE_MIN,
+    sample_max=TOOL_AXIS_SAMPLE_MAX,
     use_redundant_joint_solutions=True,
 )
 request = TesseractPlanningRequest.build(
