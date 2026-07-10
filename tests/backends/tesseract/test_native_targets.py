@@ -19,6 +19,7 @@ from compas_fab.backends.tesseract.native_targets import build_joint_target
 from compas_fab.backends.tesseract.native_targets import build_state_target
 from compas_fab.backends.tesseract.native_targets import joint_target_from_native
 from compas_fab.backends.tesseract.native_targets import move_type_from_name
+from compas_fab.backends.tesseract.native_targets import WorkingFrameCartesianTarget
 
 
 @pytest.mark.parametrize("move_type", list(MoveType))
@@ -209,3 +210,17 @@ def test_typed_cartesian_target_retains_working_frame_identity():
     )
 
     assert target.working_frame == "world"
+
+
+@pytest.mark.parametrize(
+    ("move_type", "profile"),
+    [(object(), "DEFAULT"), (MoveType.LINEAR, "")],
+)
+def test_typed_cartesian_raw_constructor_revalidates_native_fields(
+    move_type,
+    profile,
+):
+    pose = pose_from_working_frame(WorkingFrameUserUnits.build(Frame.worldXY(), 1.0, "world"))
+
+    with pytest.raises(InvalidTesseractTargetError):
+        WorkingFrameCartesianTarget(pose, move_type, profile)

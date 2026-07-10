@@ -142,6 +142,29 @@ def test_raw_build_rejects_typed_cartesian_target_frame_mismatch():
         )
 
 
+def test_builder_rejects_stale_cartesian_target_frame_tag(tesseract_robot):
+    pose = pose_from_working_frame(WorkingFrameUserUnits.build(Frame.worldXY(), 1.0, "base"))
+    target = cartesian_target_from_native(
+        pose,
+        MoveType.LINEAR,
+        "DEFAULT",
+    )
+    target.pose = Pose()
+
+    with pytest.raises(
+        InvalidTesseractMotionProgramError,
+        match="WorkingFramePose",
+    ):
+        build_motion_program(
+            tesseract_robot,
+            [target],
+            "manipulator",
+            None,
+            "base",
+            "DEFAULT",
+        )
+
+
 @pytest.mark.parametrize(
     ("targets", "group", "tcp", "working", "profile"),
     [

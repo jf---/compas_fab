@@ -14,6 +14,7 @@ from tesseract_robotics.planning import StateTarget
 from tesseract_robotics.tesseract_command_language import CompositeInstruction
 
 from .errors import InvalidTesseractMotionProgramError
+from .native_pose import WorkingFramePose
 from .native_program_consistency import native_program_semantic_identity
 from .native_targets import WorkingFrameCartesianTarget
 
@@ -180,7 +181,19 @@ def _validate_target_working_frame(
     index: int,
     working_frame: str,
 ) -> None:
-    if isinstance(target, WorkingFrameCartesianTarget) and target.working_frame != working_frame:
+    if not isinstance(target, WorkingFrameCartesianTarget):
+        return
+    if not isinstance(target.pose, WorkingFramePose):
+        raise InvalidTesseractMotionProgramError("Motion program target {} must retain WorkingFramePose.".format(index))
+    if target.pose.working_frame != target.working_frame:
+        raise InvalidTesseractMotionProgramError(
+            "Motion program target {} pose frame {!r} differs from retained target frame {!r}.".format(
+                index,
+                target.pose.working_frame,
+                target.working_frame,
+            )
+        )
+    if target.working_frame != working_frame:
         raise InvalidTesseractMotionProgramError(
             "Motion program target {} working frame {!r} differs from program working frame {!r}.".format(
                 index,

@@ -41,7 +41,11 @@ class WorkingFrameCartesianTarget(CartesianTarget):
     ) -> None:
         if not isinstance(pose, WorkingFramePose):
             raise InvalidTesseractTargetError("Typed Cartesian target requires WorkingFramePose, got {}.".format(type(pose).__name__))
-        super().__init__(pose=pose, move_type=move_type, profile=profile)
+        super().__init__(
+            pose=pose,
+            move_type=_move_type(move_type),
+            profile=_profile(profile),
+        )
         self.working_frame = pose.working_frame
 
 
