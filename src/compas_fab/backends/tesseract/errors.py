@@ -146,6 +146,10 @@ class InvalidTesseractTargetError(TesseractBackendError):
     """A native motion target violates its exact type or shape contract."""
 
 
+class InvalidTesseractMotionProgramError(TesseractBackendError):
+    """A native robot, target sequence, program, or identity is invalid."""
+
+
 class TesseractKinematicsPluginError(TesseractBackendError):
     """A requested native kinematics group or solver cannot be loaded."""
 

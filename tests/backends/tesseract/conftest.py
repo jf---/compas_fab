@@ -9,6 +9,7 @@ from compas_fab.backends.tesseract.artifact import DiscreteContactManager
 from compas_fab.backends.tesseract.artifact import KdlInverseKinematics
 from compas_fab.backends.tesseract.artifact import KdlKinematics
 from compas_fab.backends.tesseract.artifact import RobotArtifact
+from compas_fab.backends.tesseract.client import TesseractClient
 from compas_fab.robots import RobotCell
 from compas_fab.robots import RobotCellState
 from compas_fab.robots import RobotSemantics
@@ -64,6 +65,16 @@ def tesseract_artifact(kdl_artifact):
         DiscreteContactManager.BULLET_BVH,
         ContinuousContactManager.BULLET_CAST_BVH,
     )
+
+
+@pytest.fixture
+def tesseract_robot(tesseract_artifact, tmp_path):
+    client = TesseractClient(tesseract_artifact, cache_root=tmp_path)
+    client.connect()
+    try:
+        yield client.clone_robot()
+    finally:
+        client.disconnect()
 
 
 @pytest.fixture
