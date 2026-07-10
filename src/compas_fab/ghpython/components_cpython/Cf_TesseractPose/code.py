@@ -17,7 +17,8 @@ from compas_ghpython import error
 from compas_rhino.conversions import plane_to_compas_frame
 
 from compas_fab.backends.tesseract.errors import TesseractBackendError
-from compas_fab.backends.tesseract.native_pose import pose_from_user_frame
+from compas_fab.backends.tesseract.native_pose import WorkingFrameUserUnits
+from compas_fab.backends.tesseract.native_pose import pose_from_working_frame
 
 
 class TesseractPoseComponent(Grasshopper.Kernel.GH_ScriptInstance):
@@ -27,9 +28,11 @@ class TesseractPoseComponent(Grasshopper.Kernel.GH_ScriptInstance):
 
         try:
             compas_frame = frame if isinstance(frame, Frame) else plane_to_compas_frame(frame)
-            return pose_from_user_frame(
-                compas_frame,
-                metres_per_user_unit,
+            return pose_from_working_frame(
+                WorkingFrameUserUnits.build(
+                    compas_frame,
+                    metres_per_user_unit,
+                )
             )
         except TesseractBackendError as backend_error:
             error(ghenv.Component, str(backend_error))  # noqa: F821

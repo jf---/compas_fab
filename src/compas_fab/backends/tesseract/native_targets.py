@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterable
-from typing import NewType
 from typing import Optional
 
 import numpy as np
@@ -16,11 +15,15 @@ from tesseract_robotics.planning import Pose
 from tesseract_robotics.planning import StateTarget
 
 from .errors import InvalidTesseractTargetError
-
-NativeJointPosition = NewType("NativeJointPosition", float)
-NativeJointVelocity = NewType("NativeJointVelocity", float)
-NativeJointAcceleration = NewType("NativeJointAcceleration", float)
-NativeTimeSeconds = NewType("NativeTimeSeconds", float)
+from .native_quantities import NativeJointAcceleration as NativeJointAcceleration
+from .native_quantities import NativeJointAccelerations
+from .native_quantities import NativeJointNames
+from .native_quantities import NativeJointPosition as NativeJointPosition
+from .native_quantities import NativeJointPositions
+from .native_quantities import NativeJointVelocities
+from .native_quantities import NativeJointVelocity as NativeJointVelocity
+from .native_quantities import NativeTime
+from .native_quantities import NativeTimeSeconds
 
 
 def move_type_from_name(value: object) -> MoveType:
@@ -43,6 +46,65 @@ def build_cartesian_target(
         raise InvalidTesseractTargetError("Cartesian target requires exact native Pose, got {}.".format(type(pose).__name__))
     return CartesianTarget(
         pose=pose,
+        move_type=_move_type(move_type),
+        profile=_profile(profile),
+    )
+
+
+def cartesian_target_from_native(
+    pose: Pose,
+    move_type: MoveType,
+    profile: str,
+) -> CartesianTarget:
+    """Build from exact native pose, move enum, and profile types."""
+    if not isinstance(pose, Pose):
+        raise InvalidTesseractTargetError("Cartesian target requires exact native Pose, got {}.".format(type(pose).__name__))
+    return CartesianTarget(
+        pose=pose,
+        move_type=_move_type(move_type),
+        profile=_profile(profile),
+    )
+
+
+def joint_target_from_native(
+    positions: NativeJointPositions,
+    names: Optional[NativeJointNames],
+    move_type: MoveType,
+    profile: str,
+) -> JointTarget:
+    """Build from statically distinct, already validated native quantities."""
+    native_positions = _native_positions(positions)
+    native_names = _native_names(names, len(native_positions.values))
+    return JointTarget(
+        native_positions.values,
+        names=None if native_names is None else list(native_names.values),
+        move_type=_move_type(move_type),
+        profile=_profile(profile),
+    )
+
+
+def state_target_from_native(
+    positions: NativeJointPositions,
+    names: Optional[NativeJointNames],
+    velocities: Optional[NativeJointVelocities],
+    accelerations: Optional[NativeJointAccelerations],
+    time: Optional[NativeTime],
+    move_type: MoveType,
+    profile: str,
+) -> StateTarget:
+    """Build an exact state without interchanging quantity types."""
+    native_positions = _native_positions(positions)
+    size = len(native_positions.values)
+    native_names = _native_names(names, size)
+    native_velocities = _native_velocities(velocities, size)
+    native_accelerations = _native_accelerations(accelerations, size)
+    native_time = _native_time(time)
+    return StateTarget(
+        native_positions.values,
+        names=None if native_names is None else list(native_names.values),
+        velocities=(None if native_velocities is None else native_velocities.values),
+        accelerations=(None if native_accelerations is None else native_accelerations.values),
+        time=None if native_time is None else native_time.value,
         move_type=_move_type(move_type),
         profile=_profile(profile),
     )
@@ -175,3 +237,74 @@ def _optional_non_negative_time(value: object) -> Optional[float]:
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0.0:
         raise InvalidTesseractTargetError("Target time must be finite non-negative seconds or None, got {!r}.".format(value))
     return float(NativeTimeSeconds(float(value)))
+
+
+def _native_positions(value: object) -> NativeJointPositions:
+    if not isinstance(value, NativeJointPositions):
+        raise InvalidTesseractTargetError("Typed target requires NativeJointPositions, got {}.".format(type(value).__name__))
+    return value
+
+
+def _native_names(
+    value: object,
+    expected_size: int,
+) -> Optional[NativeJointNames]:
+    if value is None:
+        return None
+    if not isinstance(value, NativeJointNames):
+        raise InvalidTesseractTargetError("Typed target names require NativeJointNames, got {}.".format(type(value).__name__))
+    if len(value.values) != expected_size:
+        raise InvalidTesseractTargetError(
+            "Target has {} joint names for {} positions.".format(
+                len(value.values),
+                expected_size,
+            )
+        )
+    return value
+
+
+def _native_velocities(
+    value: object,
+    expected_size: int,
+) -> Optional[NativeJointVelocities]:
+    if value is None:
+        return None
+    if not isinstance(value, NativeJointVelocities):
+        raise InvalidTesseractTargetError("Typed target velocities require NativeJointVelocities, got {}.".format(type(value).__name__))
+    _require_quantity_length(len(value.values), "velocities", expected_size)
+    return value
+
+
+def _native_accelerations(
+    value: object,
+    expected_size: int,
+) -> Optional[NativeJointAccelerations]:
+    if value is None:
+        return None
+    if not isinstance(value, NativeJointAccelerations):
+        raise InvalidTesseractTargetError("Typed target accelerations require NativeJointAccelerations, got {}.".format(type(value).__name__))
+    _require_quantity_length(len(value.values), "accelerations", expected_size)
+    return value
+
+
+def _native_time(value: object) -> Optional[NativeTime]:
+    if value is None:
+        return None
+    if not isinstance(value, NativeTime):
+        raise InvalidTesseractTargetError("Typed target time requires NativeTime, got {}.".format(type(value).__name__))
+    return value
+
+
+def _require_quantity_length(
+    actual_size: int,
+    name: str,
+    expected_size: int,
+) -> None:
+    if actual_size != expected_size:
+        raise InvalidTesseractTargetError(
+            "Target {} length {} does not match {} positions.".format(
+                name,
+                actual_size,
+                expected_size,
+            )
+        )

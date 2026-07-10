@@ -7,9 +7,13 @@ from tesseract_robotics.planning import Pose
 from tesseract_robotics.planning import StateTarget
 
 from compas_fab.backends.tesseract.errors import InvalidTesseractTargetError
+from compas_fab.backends.tesseract.native_quantities import NativeJointNames
+from compas_fab.backends.tesseract.native_quantities import NativeJointPositions
+from compas_fab.backends.tesseract.native_quantities import NativeJointVelocities
 from compas_fab.backends.tesseract.native_targets import build_cartesian_target
 from compas_fab.backends.tesseract.native_targets import build_joint_target
 from compas_fab.backends.tesseract.native_targets import build_state_target
+from compas_fab.backends.tesseract.native_targets import joint_target_from_native
 from compas_fab.backends.tesseract.native_targets import move_type_from_name
 
 
@@ -165,6 +169,27 @@ def test_state_target_rejects_malformed_optional_dynamics(
             velocities,
             accelerations,
             time,
+            MoveType.FREESPACE,
+            "DEFAULT",
+        )
+
+
+def test_typed_joint_target_path_rejects_wrong_quantity_type():
+    positions = NativeJointPositions.build([0.0])
+    names = NativeJointNames.build(["joint"], 1)
+
+    target = joint_target_from_native(
+        positions,
+        names,
+        MoveType.FREESPACE,
+        "DEFAULT",
+    )
+
+    assert target.names == ["joint"]
+    with pytest.raises(InvalidTesseractTargetError, match="NativeJointPositions"):
+        joint_target_from_native(
+            NativeJointVelocities.build([0.0]),
+            names,
             MoveType.FREESPACE,
             "DEFAULT",
         )

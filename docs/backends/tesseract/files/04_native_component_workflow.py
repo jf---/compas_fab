@@ -10,10 +10,11 @@ from tesseract_robotics.planning import TaskComposer
 from compas_fab.backends.tesseract.descartes_profiles import build_descartes_profiles
 from compas_fab.backends.tesseract.frames import robot_frame_from_isometry
 from compas_fab.backends.tesseract.native import TesseractPlanningRequest
-from compas_fab.backends.tesseract.native_pose import pose_from_user_frame
+from compas_fab.backends.tesseract.native_pose import WorkingFrameUserUnits
+from compas_fab.backends.tesseract.native_pose import pose_from_working_frame
 from compas_fab.backends.tesseract.native_program_builder import build_motion_program
 from compas_fab.backends.tesseract.native_result_view import TesseractNativeResultView
-from compas_fab.backends.tesseract.native_targets import build_cartesian_target
+from compas_fab.backends.tesseract.native_targets import cartesian_target_from_native
 from compas_fab.backends.tesseract.runtime import TesseractRuntime
 
 Radians = NewType("Radians", float)
@@ -39,16 +40,16 @@ robot.set_joints(start_joints, joint_names=joint_names)
 # by Tesseract Pose without approximating its transform.
 start_frame = robot_frame_from_isometry(robot.fk(MANIPULATOR, start_joints, tip_link=TCP_FRAME)).value
 goal_frame = robot_frame_from_isometry(robot.fk(MANIPULATOR, goal_joints, tip_link=TCP_FRAME)).value
-start_pose = pose_from_user_frame(start_frame, 1.0)
-goal_pose = pose_from_user_frame(goal_frame, 1.0)
+start_pose = pose_from_working_frame(WorkingFrameUserUnits.build(start_frame, 1.0))
+goal_pose = pose_from_working_frame(WorkingFrameUserUnits.build(goal_frame, 1.0))
 
 targets = [
-    build_cartesian_target(
+    cartesian_target_from_native(
         start_pose,
         MoveType.LINEAR,
         PROFILE_NAME,
     ),
-    build_cartesian_target(
+    cartesian_target_from_native(
         goal_pose,
         MoveType.LINEAR,
         PROFILE_NAME,

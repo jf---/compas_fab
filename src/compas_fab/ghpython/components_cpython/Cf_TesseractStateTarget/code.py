@@ -14,7 +14,12 @@ import System
 from compas_ghpython import error
 
 from compas_fab.backends.tesseract.errors import TesseractBackendError
-from compas_fab.backends.tesseract.native_targets import build_state_target
+from compas_fab.backends.tesseract.native_quantities import NativeJointAccelerations
+from compas_fab.backends.tesseract.native_quantities import NativeJointNames
+from compas_fab.backends.tesseract.native_quantities import NativeJointPositions
+from compas_fab.backends.tesseract.native_quantities import NativeJointVelocities
+from compas_fab.backends.tesseract.native_quantities import NativeTime
+from compas_fab.backends.tesseract.native_targets import state_target_from_native
 from compas_fab.backends.tesseract.native_targets import move_type_from_name
 from compas_fab.ghpython import ensure_value_list
 from compas_fab.ghpython.input_semantics import optional_connected_input
@@ -49,12 +54,18 @@ class TesseractStateTargetComponent(Grasshopper.Kernel.GH_ScriptInstance):
             connected_time = optional_connected_input(ghenv.Component, "time", time)  # noqa: F821
             connected_move_type = optional_connected_input(ghenv.Component, "move_type", move_type)  # noqa: F821
             connected_profile = optional_connected_input(ghenv.Component, "profile", profile)  # noqa: F821
-            return build_state_target(
-                positions,
-                connected_names,
-                connected_velocities,
-                connected_accelerations,
-                connected_time,
+            native_positions = NativeJointPositions.build(positions)
+            size = len(native_positions.values)
+            native_names = None if connected_names is None else NativeJointNames.build(connected_names, size)
+            native_velocities = None if connected_velocities is None else NativeJointVelocities.build(connected_velocities)
+            native_accelerations = None if connected_accelerations is None else NativeJointAccelerations.build(connected_accelerations)
+            native_time = None if connected_time is None else NativeTime.build(connected_time)
+            return state_target_from_native(
+                native_positions,
+                native_names,
+                native_velocities,
+                native_accelerations,
+                native_time,
                 move_type_from_name("FREESPACE" if connected_move_type is None else connected_move_type),
                 "DEFAULT" if connected_profile is None else connected_profile,
             )

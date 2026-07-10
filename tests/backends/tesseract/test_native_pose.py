@@ -5,7 +5,9 @@ from compas.tolerance import TOL
 from tesseract_robotics.planning import Pose
 
 from compas_fab.backends.tesseract.errors import InvalidTesseractPoseError
+from compas_fab.backends.tesseract.native_pose import WorkingFrameUserUnits
 from compas_fab.backends.tesseract.native_pose import pose_from_user_frame
+from compas_fab.backends.tesseract.native_pose import pose_from_working_frame
 
 
 def test_pose_converts_only_position_from_millimetres_to_metres():
@@ -44,3 +46,26 @@ def test_pose_rejects_non_finite_coordinates():
 
     with pytest.raises(InvalidTesseractPoseError):
         pose_from_user_frame(frame, 1.0)
+
+
+def test_typed_working_frame_carries_frame_and_unit_scale():
+    boundary = WorkingFrameUserUnits.build(
+        Frame([1000.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
+        0.001,
+    )
+
+    pose = pose_from_working_frame(boundary)
+
+    np.testing.assert_array_equal(pose.translation, [1.0, 0.0, 0.0])
+
+
+def test_typed_pose_path_rejects_bare_frame():
+    with pytest.raises(InvalidTesseractPoseError, match="WorkingFrameUserUnits"):
+        pose_from_working_frame(Frame.worldXY())
+
+
+def test_typed_working_frame_raw_constructor_cannot_bypass_scale():
+    with pytest.raises(InvalidTesseractPoseError):
+        WorkingFrameUserUnits(Frame.worldXY(), -1.0)
+    with pytest.raises(InvalidTesseractPoseError):
+        WorkingFrameUserUnits(Frame.worldXY(), 1)

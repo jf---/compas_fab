@@ -124,19 +124,19 @@ def test_rapid_emitter_component_is_pure_native_adapter():
             "Cf_TesseractPose",
             ["frame", "metres_per_user_unit"],
             ["pose"],
-            "pose_from_user_frame",
+            "pose_from_working_frame",
         ),
         (
             "Cf_TesseractCartesianTarget",
             ["pose", "move_type", "profile"],
             ["target"],
-            "build_cartesian_target",
+            "cartesian_target_from_native",
         ),
         (
             "Cf_TesseractJointTarget",
             ["positions", "joint_names", "move_type", "profile"],
             ["target"],
-            "build_joint_target",
+            "joint_target_from_native",
         ),
         (
             "Cf_TesseractStateTarget",
@@ -150,7 +150,7 @@ def test_rapid_emitter_component_is_pure_native_adapter():
                 "profile",
             ],
             ["target"],
-            "build_state_target",
+            "state_target_from_native",
         ),
     ],
 )
@@ -180,6 +180,19 @@ def test_pose_component_is_the_only_new_geometry_unit_boundary():
     assert "plane_to_compas_frame" not in cartesian_code
     assert "compas.geometry" not in cartesian_code
     assert "compas_rhino.conversions" not in cartesian_code
+    assert "WorkingFrameUserUnits.build" in pose_code
+
+
+def test_joint_components_validate_typed_native_quantities_at_host_boundary():
+    joint_code, _ = _component("Cf_TesseractJointTarget")
+    state_code, _ = _component("Cf_TesseractStateTarget")
+
+    assert "NativeJointPositions.build" in joint_code
+    assert "NativeJointNames.build" in joint_code
+    assert "NativeJointPositions.build" in state_code
+    assert "NativeJointVelocities.build" in state_code
+    assert "NativeJointAccelerations.build" in state_code
+    assert "NativeTime.build" in state_code
 
 
 @pytest.mark.parametrize(

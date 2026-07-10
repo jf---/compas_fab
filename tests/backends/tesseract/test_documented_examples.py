@@ -69,8 +69,9 @@ def test_component_workflow_uses_every_native_factory_and_axis_redundancy():
     source = COMPONENT_WORKFLOW_EXAMPLE.read_text(encoding="utf-8")
 
     for symbol in (
-        "pose_from_user_frame",
-        "build_cartesian_target",
+        "WorkingFrameUserUnits.build",
+        "pose_from_working_frame",
+        "cartesian_target_from_native",
         "build_motion_program",
         "build_descartes_profiles",
         "TesseractPlanningRequest.build",

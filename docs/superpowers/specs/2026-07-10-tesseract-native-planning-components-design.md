@@ -32,6 +32,8 @@ Factories own named error models and raw constructors cannot bypass invariants. 
 
 `MetersPerUserUnit` from the existing frame boundary remains the unit type. `Tesseract Pose` is the only node that converts geometry or length units. Native `Pose` coordinates are metres and are interpreted relative to the consuming program's explicit working-frame name; no target or planner node performs another transform or scale.
 
+The Grasshopper boundary constructs `WorkingFrameUserUnits` before pose conversion. Joint and state nodes similarly construct non-interchangeable native position, velocity, acceleration, name, and time value types before exact target creation. Convenience Python factories remain available, but the component path is statically explicit about frame and quantity semantics.
+
 ## Components
 
 ### Tesseract Pose

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterable
-from typing import NewType
 from typing import Optional
 from typing import TypeVar
 
@@ -17,11 +16,10 @@ from tesseract_robotics.tesseract_command_language import CompositeInstruction
 from .errors import MalformedTesseractNativeResultError
 from .native import TesseractPlanningRequest
 from .native import TesseractPlanningResult
-
-NativeJointPosition = NewType("NativeJointPosition", float)
-NativeJointVelocity = NewType("NativeJointVelocity", float)
-NativeJointAcceleration = NewType("NativeJointAcceleration", float)
-NativeTimeSeconds = NewType("NativeTimeSeconds", float)
+from .native_quantities import NativeJointAcceleration
+from .native_quantities import NativeJointPosition
+from .native_quantities import NativeJointVelocity
+from .native_quantities import NativeTimeSeconds
 
 OptionalRowValue = TypeVar("OptionalRowValue")
 
