@@ -154,6 +154,10 @@ class InvalidTesseractDescartesProfileError(TesseractBackendError):
     """A Descartes profile factory argument violates its native contract."""
 
 
+class InvalidTesseractNativePlanError(TesseractBackendError):
+    """A native planning call or cache signature is invalid."""
+
+
 class TesseractKinematicsPluginError(TesseractBackendError):
     """A requested native kinematics group or solver cannot be loaded."""
 

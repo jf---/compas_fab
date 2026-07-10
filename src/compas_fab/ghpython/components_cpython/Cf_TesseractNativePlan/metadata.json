@@ -1,0 +1,47 @@
+{
+    "name": "Tesseract Native Plan",
+    "nickname": "Tesseract Native Plan",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Execute an exact native Tesseract request without conventional planning or inferred profiles.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "planner",
+                "description": "Exact COMPAS FAB TesseractPlanner from Tesseract Planner. Only plan_native is used."
+            },
+            {
+                "name": "program",
+                "description": "Exact native CompositeInstruction, normally from Tesseract Motion Program. In-place changes invalidate cached output by binary digest."
+            },
+            {
+                "name": "pipeline",
+                "description": "Exact non-empty native Task Composer pipeline name, for example DescartesFPipeline.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "profiles",
+                "description": "Required exact native ProfileDictionary. It is never inferred from pipeline. Same-object external mutation requires compute=True because 0.35.0.6 exposes no dictionary serialization."
+            },
+            {
+                "name": "auto_seed",
+                "description": "Exact native auto-seed flag passed to TesseractPlanningRequest.",
+                "typeHintID": "bool"
+            },
+            {
+                "name": "compute",
+                "description": "Trigger native planning. False returns only a successful result whose complete observable signature still matches.",
+                "typeHintID": "bool"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "result",
+                "description": "Complete TesseractPlanningResult retaining exact request, native PlanningResult, and raw CompositeInstruction."
+            }
+        ]
+    }
+}

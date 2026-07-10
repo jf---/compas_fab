@@ -245,6 +245,60 @@ def test_descartes_profile_component_exposes_complete_native_factory():
     assert _png_size(COMPONENTS / "Cf_TesseractDescartesProfile" / "icon.png") == (24, 24)
 
 
+def test_native_plan_component_uses_exact_request_and_observable_cache():
+    code, metadata = _component("Cf_TesseractNativePlan")
+    inputs = [item["name"] for item in metadata["ghpython"]["inputParameters"]]
+    outputs = [item["name"] for item in metadata["ghpython"]["outputParameters"]]
+
+    assert inputs == [
+        "planner",
+        "program",
+        "pipeline",
+        "profiles",
+        "auto_seed",
+        "compute",
+    ]
+    assert outputs == ["result"]
+    assert "NativePlanCall.build" in code
+    assert "call.execute()" in code
+    assert "signature" in code
+    assert "st.pop(key, None)" in code
+    assert "plan_motion" not in code
+    assert "plan_cartesian_motion" not in code
+    assert "except TesseractBackendError" in code
+    assert "except Exception" not in code
+    assert _png_size(COMPONENTS / "Cf_TesseractNativePlan" / "icon.png") == (24, 24)
+
+
+def test_native_result_component_retains_exact_objects_and_absence():
+    code, metadata = _component("Cf_TesseractNativeResult")
+    inputs = [item["name"] for item in metadata["ghpython"]["inputParameters"]]
+    outputs = [item["name"] for item in metadata["ghpython"]["outputParameters"]]
+
+    assert inputs == ["result"]
+    assert outputs == [
+        "request",
+        "native_result",
+        "raw_program",
+        "message",
+        "trajectory_points",
+        "joint_names",
+        "positions",
+        "velocities",
+        "accelerations",
+        "times",
+    ]
+    assert "TesseractNativeResultView.build" in code
+    assert "list_to_tree" in code
+    assert "view.request" in code
+    assert "view.native_result" in code
+    assert "view.raw_program" in code
+    assert "JointTrajectory" not in code
+    assert "except TesseractBackendError" in code
+    assert "except Exception" not in code
+    assert _png_size(COMPONENTS / "Cf_TesseractNativeResult" / "icon.png") == (24, 24)
+
+
 def test_tesseract_components_require_nanobind_distribution_only():
     for name in (
         "Cf_TesseractRobotArtifact",
@@ -257,6 +311,8 @@ def test_tesseract_components_require_nanobind_distribution_only():
         "Cf_TesseractStateTarget",
         "Cf_TesseractMotionProgram",
         "Cf_TesseractDescartesProfile",
+        "Cf_TesseractNativePlan",
+        "Cf_TesseractNativeResult",
     ):
         code, _ = _component(name)
         assert "# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36" in code
