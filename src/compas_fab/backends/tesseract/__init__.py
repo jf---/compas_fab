@@ -8,3 +8,6 @@ from .conversions import native_result_from_trajectory as native_result_from_tra
 from .native import TesseractPlanningRequest as TesseractPlanningRequest
 from .native import TesseractPlanningResult as TesseractPlanningResult
 from .planner import TesseractPlanner as TesseractPlanner
+from .rapid_emitter import TesseractRapidEmitter as TesseractRapidEmitter
+from .rapid_identity import RapidProgramIdentity as RapidProgramIdentity
+from .rapid_program import RapidProgram as RapidProgram

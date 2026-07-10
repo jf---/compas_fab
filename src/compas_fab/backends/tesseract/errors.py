@@ -217,6 +217,46 @@ class InvalidTesseractProfilesError(TesseractBackendError):
     """A COMPAS option is not a native Tesseract profile dictionary."""
 
 
+class InvalidRapidProfileMapError(TesseractBackendError):
+    """A RAPID profile map does not contain exact native values."""
+
+
+class DuplicateRapidProfileError(TesseractBackendError):
+    """More than one map defines the same Tesseract profile name."""
+
+
+class InvalidRapidProgramError(TesseractBackendError):
+    """A RAPID artifact boundary received an invalid native program or source."""
+
+
+class InvalidRapidProgramNameError(TesseractBackendError):
+    """A RAPID module or procedure name is invalid."""
+
+
+class InvalidRapidProgramIdentityError(TesseractBackendError):
+    """A RAPID program identity has malformed or unknown fields."""
+
+
+class RapidProgramIdentityMismatchError(TesseractBackendError):
+    """A RAPID program identity does not cover its exact source and names."""
+
+
+class InvalidRapidProgramPathError(TesseractBackendError):
+    """A RAPID output path is not a pathlib Path."""
+
+
+class MissingRapidProgramParentError(TesseractBackendError):
+    """A RAPID output path has no existing parent directory."""
+
+
+class RapidProgramTargetIsDirectoryError(TesseractBackendError):
+    """A RAPID output target is an existing directory."""
+
+
+class RapidProgramWriteError(TesseractBackendError):
+    """The operating system rejected an explicit RAPID source write."""
+
+
 class EmptyTesseractProgramError(TesseractBackendError):
     """A native Tesseract motion program contains no instructions."""
 
