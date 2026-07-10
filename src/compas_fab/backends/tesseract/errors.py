@@ -142,6 +142,10 @@ class InvalidTesseractPoseError(TesseractBackendError):
     """A geometry/unit boundary cannot produce an exact native pose."""
 
 
+class InvalidTesseractTargetError(TesseractBackendError):
+    """A native motion target violates its exact type or shape contract."""
+
+
 class TesseractKinematicsPluginError(TesseractBackendError):
     """A requested native kinematics group or solver cannot be loaded."""
 
