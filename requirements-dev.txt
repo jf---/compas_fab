@@ -7,8 +7,12 @@ mkdocs-print-site-plugin
 pytest
 pytest-cov
 pytest-mock
+pytest-testmon
+pytest-xdist
 pybullet
 pythonnet
 ruff
+mypy
 tomlkit
 twine
+types-PyYAML
