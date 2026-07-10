@@ -10,6 +10,7 @@ from compas_fab.backends.tesseract.errors import InvalidTesseractTargetError
 from compas_fab.backends.tesseract.native_targets import build_cartesian_target
 from compas_fab.backends.tesseract.native_targets import build_joint_target
 from compas_fab.backends.tesseract.native_targets import build_state_target
+from compas_fab.backends.tesseract.native_targets import move_type_from_name
 
 
 @pytest.mark.parametrize("move_type", list(MoveType))
@@ -84,6 +85,17 @@ def test_state_target_retains_complete_native_state():
     assert target.time == 1.5
     assert target.move_type is MoveType.CIRCULAR
     assert target.profile == "TIMED"
+
+
+@pytest.mark.parametrize("move_type", list(MoveType))
+def test_move_type_name_resolves_exact_native_enum(move_type):
+    assert move_type_from_name(move_type.name.lower()) is move_type
+
+
+@pytest.mark.parametrize("value", [None, object(), "", "spline"])
+def test_unknown_move_type_name_fails(value):
+    with pytest.raises(InvalidTesseractTargetError):
+        move_type_from_name(value)
 
 
 @pytest.mark.parametrize(

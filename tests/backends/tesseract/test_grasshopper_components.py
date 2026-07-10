@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import struct
 
+import pytest
 import yaml
 
 
@@ -101,12 +102,99 @@ def test_rapid_emitter_component_is_pure_native_adapter():
     assert "JointTrajectory" not in code
 
 
+@pytest.mark.parametrize(
+    ("component", "inputs", "outputs", "factory"),
+    [
+        (
+            "Cf_TesseractPose",
+            ["frame", "metres_per_user_unit"],
+            ["pose"],
+            "pose_from_user_frame",
+        ),
+        (
+            "Cf_TesseractCartesianTarget",
+            ["pose", "move_type", "profile"],
+            ["target"],
+            "build_cartesian_target",
+        ),
+        (
+            "Cf_TesseractJointTarget",
+            ["positions", "joint_names", "move_type", "profile"],
+            ["target"],
+            "build_joint_target",
+        ),
+        (
+            "Cf_TesseractStateTarget",
+            [
+                "positions",
+                "joint_names",
+                "velocities",
+                "accelerations",
+                "time",
+                "move_type",
+                "profile",
+            ],
+            ["target"],
+            "build_state_target",
+        ),
+    ],
+)
+def test_native_authoring_component_contract(
+    component,
+    inputs,
+    outputs,
+    factory,
+):
+    code, metadata = _component(component)
+
+    assert [item["name"] for item in metadata["ghpython"]["inputParameters"]] == inputs
+    assert [item["name"] for item in metadata["ghpython"]["outputParameters"]] == outputs
+    assert factory in code
+    assert "# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36" in code
+    assert "except TesseractBackendError" in code
+    assert "except Exception" not in code
+    assert _png_size(COMPONENTS / component / "icon.png") == (24, 24)
+
+
+def test_pose_component_is_the_only_new_geometry_unit_boundary():
+    pose_code, _ = _component("Cf_TesseractPose")
+    cartesian_code, _ = _component("Cf_TesseractCartesianTarget")
+
+    assert "plane_to_compas_frame" in pose_code
+    assert "metres_per_user_unit" in pose_code
+    assert "plane_to_compas_frame" not in cartesian_code
+    assert "compas.geometry" not in cartesian_code
+    assert "compas_rhino.conversions" not in cartesian_code
+
+
+@pytest.mark.parametrize(
+    "component",
+    [
+        "Cf_TesseractCartesianTarget",
+        "Cf_TesseractJointTarget",
+        "Cf_TesseractStateTarget",
+    ],
+)
+def test_target_components_expose_all_exact_native_move_types(component):
+    code, _ = _component(component)
+
+    assert "move_type_from_name" in code
+    assert '"FREESPACE"' in code
+    assert '"LINEAR"' in code
+    assert '"CIRCULAR"' in code
+    assert "ensure_value_list" in code
+
+
 def test_tesseract_components_require_nanobind_distribution_only():
     for name in (
         "Cf_TesseractRobotArtifact",
         "Cf_TesseractPlanner",
         "Cf_TesseractRapidProfile",
         "Cf_TesseractRapid",
+        "Cf_TesseractPose",
+        "Cf_TesseractCartesianTarget",
+        "Cf_TesseractJointTarget",
+        "Cf_TesseractStateTarget",
     ):
         code, _ = _component(name)
         assert "# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36" in code

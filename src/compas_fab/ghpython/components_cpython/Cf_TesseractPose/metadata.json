@@ -1,0 +1,29 @@
+{
+    "name": "Tesseract Pose",
+    "nickname": "Tesseract Pose",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Convert a Rhino Plane or COMPAS Frame in explicit user units to an exact native Tesseract Pose in metres.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "frame",
+                "description": "Rhino Plane or COMPAS Frame relative to the working frame selected downstream by Tesseract Motion Program."
+            },
+            {
+                "name": "metres_per_user_unit",
+                "description": "Required explicit scale: one coordinate unit multiplied by this value equals metres. Use 0.001 for millimetres.",
+                "typeHintID": "float"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "pose",
+                "description": "Exact native tesseract_robotics.planning.Pose with translation in metres."
+            }
+        ]
+    }
+}

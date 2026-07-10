@@ -23,6 +23,16 @@ NativeJointAcceleration = NewType("NativeJointAcceleration", float)
 NativeTimeSeconds = NewType("NativeTimeSeconds", float)
 
 
+def move_type_from_name(value: object) -> MoveType:
+    """Resolve one UI name to the exact native move enum."""
+    if not isinstance(value, str) or not value.strip():
+        raise InvalidTesseractTargetError("Native move type name must be a non-empty string.")
+    try:
+        return MoveType[value.strip().upper()]
+    except KeyError as move_type_error:
+        raise InvalidTesseractTargetError("Unknown native move type {!r}.".format(value)) from move_type_error
+
+
 def build_cartesian_target(
     pose: object,
     move_type: object,

@@ -1,0 +1,40 @@
+{
+    "name": "Tesseract Joint Target",
+    "nickname": "Tesseract Joint Target",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Build an exact native Tesseract JointTarget in native revolute/prismatic joint units.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "positions",
+                "description": "Ordered joint positions in native joint units: radians for revolute joints and metres for prismatic joints.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "joint_names",
+                "description": "Optional exact joint-name order. When omitted, Tesseract Motion Program supplies the selected native group's order.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "move_type",
+                "description": "Exact native move type: FREESPACE, LINEAR, or CIRCULAR. Defaults to FREESPACE.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "profile",
+                "description": "Exact non-empty Tesseract motion-profile name. Defaults to DEFAULT.",
+                "typeHintID": "str"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "target",
+                "description": "Exact native tesseract_robotics.planning.JointTarget retaining supplied order and move type."
+            }
+        ]
+    }
+}
