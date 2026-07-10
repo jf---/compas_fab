@@ -34,3 +34,8 @@ class TesseractPlanner(
         """Execute an exact native request against an isolated environment clone."""
         robot = self._client.clone_robot()
         return self._client.runtime.execute(robot, request)
+
+    @property
+    def native_scene_revision(self) -> int:
+        """Return the revision of exact state applied to native plan clones."""
+        return self._client.native_scene_revision

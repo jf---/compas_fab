@@ -19,6 +19,7 @@ class NativePlanSignature:
     """Every observable input controlling one native planning result."""
 
     planner_identity: int
+    scene_revision: int
     program_identity: NativeProgramIdentity
     pipeline: str
     profile_identity: int
@@ -27,6 +28,8 @@ class NativePlanSignature:
     def __attrs_post_init__(self) -> None:
         if not isinstance(self.planner_identity, int) or self.planner_identity <= 0:
             raise InvalidTesseractNativePlanError("Native plan signature requires planner object identity.")
+        if not isinstance(self.scene_revision, int) or self.scene_revision < 0:
+            raise InvalidTesseractNativePlanError("Native plan signature requires non-negative scene revision.")
         if not isinstance(self.program_identity, NativeProgramIdentity):
             raise InvalidTesseractNativePlanError("Native plan signature requires program content identity.")
         if not isinstance(self.pipeline, str) or not self.pipeline.strip():
@@ -98,6 +101,7 @@ def _signature(
 ) -> NativePlanSignature:
     return NativePlanSignature(
         id(planner),
+        planner.native_scene_revision,
         native_program_digest(request.program),
         request.pipeline,
         id(request.profiles),

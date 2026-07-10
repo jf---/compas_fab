@@ -247,11 +247,12 @@ list or every pipeline in the retained Task Composer configuration; every
 requested warmup failure raises a named error. Python users can also supply an
 exact preconfigured native `TaskComposer` to `TesseractClient`.
 
-Native Plan caches a success only while planner identity, serialized program
-digest, pipeline, profile-object identity, and `auto_seed` all match. Changed
-inputs or failed recomputation clear stale output. Nanobind 0.35.0.6 exposes no
-way to enumerate or serialize a `ProfileDictionary`; callers mutating the same
-dictionary object directly must trigger `compute=True`.
+Native Plan caches a success only while planner identity, native scene revision,
+serialized program digest, pipeline, profile-object identity, and `auto_seed`
+all match. Changed robot state, scene, inputs, or failed recomputation clear
+stale output. Nanobind 0.35.0.6 exposes no way to enumerate or serialize a
+`ProfileDictionary`; callers mutating the same dictionary object directly must
+trigger `compute=True`.
 
 ## Current Phase 1 boundary
 

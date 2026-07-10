@@ -30,6 +30,11 @@ class CapturingPlanner(TesseractPlanner):
     def __init__(self):
         self.requests = []
         self.fail = False
+        self.scene_revision = 0
+
+    @property
+    def native_scene_revision(self):
+        return self.scene_revision
 
     def plan_native(self, request):
         self.requests.append(request)
@@ -93,6 +98,7 @@ def test_native_plan_call_retains_exact_request_inputs():
     assert call.request.pipeline == "DescartesFPipeline"
     assert call.request.auto_seed is True
     assert call.signature.planner_identity == id(planner)
+    assert call.signature.scene_revision == 0
     assert call.signature.profile_identity == id(profiles)
 
 
@@ -243,6 +249,36 @@ def test_in_place_program_mutation_invalidates_cached_result(monkeypatch):
     )
 
     program.setDescription("mutated")
+
+    assert (
+        component.RunScript(
+            planner,
+            program,
+            "DescartesFPipeline",
+            profiles,
+            True,
+            False,
+        )
+        is None
+    )
+    assert sticky == {}
+
+
+def test_same_planner_scene_revision_invalidates_cached_result(monkeypatch):
+    component, sticky, _ = _load_component(monkeypatch)
+    planner = CapturingPlanner()
+    program = _program()
+    profiles = ProfileDictionary()
+    component.RunScript(
+        planner,
+        program,
+        "DescartesFPipeline",
+        profiles,
+        True,
+        True,
+    )
+
+    planner.scene_revision += 1
 
     assert (
         component.RunScript(

@@ -51,7 +51,7 @@ class TesseractPlanMotion(PlanMotion):
         joint_types = {joint.name: joint.type for joint in robot_cell.get_configurable_joints(group_name)}
         trajectory = joint_trajectory_from_result(result, joint_types)
         trajectory.start_state = start_state.copy()
-        self.client._robot_cell_state = start_state.copy()
+        self.client._store_robot_cell_state(start_state)
         return trajectory
 
     def plan_motion_native(

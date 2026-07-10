@@ -53,8 +53,7 @@ class TesseractSetRobotCell(SetRobotCell):
                 "stored native scene",
             )
 
-        client._robot_cell = robot_cell.copy()
-        client._robot_cell_state = robot_cell_state.copy() if robot_cell_state is not None else None
+        client._store_robot_cell_projection(robot_cell, robot_cell_state)
 
 
 def _artifact_group_chains(

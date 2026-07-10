@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
+from compas.data import json_dumps  # type: ignore[import-untyped]
 from tesseract_robotics.planning import Robot
 from tesseract_robotics.planning import TaskComposer
 
@@ -26,6 +27,11 @@ from .runtime import TesseractRuntime
 from .warmup import WarmupSelection
 from .warmup import warmup_composer
 
+NativeProjectionIdentity = tuple[
+    str,
+    Optional[str],
+]
+
 
 class TesseractClient(ClientInterface):
     """Own exact robot resources and a reusable local Task Composer runtime."""
@@ -40,6 +46,8 @@ class TesseractClient(ClientInterface):
         object.__init__(self)
         self._robot_cell: Optional[RobotCell] = None
         self._robot_cell_state: Optional[RobotCellState] = None
+        self._native_scene_revision = 0
+        self._scene_projection_identity: Optional[NativeProjectionIdentity] = None
         self.artifact = artifact
         self.cache_root = cache_root
         if composer is not None and not isinstance(composer, TaskComposer):
@@ -76,6 +84,11 @@ class TesseractClient(ClientInterface):
         if self._runtime is None:
             raise TesseractClientNotConnectedError("Tesseract client is not connected.")
         return self._runtime
+
+    @property
+    def native_scene_revision(self) -> int:
+        """Monotonic revision of exact state consumed by native clones."""
+        return self._native_scene_revision
 
     def connect(self) -> None:
         """Initialize the exact environment and reusable Task Composer."""
@@ -115,6 +128,39 @@ class TesseractClient(ClientInterface):
         apply_active_joint_state(robot, configuration, "complete stored robot-cell configuration")
         return robot
 
+    def _store_robot_cell_projection(
+        self,
+        robot_cell: RobotCell,
+        robot_cell_state: Optional[RobotCellState],
+    ) -> None:
+        """Copy a validated cell projection and revise only on content change."""
+        cell_copy = robot_cell.copy()
+        state_copy = robot_cell_state.copy() if robot_cell_state is not None else None
+        self._store_projection(cell_copy, state_copy)
+
+    def _store_robot_cell_state(self, robot_cell_state: RobotCellState) -> None:
+        """Copy a validated state and revise the native clone input exactly."""
+        cell = self._robot_cell
+        if cell is None:
+            raise MissingTesseractStartStateError("Cannot store robot_cell_state before RobotCell.")
+        self._store_projection(cell, robot_cell_state.copy())
+
+    def _store_projection(
+        self,
+        robot_cell: RobotCell,
+        robot_cell_state: Optional[RobotCellState],
+    ) -> None:
+        identity = _projection_identity(robot_cell, robot_cell_state)
+        if identity != self._scene_projection_identity:
+            self._native_scene_revision += 1
+            self._scene_projection_identity = identity
+        self._robot_cell = robot_cell
+        self._robot_cell_state = robot_cell_state
+
+    def _mark_native_scene_changed(self) -> None:
+        """Advance the revision after a direct native scene command."""
+        self._native_scene_revision += 1
+
     def require_planning_contact_managers(self) -> None:
         """Require both managers used by the conventional free-motion path."""
         _assert_contact_managers(self.environment)
@@ -136,3 +182,13 @@ def _assert_contact_managers(environment: TesseractEnvironment) -> None:
         raise MissingContactManagerPluginError("Tesseract contact-manager plugin loading failed: {}".format(error)) from error
     if discrete is None or continuous is None:
         raise MissingContactManagerPluginError("Tesseract artifact must configure discrete and continuous contact managers.")
+
+
+def _projection_identity(
+    robot_cell: RobotCell,
+    robot_cell_state: Optional[RobotCellState],
+) -> NativeProjectionIdentity:
+    return (
+        robot_cell.structural_signature(),
+        None if robot_cell_state is None else json_dumps(robot_cell_state.__data__, pretty=False),
+    )

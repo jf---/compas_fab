@@ -97,7 +97,7 @@ class TesseractCheckCollision(CheckCollision):
 
         result = self.check_collision_native(robot_cell_state, request)
         colliding = [result.native_results[index] for index in range(len(result.native_results)) if is_collision_distance(float(result.native_results[index].distance))]
-        self.client._robot_cell_state = robot_cell_state.copy()
+        self.client._store_robot_cell_state(robot_cell_state)
         if not colliding:
             return None
         link_pairs = tuple((contact.link_names[0], contact.link_names[1]) for contact in colliding)

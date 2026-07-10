@@ -106,7 +106,7 @@ class TesseractForwardKinematics(ForwardKinematics):
                 group_name,
             ),
         )
-        client._robot_cell_state = robot_cell_state.copy()
+        client._store_robot_cell_state(robot_cell_state)
         return frame_in_user_units(
             world_meters_frame(target_frame),
             meters_per_user_unit(native_scale),
@@ -141,5 +141,5 @@ class TesseractForwardKinematics(ForwardKinematics):
             robot_frame_from_isometry(native_pose),
             world_meters_frame(robot_cell_state.robot_base_frame),
         )
-        client._robot_cell_state = robot_cell_state.copy()
+        client._store_robot_cell_state(robot_cell_state)
         return frame_in_user_units(world_frame, meters_per_user_unit(native_scale))

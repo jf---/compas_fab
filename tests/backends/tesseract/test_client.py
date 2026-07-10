@@ -68,6 +68,33 @@ def test_set_robot_cell_stores_an_input_copy(tesseract_artifact, one_joint_cell,
         assert client.robot_cell.group_names == one_joint_cell.group_names
 
 
+def test_native_scene_revision_changes_only_with_exact_projection_content(
+    tesseract_artifact,
+    one_joint_cell,
+    one_joint_state,
+    tmp_path,
+):
+    with TesseractClient(tesseract_artifact, cache_root=tmp_path) as client:
+        planner = TesseractPlanner(client)
+        assert planner.native_scene_revision == 0
+
+        planner.set_robot_cell(one_joint_cell, one_joint_state)
+        assert planner.native_scene_revision == 1
+
+        planner.set_robot_cell(one_joint_cell.copy(), one_joint_state.copy())
+        assert planner.native_scene_revision == 1
+
+        changed = one_joint_state.copy()
+        changed.robot_configuration["joint1"] = 0.5
+        planner.set_robot_cell(one_joint_cell, changed)
+        assert planner.native_scene_revision == 2
+
+        moved = changed.copy()
+        moved.robot_base_frame.point.x = 1.0
+        planner.set_robot_cell(one_joint_cell, moved)
+        assert planner.native_scene_revision == 3
+
+
 @pytest.mark.parametrize(
     ("original", "replacement", "diagnostic"),
     [

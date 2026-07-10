@@ -163,7 +163,7 @@ class TesseractInverseKinematics(InverseKinematics):
         client: TesseractClient = self.client
         robot_cell: RobotCell = client.robot_cell
         group_name = group or robot_cell.main_group_name
-        client._robot_cell_state = robot_cell_state.copy()
+        client._store_robot_cell_state(robot_cell_state)
         for solution in result.native_solutions:
             yield self._build_configuration(
                 solution.tolist(),

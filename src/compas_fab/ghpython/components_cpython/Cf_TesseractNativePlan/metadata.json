@@ -33,7 +33,7 @@
             },
             {
                 "name": "compute",
-                "description": "Trigger native planning. False returns only a successful result whose complete observable signature still matches.",
+                "description": "Trigger native planning. False returns only a successful result whose planner, native scene revision, program, pipeline, profiles, and seed signature still matches.",
                 "typeHintID": "bool"
             }
         ],
