@@ -19,8 +19,8 @@ from compas_fab.backends.tesseract.native_quantities import NativeJointNames
 from compas_fab.backends.tesseract.native_quantities import NativeJointPositions
 from compas_fab.backends.tesseract.native_quantities import NativeJointVelocities
 from compas_fab.backends.tesseract.native_quantities import NativeTime
-from compas_fab.backends.tesseract.native_targets import state_target_from_native
 from compas_fab.backends.tesseract.native_targets import move_type_from_name
+from compas_fab.backends.tesseract.native_targets import state_target_from_native
 from compas_fab.ghpython import ensure_value_list
 from compas_fab.ghpython.input_semantics import optional_connected_input
 
