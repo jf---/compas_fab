@@ -150,6 +150,10 @@ class InvalidTesseractMotionProgramError(TesseractBackendError):
     """A native robot, target sequence, program, or identity is invalid."""
 
 
+class InvalidTesseractDescartesProfileError(TesseractBackendError):
+    """A Descartes profile factory argument violates its native contract."""
+
+
 class TesseractKinematicsPluginError(TesseractBackendError):
     """A requested native kinematics group or solver cannot be loaded."""
 
