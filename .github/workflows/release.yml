@@ -12,6 +12,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python: ['3.9', '3.10', '3.11', '3.12', '3.13']
+        exclude:
+          - os: ubuntu-latest
+            python: '3.9'
 
     steps:
       - uses: compas-dev/compas-actions.build@v5
@@ -25,6 +28,38 @@ jobs:
     needs: build
     runs-on: windows-latest
     steps:
+      - name: Checkout repo for Grasshopper preflight
+        uses: actions/checkout@v6
+
+      - name: Install Rhino 8 CPython environment
+        uses: prefix-dev/setup-pixi@v0.9.3
+        with:
+          environments: rhino39
+          locked: true
+
+      - name: Create CPython Grasshopper user objects
+        run: |
+          pixi run -e rhino39 build-gh-components
+
+      - name: Require Tesseract Grasshopper user objects
+        shell: pwsh
+        run: |
+          $target = "src/compas_fab/ghpython/components_cpython/ghuser"
+          $required = @(
+            "Cf_TesseractRobotArtifact.ghuser",
+            "Cf_TesseractPlanner.ghuser"
+          )
+          foreach ($name in $required) {
+            $path = Join-Path $target $name
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Missing compiled Grasshopper user object: $path"
+            }
+          }
+
+      - name: Pin Rhino 8 CPython
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.9'
       - uses: compas-dev/compas-actions.publish@v3
         with:
           pypi_token: ${{ secrets.PYPI_PASSWORD }}

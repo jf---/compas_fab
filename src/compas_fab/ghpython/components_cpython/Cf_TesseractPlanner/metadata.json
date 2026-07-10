@@ -1,0 +1,51 @@
+{
+    "name": "Tesseract Planner",
+    "nickname": "Tesseract Planner",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Create and cache a local Tesseract nanobind planner from an exact RobotArtifact. Outputs both the conventional COMPAS planner and an isolated native Robot clone.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "artifact",
+                "description": "Exact content-addressed RobotArtifact from Tesseract Robot Artifact."
+            },
+            {
+                "name": "robot_cell",
+                "description": "Matching COMPAS RobotCell projection. Group joint order is checked against Tesseract."
+            },
+            {
+                "name": "robot_cell_state",
+                "description": "Optional matching initial RobotCellState retained by the planner."
+            },
+            {
+                "name": "warmup_pipelines",
+                "description": "Optional exact Task Composer pipeline names to warm during connection. Leave empty for no warmup; cannot be combined with warmup_all.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "warmup_all",
+                "description": "Warm every configured Task Composer pipeline during connection. Defaults to false and cannot be combined with warmup_pipelines.",
+                "typeHintID": "bool"
+            },
+            {
+                "name": "reload",
+                "description": "Force replacement of the cached native client even when the artifact identity is unchanged.",
+                "typeHintID": "bool"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "planner",
+                "description": "TesseractPlanner supporting conventional COMPAS calls plus plan_native for lossless native requests/results."
+            },
+            {
+                "name": "native_robot",
+                "description": "Isolated tesseract_robotics.planning.Robot clone for direct nanobind operations without mutating the cached planner baseline."
+            }
+        ]
+    }
+}
