@@ -1,0 +1,74 @@
+{
+    "name": "Tesseract Descartes Profile",
+    "nickname": "Tesseract Descartes Profile",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Build an exact native ProfileDictionary exposing every released Descartes pipeline-profile control.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "profile_names",
+                "description": "Optional exact profile names to register. Unconnected preserves Tesseract's native name set.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "enable_collision",
+                "description": "Optional vertex collision-check flag. Unconnected preserves the native default (enabled in 0.35.0.6).",
+                "typeHintID": "bool"
+            },
+            {
+                "name": "enable_edge_collision",
+                "description": "Optional edge collision-check flag. Unconnected preserves the native default (disabled in 0.35.0.6).",
+                "typeHintID": "bool"
+            },
+            {
+                "name": "num_threads",
+                "description": "Optional positive native ladder-graph solver thread count. Unconnected lets Tesseract choose.",
+                "typeHintID": "int"
+            },
+            {
+                "name": "sample_axis",
+                "description": "Optional finite non-degenerate tool-local axis [x, y, z] for rotational sampling.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "sample_resolution",
+                "description": "Optional positive tool-axis sampling step in radians.",
+                "typeHintID": "float"
+            },
+            {
+                "name": "sample_min",
+                "description": "Optional finite start of the tool-axis sampling range in radians.",
+                "typeHintID": "float"
+            },
+            {
+                "name": "sample_max",
+                "description": "Optional finite end of the tool-axis sampling range in radians.",
+                "typeHintID": "float"
+            },
+            {
+                "name": "ik_solver",
+                "description": "Optional exact native IK solver name used while sampling waypoints.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "use_redundant_joint_solutions",
+                "description": "Optional native redundant-joint-solution flag. Unconnected preserves the native default (disabled in 0.35.0.6).",
+                "typeHintID": "bool"
+            },
+            {
+                "name": "move_profile",
+                "description": "Optional exact native DescartesMoveProfileD full override. It cannot be combined with move-profile convenience controls."
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "profiles",
+                "description": "Exact native Tesseract ProfileDictionary for DescartesF/DescartesD pipeline variants."
+            }
+        ]
+    }
+}

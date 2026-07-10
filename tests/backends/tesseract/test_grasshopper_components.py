@@ -185,6 +185,66 @@ def test_target_components_expose_all_exact_native_move_types(component):
     assert "ensure_value_list" in code
 
 
+def test_motion_program_component_preserves_native_authoring_path():
+    code, metadata = _component("Cf_TesseractMotionProgram")
+    inputs = [item["name"] for item in metadata["ghpython"]["inputParameters"]]
+    outputs = [item["name"] for item in metadata["ghpython"]["outputParameters"]]
+
+    assert inputs == [
+        "native_robot",
+        "targets",
+        "group_name",
+        "tcp_frame",
+        "working_frame",
+        "profile",
+    ]
+    assert outputs == [
+        "motion_program",
+        "program",
+        "joint_names",
+        "tcp_frame",
+    ]
+    assert "build_motion_program" in code
+    assert ".move_to(" not in code
+    assert ".linear_to(" not in code
+    assert ".circular_to(" not in code
+    assert "except TesseractBackendError" in code
+    assert "except Exception" not in code
+    assert _png_size(COMPONENTS / "Cf_TesseractMotionProgram" / "icon.png") == (24, 24)
+
+
+def test_descartes_profile_component_exposes_complete_native_factory():
+    code, metadata = _component("Cf_TesseractDescartesProfile")
+    inputs = [item["name"] for item in metadata["ghpython"]["inputParameters"]]
+    outputs = [item["name"] for item in metadata["ghpython"]["outputParameters"]]
+
+    assert inputs == [
+        "profile_names",
+        "enable_collision",
+        "enable_edge_collision",
+        "num_threads",
+        "sample_axis",
+        "sample_resolution",
+        "sample_min",
+        "sample_max",
+        "ik_solver",
+        "use_redundant_joint_solutions",
+        "move_profile",
+    ]
+    assert outputs == ["profiles"]
+    assert "build_descartes_profiles" in code
+    assert "create_descartes_pipeline_profiles" not in code
+    assert "sample_resolution or" not in code
+    assert "sample_min or" not in code
+    assert "sample_max or" not in code
+    assert "enable_collision or" not in code
+    assert "enable_edge_collision or" not in code
+    assert "use_redundant_joint_solutions or" not in code
+    assert "except TesseractBackendError" in code
+    assert "except Exception" not in code
+    assert _png_size(COMPONENTS / "Cf_TesseractDescartesProfile" / "icon.png") == (24, 24)
+
+
 def test_tesseract_components_require_nanobind_distribution_only():
     for name in (
         "Cf_TesseractRobotArtifact",
@@ -195,6 +255,8 @@ def test_tesseract_components_require_nanobind_distribution_only():
         "Cf_TesseractCartesianTarget",
         "Cf_TesseractJointTarget",
         "Cf_TesseractStateTarget",
+        "Cf_TesseractMotionProgram",
+        "Cf_TesseractDescartesProfile",
     ):
         code, _ = _component(name)
         assert "# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36" in code
