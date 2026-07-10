@@ -297,6 +297,10 @@ class MalformedTesseractTrajectoryError(TesseractBackendError):
     """Native trajectory fields disagree in shape or contain invalid values."""
 
 
+class MalformedTesseractNativeResultError(TesseractBackendError):
+    """An exact native result violates its lossless inspection contract."""
+
+
 class InconsistentTesseractJointOrderError(TesseractBackendError):
     """Native trajectory points use different joint-name orders."""
 
