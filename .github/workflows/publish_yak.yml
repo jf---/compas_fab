@@ -49,7 +49,15 @@ jobs:
           "Cf_TesseractRobotArtifact.ghuser",
           "Cf_TesseractPlanner.ghuser",
           "Cf_TesseractRapidProfile.ghuser",
-          "Cf_TesseractRapid.ghuser"
+          "Cf_TesseractRapid.ghuser",
+          "Cf_TesseractPose.ghuser",
+          "Cf_TesseractCartesianTarget.ghuser",
+          "Cf_TesseractJointTarget.ghuser",
+          "Cf_TesseractStateTarget.ghuser",
+          "Cf_TesseractMotionProgram.ghuser",
+          "Cf_TesseractDescartesProfile.ghuser",
+          "Cf_TesseractNativePlan.ghuser",
+          "Cf_TesseractNativeResult.ghuser"
         )
         foreach ($name in $required) {
           $path = Join-Path $target $name

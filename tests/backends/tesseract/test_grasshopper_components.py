@@ -11,6 +11,21 @@ WORKFLOWS = Path(__file__).parents[3] / ".github" / "workflows"
 PYPROJECT = Path(__file__).parents[3] / "pyproject.toml"
 PIXI_LOCK = Path(__file__).parents[3] / "pixi.lock"
 
+TESSERACT_USER_OBJECTS = (
+    "Cf_TesseractRobotArtifact.ghuser",
+    "Cf_TesseractPlanner.ghuser",
+    "Cf_TesseractRapidProfile.ghuser",
+    "Cf_TesseractRapid.ghuser",
+    "Cf_TesseractPose.ghuser",
+    "Cf_TesseractCartesianTarget.ghuser",
+    "Cf_TesseractJointTarget.ghuser",
+    "Cf_TesseractStateTarget.ghuser",
+    "Cf_TesseractMotionProgram.ghuser",
+    "Cf_TesseractDescartesProfile.ghuser",
+    "Cf_TesseractNativePlan.ghuser",
+    "Cf_TesseractNativeResult.ghuser",
+)
+
 
 def _component(name: str) -> tuple[str, dict]:
     root = COMPONENTS / name
@@ -353,10 +368,8 @@ def test_rhino_lock_contains_released_windows_python39_nanobind_wheel():
 def test_windows_ci_requires_all_tesseract_user_objects_before_upload():
     for workflow_name in ("build.yml", "publish_yak.yml", "release.yml"):
         workflow = WORKFLOWS.joinpath(workflow_name).read_text(encoding="utf-8")
-        assert "Cf_TesseractRobotArtifact.ghuser" in workflow
-        assert "Cf_TesseractPlanner.ghuser" in workflow
-        assert "Cf_TesseractRapidProfile.ghuser" in workflow
-        assert "Cf_TesseractRapid.ghuser" in workflow
+        for user_object in TESSERACT_USER_OBJECTS:
+            assert user_object in workflow
         assert "Test-Path" in workflow
 
     build = WORKFLOWS.joinpath("build.yml").read_text(encoding="utf-8")
