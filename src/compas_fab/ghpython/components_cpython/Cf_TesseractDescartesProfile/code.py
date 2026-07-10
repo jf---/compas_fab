@@ -15,6 +15,7 @@ from compas_ghpython import error
 
 from compas_fab.backends.tesseract.descartes_profiles import build_descartes_profiles
 from compas_fab.backends.tesseract.errors import TesseractBackendError
+from compas_fab.ghpython.input_semantics import optional_connected_input
 
 
 class TesseractDescartesProfileComponent(Grasshopper.Kernel.GH_ScriptInstance):
@@ -34,17 +35,21 @@ class TesseractDescartesProfileComponent(Grasshopper.Kernel.GH_ScriptInstance):
     ):
         try:
             return build_descartes_profiles(
-                profile_names or None,
-                enable_collision,
-                enable_edge_collision,
-                num_threads,
-                sample_axis or None,
-                sample_resolution,
-                sample_min,
-                sample_max,
-                ik_solver or None,
-                use_redundant_joint_solutions,
-                move_profile,
+                optional_connected_input(ghenv.Component, "profile_names", profile_names),  # noqa: F821
+                optional_connected_input(ghenv.Component, "enable_collision", enable_collision),  # noqa: F821
+                optional_connected_input(ghenv.Component, "enable_edge_collision", enable_edge_collision),  # noqa: F821
+                optional_connected_input(ghenv.Component, "num_threads", num_threads),  # noqa: F821
+                optional_connected_input(ghenv.Component, "sample_axis", sample_axis),  # noqa: F821
+                optional_connected_input(ghenv.Component, "sample_resolution", sample_resolution),  # noqa: F821
+                optional_connected_input(ghenv.Component, "sample_min", sample_min),  # noqa: F821
+                optional_connected_input(ghenv.Component, "sample_max", sample_max),  # noqa: F821
+                optional_connected_input(ghenv.Component, "ik_solver", ik_solver),  # noqa: F821
+                optional_connected_input(  # noqa: F821
+                    ghenv.Component,
+                    "use_redundant_joint_solutions",
+                    use_redundant_joint_solutions,
+                ),
+                optional_connected_input(ghenv.Component, "move_profile", move_profile),  # noqa: F821
             )
         except TesseractBackendError as backend_error:
             error(ghenv.Component, str(backend_error))  # noqa: F821

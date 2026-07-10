@@ -16,6 +16,7 @@ from compas_ghpython import error
 
 from compas_fab.backends.tesseract.errors import TesseractBackendError
 from compas_fab.backends.tesseract.native_program_builder import build_motion_program
+from compas_fab.ghpython.input_semantics import optional_connected_input
 
 
 class TesseractMotionProgramComponent(Grasshopper.Kernel.GH_ScriptInstance):
@@ -32,13 +33,16 @@ class TesseractMotionProgramComponent(Grasshopper.Kernel.GH_ScriptInstance):
             return (None, None, None, None)
 
         try:
+            connected_tcp = optional_connected_input(ghenv.Component, "tcp_frame", tcp_frame)  # noqa: F821
+            connected_working_frame = optional_connected_input(ghenv.Component, "working_frame", working_frame)  # noqa: F821
+            connected_profile = optional_connected_input(ghenv.Component, "profile", profile)  # noqa: F821
             built = build_motion_program(
                 native_robot,
                 targets,
                 group_name,
-                tcp_frame or None,
-                working_frame or "base_link",
-                profile or "DEFAULT",
+                connected_tcp,
+                "base_link" if connected_working_frame is None else connected_working_frame,
+                "DEFAULT" if connected_profile is None else connected_profile,
             )
         except TesseractBackendError as backend_error:
             error(ghenv.Component, str(backend_error))  # noqa: F821
