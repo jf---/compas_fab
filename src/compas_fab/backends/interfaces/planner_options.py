@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping as RuntimeMapping
 from enum import Enum
 from hashlib import sha256
 from math import isfinite
@@ -38,25 +39,16 @@ class PlanMotionLegacyOptions:
     def __attrs_post_init__(self) -> None:
         if self.planner_id is not None and (type(self.planner_id) is not str or not self.planner_id):
             raise InvalidPlannerOptionsError("planner_id must be non-empty str or None.")
-        if self.num_planning_attempts is not None and (
-            type(self.num_planning_attempts) is not int or self.num_planning_attempts <= 0
-        ):
+        if self.num_planning_attempts is not None and (type(self.num_planning_attempts) is not int or self.num_planning_attempts <= 0):
             raise InvalidPlannerOptionsError("num_planning_attempts must be positive int or None.")
         if self.allowed_planning_time is not None:
-            invalid_time = (
-                type(self.allowed_planning_time) is not float
-                or not isfinite(self.allowed_planning_time)
-                or self.allowed_planning_time <= 0.0
-            )
+            invalid_time = type(self.allowed_planning_time) is not float or not isfinite(self.allowed_planning_time) or self.allowed_planning_time <= 0.0
             if invalid_time:
                 raise InvalidPlannerOptionsError("allowed_planning_time must be finite positive float or None.")
 
     @property
     def connected(self) -> bool:
-        return any(
-            value is not None
-            for value in (self.planner_id, self.num_planning_attempts, self.allowed_planning_time)
-        )
+        return any(value is not None for value in (self.planner_id, self.num_planning_attempts, self.allowed_planning_time))
 
 
 def _part(value: bytes) -> bytes:
@@ -94,6 +86,8 @@ class ResolvedPlannerOptions:
 
     @classmethod
     def verified(cls, values: Mapping[str, object]) -> "ResolvedPlannerOptions":
+        if not isinstance(values, RuntimeMapping):
+            raise InvalidPlannerOptionsError("Planner options must be a mapping.")
         retained = tuple(values.items())
         if any(type(key) is not str or not key for key, _ in retained):
             raise InvalidPlannerOptionsError("Planner option names must be non-empty str.")
@@ -102,6 +96,8 @@ class ResolvedPlannerOptions:
 
     @classmethod
     def unverifiable(cls, values: Mapping[str, object]) -> "ResolvedPlannerOptions":
+        if not isinstance(values, RuntimeMapping):
+            raise InvalidPlannerOptionsError("Planner options must be a mapping.")
         return cls(tuple(values.items()), OptionIdentityState.UNVERIFIABLE, None)
 
     def __attrs_post_init__(self) -> None:
@@ -118,6 +114,8 @@ class ResolvedPlannerOptions:
         if len(set(keys)) != len(keys):
             raise InvalidPlannerOptionsError("Planner option names must be unique.")
         if self.identity_state is OptionIdentityState.VERIFIED:
+            if keys != tuple(sorted(keys)):
+                raise InvalidPlannerOptionsError("Verified planner option names must use canonical sorted order.")
             if self.identity_digest != _digest(self.values):
                 raise InvalidPlannerOptionsError("Verified option digest is inconsistent.")
         elif self.identity_digest is not None:

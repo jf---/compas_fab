@@ -9,6 +9,7 @@ from compas_fab.backends.interfaces.planner_capabilities import ConfigurationTol
 from compas_fab.backends.interfaces.planner_errors import InvalidPlannerCapabilitiesError, InvalidPlannerOptionsError, PlannerCapabilityError
 from compas_fab.backends.interfaces.planner_operation import PlannerOperation
 from compas_fab.backends.interfaces.planner_options import OptionIdentityState, PlanMotionLegacyOptions, ResolvedPlannerOptions
+from compas_fab.backends.interfaces.planner_options import _digest
 from compas_fab.backends.kinematics.options import UnsupportedPlanMotionOptions as AnalyticalOptions
 from compas_fab.backends.kinematics.planner import AnalyticalKinematicsPlanner
 from compas_fab.backends.kinematics.planner import AnalyticalPyBulletPlanner
@@ -27,11 +28,35 @@ class _TupleSubclass(tuple):
 
 def test_all_five_exact_declarations_and_adapters() -> None:
     expected = (
-        (AnalyticalKinematicsPlanner, "compas_fab.analytical/v1", AnalyticalOptions, {PlannerOperation.INVERSE_KINEMATICS, PlannerOperation.PLAN_CARTESIAN_MOTION}, ConfigurationTolerancePolicy.LEGACY_DEFAULTS),
-        (AnalyticalPyBulletPlanner, "compas_fab.analytical_pybullet/v1", AnalyticalOptions, {PlannerOperation.INVERSE_KINEMATICS, PlannerOperation.PLAN_CARTESIAN_MOTION, PlannerOperation.CHECK_COLLISION}, ConfigurationTolerancePolicy.LEGACY_DEFAULTS),
-        (PyBulletPlanner, "compas_fab.pybullet/v1", PyBulletOptions, {PlannerOperation.INVERSE_KINEMATICS, PlannerOperation.PLAN_CARTESIAN_MOTION, PlannerOperation.CHECK_COLLISION}, ConfigurationTolerancePolicy.LEGACY_DEFAULTS),
+        (
+            AnalyticalKinematicsPlanner,
+            "compas_fab.analytical/v1",
+            AnalyticalOptions,
+            {PlannerOperation.INVERSE_KINEMATICS, PlannerOperation.PLAN_CARTESIAN_MOTION},
+            ConfigurationTolerancePolicy.LEGACY_DEFAULTS,
+        ),
+        (
+            AnalyticalPyBulletPlanner,
+            "compas_fab.analytical_pybullet/v1",
+            AnalyticalOptions,
+            {PlannerOperation.INVERSE_KINEMATICS, PlannerOperation.PLAN_CARTESIAN_MOTION, PlannerOperation.CHECK_COLLISION},
+            ConfigurationTolerancePolicy.LEGACY_DEFAULTS,
+        ),
+        (
+            PyBulletPlanner,
+            "compas_fab.pybullet/v1",
+            PyBulletOptions,
+            {PlannerOperation.INVERSE_KINEMATICS, PlannerOperation.PLAN_CARTESIAN_MOTION, PlannerOperation.CHECK_COLLISION},
+            ConfigurationTolerancePolicy.LEGACY_DEFAULTS,
+        ),
         (MoveItPlanner, "compas_fab.moveit/v1", MoveItPlanMotionOptions, set(PlannerOperation), ConfigurationTolerancePolicy.LEGACY_DEFAULTS),
-        (TesseractPlanner, "compas_fab.tesseract/v1", TesseractPlanOptions, {PlannerOperation.INVERSE_KINEMATICS, PlannerOperation.PLAN_MOTION, PlannerOperation.CHECK_COLLISION}, ConfigurationTolerancePolicy.PRESERVE_ABSENT),
+        (
+            TesseractPlanner,
+            "compas_fab.tesseract/v1",
+            TesseractPlanOptions,
+            {PlannerOperation.INVERSE_KINEMATICS, PlannerOperation.PLAN_MOTION, PlannerOperation.CHECK_COLLISION},
+            ConfigurationTolerancePolicy.PRESERVE_ABSENT,
+        ),
     )
     for planner, implementation_id, adapter, operations, tolerance_policy in expected:
         assert planner.implementation_id.value == implementation_id
@@ -110,6 +135,44 @@ def test_raw_resolved_options_revalidate_digest_rules() -> None:
     unverifiable = ResolvedPlannerOptions.unverifiable({"opaque": object()})
     with pytest.raises(InvalidPlannerOptionsError):
         evolve(unverifiable, identity_digest="caller-digest")
+
+
+def test_raw_verified_options_require_canonical_key_order_even_with_recomputed_digest() -> None:
+    verified = ResolvedPlannerOptions.verified({"beta": 2, "alpha": 1})
+    reversed_values = tuple(reversed(verified.values))
+
+    with pytest.raises(InvalidPlannerOptionsError):
+        ResolvedPlannerOptions(reversed_values, OptionIdentityState.VERIFIED, _digest(reversed_values))
+
+
+@pytest.mark.parametrize("values", (None, object(), [], (("planner_id", "RRTConnect"),)))
+@pytest.mark.parametrize("factory", (ResolvedPlannerOptions.verified, ResolvedPlannerOptions.unverifiable))
+def test_resolved_option_factories_reject_non_mapping_inputs_with_named_error(factory, values) -> None:
+    with pytest.raises(InvalidPlannerOptionsError):
+        factory(values)
+
+
+@pytest.mark.parametrize("operations", (None, object(), 4))
+def test_capability_factory_rejects_non_sequence_operations_with_named_error(operations) -> None:
+    with pytest.raises(InvalidPlannerCapabilitiesError):
+        PlannerCapabilities.build(
+            PlannerImplementationId.build("test/v1"),
+            operations,
+            ConfigurationTolerancePolicy.LEGACY_DEFAULTS,
+        )
+
+
+@pytest.mark.parametrize(
+    ("implementation_id", "operations", "policy"),
+    (
+        ("test/v1", (PlannerOperation.PLAN_MOTION,), ConfigurationTolerancePolicy.LEGACY_DEFAULTS),
+        (PlannerImplementationId.build("test/v1"), (PlannerOperation.PLAN_MOTION,), "legacy_defaults"),
+        (PlannerImplementationId.build("test/v1"), ("plan_motion",), ConfigurationTolerancePolicy.LEGACY_DEFAULTS),
+    ),
+)
+def test_capability_factory_rejects_malformed_values_with_named_error(implementation_id, operations, policy) -> None:
+    with pytest.raises(InvalidPlannerCapabilitiesError):
+        PlannerCapabilities.build(implementation_id, operations, policy)
 
 
 def test_verified_options_reject_mixed_invalid_key_types_before_sorting() -> None:

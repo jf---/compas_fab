@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence as RuntimeSequence
 from enum import Enum
 from typing import Sequence
 from typing import Tuple
@@ -41,6 +42,14 @@ class PlannerCapabilities:
         operations: Sequence[PlannerOperation],
         tolerance_policy: ConfigurationTolerancePolicy,
     ) -> "PlannerCapabilities":
+        invalid = (
+            type(implementation_id) is not PlannerImplementationId
+            or not isinstance(operations, RuntimeSequence)
+            or isinstance(operations, (str, bytes, bytearray))
+            or type(tolerance_policy) is not ConfigurationTolerancePolicy
+        )
+        if invalid:
+            raise InvalidPlannerCapabilitiesError("Planner capability inputs are inconsistent.")
         return cls(implementation_id, tuple(operations), tolerance_policy)
 
     def __attrs_post_init__(self) -> None:
