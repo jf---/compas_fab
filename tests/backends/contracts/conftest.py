@@ -8,9 +8,17 @@ from .analytical import ANALYTICAL_CASE
 from .model import PlannerContractCase
 from .model import PlannerContractHarness
 from .pybullet import PYBULLET_CASE
+from .tesseract import TESSERACT_CASE
 
-KINEMATICS_CASES = (ANALYTICAL_CASE, PYBULLET_CASE)
-LINK_FK_CASES = (PYBULLET_CASE,)
+KINEMATICS_CASES = (
+    ANALYTICAL_CASE,
+    PYBULLET_CASE,
+    TESSERACT_CASE,
+)
+LINK_FK_CASES = (
+    PYBULLET_CASE,
+    TESSERACT_CASE,
+)
 
 
 @pytest.fixture(params=KINEMATICS_CASES, ids=lambda case: case.name)
