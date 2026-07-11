@@ -43,7 +43,7 @@ Those exclusions are capability boundaries, not skipped tests. They receive late
 
 `tests/backends/contracts/model.py` defines two frozen, bypass-safe test primitives:
 
-- `PlannerContractHarness`: exact `PlannerInterface`, `RobotCell`, and `RobotCellState` values owned by one context-managed backend setup;
+- `PlannerContractHarness`: exact `ClientInterface`, `PlannerInterface`, `RobotCell`, and `RobotCellState` values owned by one context-managed backend setup; its factory requires `planner.client is client`;
 - `PlannerContractCase`: a stable case name, context-manager factory, and exact unknown-group exception type.
 
 Each backend setup has one file and one responsibility:
