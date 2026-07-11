@@ -112,6 +112,11 @@ def test_raw_resolved_options_revalidate_digest_rules() -> None:
         evolve(unverifiable, identity_digest="caller-digest")
 
 
+def test_verified_options_reject_mixed_invalid_key_types_before_sorting() -> None:
+    with pytest.raises(InvalidPlannerOptionsError):
+        ResolvedPlannerOptions.verified({"valid": 1, 2: 3})
+
+
 def test_unverifiable_options_snapshot_mapping_and_retain_exact_opaque_value() -> None:
     opaque = []
     source = {"opaque": opaque}

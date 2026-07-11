@@ -94,8 +94,11 @@ class ResolvedPlannerOptions:
 
     @classmethod
     def verified(cls, values: Mapping[str, object]) -> "ResolvedPlannerOptions":
-        retained = tuple(sorted(values.items()))
-        return cls(retained, OptionIdentityState.VERIFIED, _digest(retained))
+        retained = tuple(values.items())
+        if any(type(key) is not str or not key for key, _ in retained):
+            raise InvalidPlannerOptionsError("Planner option names must be non-empty str.")
+        canonical = tuple(sorted(retained))
+        return cls(canonical, OptionIdentityState.VERIFIED, _digest(canonical))
 
     @classmethod
     def unverifiable(cls, values: Mapping[str, object]) -> "ResolvedPlannerOptions":
