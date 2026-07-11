@@ -141,6 +141,7 @@ plugins:
               modules: false
             type_parameter_headings: true
             unwrap_annotated: true
+  - autorefs
   - print-site
 
 nav:
@@ -149,6 +150,7 @@ nav:
   - CAD front-ends:
       - Overview: frontends.md
       - Grasshopper: frontends/ghpython.md
+      - Configuration Target: frontends/ghpython-configuration-target.md
   - Concepts: concepts.md
   - Backends:
       - Choosing a backend: backends/index.md

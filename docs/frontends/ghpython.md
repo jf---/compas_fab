@@ -5,6 +5,8 @@ kinematics, and plan motions on the canvas, the same data model and planning
 backends as the Python API, wired visually. They're ideal for exploring poses
 and targets interactively and for previewing trajectories in the Rhino viewport.
 
+- [Configuration Target tolerance policy](ghpython-configuration-target.md)
+
 Install them from the Rhino Package Manager (search `compas_fab`); the
 components then appear under the **COMPAS FAB** tab in the Grasshopper toolbar.
 If you're *building* or modifying the components, see

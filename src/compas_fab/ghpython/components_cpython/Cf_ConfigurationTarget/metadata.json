@@ -22,6 +22,11 @@
                 "name": "tolerance_below",
                 "description": "Per-joint lower tolerance list. Defaults to 0.001 m (prismatic) / 1 deg (revolute) per joint.",
                 "typeHintID": "float"
+            },
+            {
+                "name": "tolerance_policy",
+                "description": "Unwired keeps legacy defaults; legacy_defaults fills absence; preserve_absent delegates absence to the planner.",
+                "typeHintID": "str"
             }
         ],
         "outputParameters": [
