@@ -1,5 +1,5 @@
 # r: compas_fab>=2.0.1
-# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36
+# r: tesseract-robotics-nanobind==0.35.0.6
 """Build an exact, content-addressed Tesseract robot artifact.
 
 The component keeps URDF/SRDF text and every file in each referenced package.

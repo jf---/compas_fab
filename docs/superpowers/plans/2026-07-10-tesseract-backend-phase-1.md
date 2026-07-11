@@ -6,7 +6,7 @@
 
 **Architecture:** Existing COMPAS FAB calls compile into native Tesseract inputs and share one execution runtime with a lossless native entry point. Content-addressed robot artifacts initialize immutable Tesseract environments; every request plans against a clone. COMPAS `JointTrajectory` values are projections of a retained native result, never replacements for it.
 
-**Tech Stack:** Python 3.9/3.12, COMPAS 2, COMPAS Robots 1, `tesseract-robotics-nanobind` 0.35, Task Composer, pytest/xdist/testmon, mypy strict, Ruff, Rhino 8 CPython Grasshopper components, `compas-actions.ghpython_components`, Pixi.
+**Tech Stack:** Python 3.9/3.12, COMPAS 2, COMPAS Robots 1, `tesseract-robotics-nanobind` 0.35.0.6, Task Composer, pytest/xdist/testmon, mypy strict, Ruff, Rhino 8 CPython Grasshopper components, `compas-actions.ghpython_components`, Pixi.
 
 ## Global Constraints
 
@@ -72,7 +72,7 @@ def test_nanobind_runtime_is_installed_as_hard_dependency():
     import tesseract_robotics
 
     assert tesseract_robotics is not None
-    assert version("tesseract-robotics-nanobind").startswith("0.35.")
+    assert version("tesseract-robotics-nanobind") == "0.35.0.6"
 ```
 
 - [x] **Step 2: Run RED**
@@ -83,7 +83,7 @@ Expected: FAIL because the repository has no Pixi workspace or nanobind dependen
 
 - [x] **Step 3: Add the hard dependency and Pixi tasks**
 
-Add `tesseract-robotics-nanobind >=0.35.0.6,<0.36` to `requirements.txt`, pytest-xdist/testmon/mypy to development requirements, and `[tool.pixi.*]` tables in `pyproject.toml`. Public metadata and the macOS environment both resolve the released 0.35.0.6 build; Pixi declares the wheel's macOS 14 ARM64 system requirement.
+Add `tesseract-robotics-nanobind ==0.35.0.6` to `requirements.txt`, pytest-xdist/testmon/mypy to development requirements, and `[tool.pixi.*]` tables in `pyproject.toml`. Public metadata and the macOS environment both resolve the released 0.35.0.6 build; Pixi declares the wheel's macOS 14 ARM64 system requirement.
 
 - [x] **Step 4: Run GREEN and baseline**
 

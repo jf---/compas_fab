@@ -36,7 +36,7 @@ def test_identity_records_component_versions():
 
     assert identity.schema_version == "1"
     assert identity.compas_fab_version
-    assert identity.tesseract_version.startswith("0.35.")
+    assert identity.tesseract_version == "0.35.0.6"
 
 
 @pytest.mark.parametrize(("urdf", "srdf"), [("", SRDF), (URDF, ""), ("  ", SRDF)])

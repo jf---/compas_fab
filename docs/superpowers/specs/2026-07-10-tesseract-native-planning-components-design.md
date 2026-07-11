@@ -172,7 +172,7 @@ The authored `CompositeInstruction` connects directly to RAPID emission. A dense
 
 ## Grasshopper behavior
 
-All eight components use the released `tesseract-robotics-nanobind>=0.35.0.6,<0.36` CPython directive and compile through the locked Windows/Rhino 8 Python 3.9 job. Icons extend the existing Tesseract grey/teal system.
+All eight components use the released `tesseract-robotics-nanobind==0.35.0.6` CPython directive and compile through the locked Windows/Rhino 8 Python 3.9 job. Icons extend the existing Tesseract grey/teal system.
 
 Components catch adapter-owned `TesseractBackendError` failures only to report them on the Grasshopper component. No component catches generic exceptions, retries, substitutes values, writes files, or hides a native planning failure. Value-list controls expose exact native move types where appropriate.
 

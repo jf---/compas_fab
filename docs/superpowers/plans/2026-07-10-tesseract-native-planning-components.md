@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Require `tesseract-robotics-nanobind>=0.35.0.6,<0.36`; never install or import `tesseract_python` or `tesseract-python`.
+- Require `tesseract-robotics-nanobind==0.35.0.6`; never install or import `tesseract_python` or `tesseract-python`.
 - Python 3.9 is mandatory for Rhino 8; macOS ARM64/Python 3.12 remains the primary runtime.
 - Exact native values are the graph currency. COMPAS FAB never replaces them with a smaller target, profile, program, or trajectory model.
 - `Tesseract Pose` is the only geometry/unit conversion node and always requires explicit finite positive metres per user unit.
@@ -678,7 +678,7 @@ def test_native_authoring_component_contract(component, inputs, outputs, factory
     assert [item["name"] for item in metadata["ghpython"]["inputParameters"]] == inputs
     assert [item["name"] for item in metadata["ghpython"]["outputParameters"]] == outputs
     assert factory in code
-    assert "# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36" in code
+    assert "# r: tesseract-robotics-nanobind==0.35.0.6" in code
     assert "except TesseractBackendError" in code
     assert "except Exception" not in code
     assert _png_size(COMPONENTS / component / "icon.png") == (24, 24)

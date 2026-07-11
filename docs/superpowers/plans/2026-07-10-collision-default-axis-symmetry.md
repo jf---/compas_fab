@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- `tesseract-robotics-nanobind>=0.35.0.6,<0.36`; never install or import `tesseract_python`.
+- `tesseract-robotics-nanobind==0.35.0.6`; never install or import `tesseract_python`.
 - Python 3.9 compatibility is mandatory for Rhino 8.
 - Tesseract remains the planner and redundancy sampler; no COMPAS fallback or manual yaw enumeration.
 - `RobotArtifact.from_compas_urdf(...)` retains its required mesh-policy argument.

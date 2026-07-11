@@ -1,5 +1,5 @@
 # r: compas_fab>=2.0.1
-# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36
+# r: tesseract-robotics-nanobind==0.35.0.6
 """Convert a Rhino Plane or COMPAS Frame to an exact native metre Pose.
 
 The explicit scale is the only geometry-unit conversion in the native planning

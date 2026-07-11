@@ -30,7 +30,7 @@ The required distribution is `tesseract-robotics-nanobind`, which imports as
 `tesseract_robotics`. The older `tesseract-python` package is not used.
 
 ```bash
-pixi add --pypi compas_fab "tesseract-robotics-nanobind>=0.35.0.6,<0.36"
+pixi add --pypi compas_fab "tesseract-robotics-nanobind==0.35.0.6"
 ```
 
 For this repository, `pixi install` resolves the released 0.35.0.6 macOS ARM64
@@ -45,7 +45,7 @@ enforces the pthreads build on macOS ARM64 and Windows for both Pixi environment
 The current repository runtime baseline is macOS 14+ ARM64 with Python 3.12. Rhino
 8 component compilation is pinned to CPython 3.9, matching Rhino's embedded
 interpreter. The Grasshopper source components include an explicit
-`# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36` directive. Windows CI
+`# r: tesseract-robotics-nanobind==0.35.0.6` directive. Windows CI
 compiles the `.ghuser` objects and fails unless all twelve Tesseract user objects
 are present before artifact upload or publication. The generic Linux Python 3.9
 CI cell is excluded because released Linux nanobind wheels start at Python 3.10;

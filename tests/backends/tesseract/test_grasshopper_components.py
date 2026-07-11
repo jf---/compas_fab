@@ -165,7 +165,7 @@ def test_native_authoring_component_contract(
     assert [item["name"] for item in metadata["ghpython"]["inputParameters"]] == inputs
     assert [item["name"] for item in metadata["ghpython"]["outputParameters"]] == outputs
     assert factory in code
-    assert "# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36" in code
+    assert "# r: tesseract-robotics-nanobind==0.35.0.6" in code
     assert "except TesseractBackendError" in code
     assert "except Exception" not in code
     assert _png_size(COMPONENTS / component / "icon.png") == (24, 24)
@@ -343,7 +343,7 @@ def test_tesseract_components_require_nanobind_distribution_only():
         "Cf_TesseractNativeResult",
     ):
         code, _ = _component(name)
-        assert "# r: tesseract-robotics-nanobind>=0.35.0.6,<0.36" in code
+        assert "# r: tesseract-robotics-nanobind==0.35.0.6" in code
         assert ".dev" not in code
         assert "# r: tesseract-python" not in code
         assert "except Exception" not in code

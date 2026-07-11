@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Require `tesseract-robotics-nanobind>=0.35.0.6,<0.36`; never install or import `tesseract_python` or `tesseract-python`.
+- Require `tesseract-robotics-nanobind==0.35.0.6`; never install or import `tesseract_python` or `tesseract-python`.
 - Python 3.9 compatibility is mandatory for Rhino 8; macOS ARM64/Python 3.12 remains the primary runtime.
 - `TesseractRapidEmitter.emit` accepts only a native `CompositeInstruction`; it never unwraps planning requests/results or converts COMPAS trajectories.
 - Native `emit_rapid` remains the sole dispatcher, unit converter, and formatter; output must equal a direct native call byte-for-byte.

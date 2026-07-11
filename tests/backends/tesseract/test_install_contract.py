@@ -6,19 +6,21 @@ from pathlib import Path
 import pytest
 import yaml
 from packaging.version import Version
+from packaging.requirements import Requirement
 
 
 SOURCE = Path(__file__).parents[3] / "src" / "compas_fab" / "backends" / "tesseract"
 REQUIREMENTS = Path(__file__).parents[3] / "requirements.txt"
 PYPROJECT = Path(__file__).parents[3] / "pyproject.toml"
 PIXI_LOCK = Path(__file__).parents[3] / "pixi.lock"
+TESSERACT_DOC = Path(__file__).parents[3] / "docs" / "backends" / "tesseract.md"
 
 
 def test_nanobind_runtime_is_installed_as_hard_dependency():
     import tesseract_robotics
 
     assert tesseract_robotics is not None
-    assert Version(version("tesseract-robotics-nanobind")) >= Version("0.35.0.6")
+    assert Version(version("tesseract-robotics-nanobind")) == Version("0.35.0.6")
     with pytest.raises(PackageNotFoundError):
         version("tesseract-robotics")
 
@@ -26,8 +28,19 @@ def test_nanobind_runtime_is_installed_as_hard_dependency():
 def test_public_dependency_requires_released_nanobind_build():
     requirements = REQUIREMENTS.read_text(encoding="utf-8")
 
-    assert "tesseract-robotics-nanobind >= 0.35.0.6, < 0.36" in requirements
+    dependency = next(Requirement(line) for line in requirements.splitlines() if line.startswith("tesseract-robotics-nanobind"))
+
+    assert dependency.specifier == Requirement("tesseract-robotics-nanobind==0.35.0.6").specifier
+    assert Version("0.35.0.7") not in dependency.specifier
     assert ".dev" not in requirements
+
+
+def test_documentation_pins_exact_nanobind_build():
+    documentation = TESSERACT_DOC.read_text(encoding="utf-8")
+
+    assert '"tesseract-robotics-nanobind==0.35.0.6"' in documentation
+    assert "# r: tesseract-robotics-nanobind==0.35.0.6" in documentation
+    assert "tesseract-robotics-nanobind>=" not in documentation
 
 
 def test_pixi_uses_pthreads_blas_beside_nanobind_bundled_openmp():
