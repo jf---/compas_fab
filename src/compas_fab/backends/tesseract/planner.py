@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from compas_fab.backends.interfaces.planner import PlannerInterface
+from compas_fab.backends.interfaces.planner_capabilities import ConfigurationTolerancePolicy
+from compas_fab.backends.interfaces.planner_capabilities import PlannerCapabilities
+from compas_fab.backends.interfaces.planner_capabilities import PlannerImplementationId
+from compas_fab.backends.interfaces.planner_operation import PlannerOperation
 
 from .backend_features.check_collision import TesseractCheckCollision
 from .backend_features.forward_kinematics import TesseractForwardKinematics
@@ -12,6 +16,7 @@ from .backend_features.set_robot_cell import TesseractSetRobotCell
 from .client import TesseractClient
 from .native import TesseractPlanningRequest
 from .native import TesseractPlanningResult
+from .options import TesseractPlanOptions
 
 
 class TesseractPlanner(
@@ -23,6 +28,18 @@ class TesseractPlanner(
     PlannerInterface,
 ):
     """Expose native Tesseract planning and existing COMPAS projections."""
+
+    implementation_id = PlannerImplementationId.build("compas_fab.tesseract/v1")
+    capabilities = PlannerCapabilities.build(
+        implementation_id,
+        (
+            PlannerOperation.INVERSE_KINEMATICS,
+            PlannerOperation.PLAN_MOTION,
+            PlannerOperation.CHECK_COLLISION,
+        ),
+        ConfigurationTolerancePolicy.PRESERVE_ABSENT,
+    )
+    plan_motion_options = TesseractPlanOptions
 
     _client: TesseractClient
 

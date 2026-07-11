@@ -9,6 +9,10 @@ from attrs import define
 from tesseract_robotics.planning.profiles import create_freespace_pipeline_profiles
 from tesseract_robotics.tesseract_command_language import ProfileDictionary
 
+from compas_fab.backends.interfaces.planner_errors import ConflictingPlannerOptionsError
+from compas_fab.backends.interfaces.planner_options import PlanMotionLegacyOptions
+from compas_fab.backends.interfaces.planner_options import ResolvedPlannerOptions
+
 from .errors import InvalidTesseractPipelineError
 from .errors import InvalidTesseractProfilesError
 from .errors import MissingTesseractProfilesError
@@ -25,6 +29,23 @@ class TesseractPlanOptions:
     pipeline: str
     profiles: ProfileDictionary
     auto_seed: bool
+
+    @classmethod
+    def resolve(
+        cls,
+        legacy: PlanMotionLegacyOptions,
+        native: Optional[Mapping[str, object]],
+    ) -> ResolvedPlannerOptions:
+        if legacy.connected:
+            raise ConflictingPlannerOptionsError("Tesseract has no legacy Plan Motion option ports.")
+        options = cls.build(native)
+        return ResolvedPlannerOptions.unverifiable(
+            {
+                "pipeline": options.pipeline,
+                "profiles": options.profiles,
+                "auto_seed": options.auto_seed,
+            }
+        )
 
     @classmethod
     def build(cls, options: Optional[Mapping[str, object]]) -> TesseractPlanOptions:
