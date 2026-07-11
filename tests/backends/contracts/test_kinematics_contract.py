@@ -1,7 +1,7 @@
-from compas.data import json_dumps
+from compas.data import json_dumps  # type: ignore[import-untyped]
 import pytest
 
-from compas_fab.robots import FrameTarget
+from compas_fab.robots import FrameTarget  # type: ignore[import-untyped]
 from compas_fab.robots import TargetMode
 
 from .assertions import assert_frames_close
@@ -11,7 +11,7 @@ from .model import PlannerContractHarness
 
 def test_fk_and_ik_leave_input_state_unchanged(
     kinematics_harness: PlannerContractHarness,
-):
+) -> None:
     state = kinematics_harness.robot_cell_state
     before = json_dumps(state)
     group = kinematics_harness.robot_cell.main_group_name
@@ -20,6 +20,8 @@ def test_fk_and_ik_leave_input_state_unchanged(
         TargetMode.ROBOT,
         group=group,
     )
+    assert json_dumps(state) == before
+
     solutions = list(
         kinematics_harness.planner.iter_inverse_kinematics(
             FrameTarget(frame, TargetMode.ROBOT),
@@ -27,14 +29,13 @@ def test_fk_and_ik_leave_input_state_unchanged(
             group=group,
         )
     )
-
-    assert solutions
     assert json_dumps(state) == before
+    assert solutions
 
 
 def test_fk_ik_round_trip_preserves_group_order(
     kinematics_harness: PlannerContractHarness,
-):
+) -> None:
     cell = kinematics_harness.robot_cell
     state = kinematics_harness.robot_cell_state
     group = cell.main_group_name
@@ -73,7 +74,7 @@ def test_fk_ik_round_trip_preserves_group_order(
 def test_unknown_group_fails_with_backend_error(
     kinematics_case: PlannerContractCase,
     kinematics_harness: PlannerContractHarness,
-):
+) -> None:
     with pytest.raises(kinematics_case.unknown_group_error):
         kinematics_harness.planner.forward_kinematics(
             kinematics_harness.robot_cell_state,

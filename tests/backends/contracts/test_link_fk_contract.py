@@ -1,10 +1,10 @@
-from compas_fab.robots import TargetMode
+from compas_fab.robots import TargetMode  # type: ignore[import-untyped]
 
 from .assertions import assert_frames_close
 from .model import PlannerContractHarness
 
 
-def test_link_fk_matches_robot_target_fk(link_fk_harness: PlannerContractHarness):
+def test_link_fk_matches_robot_target_fk(link_fk_harness: PlannerContractHarness) -> None:
     cell = link_fk_harness.robot_cell
     state = link_fk_harness.robot_cell_state
     group = cell.main_group_name
