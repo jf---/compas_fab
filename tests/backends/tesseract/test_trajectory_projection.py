@@ -9,6 +9,7 @@ from tesseract_robotics.tesseract_command_language import SetDigitalInstruction
 
 from compas_fab.backends.tesseract.conversions import joint_trajectory_from_result
 from compas_fab.backends.tesseract.errors import InconsistentTesseractJointOrderError
+from compas_fab.backends.tesseract.errors import MalformedTesseractTrajectoryError
 from compas_fab.backends.tesseract.errors import MissingTesseractJointTypeError
 from compas_fab.backends.tesseract.errors import MissingTesseractTrajectoryFieldError
 from compas_fab.backends.tesseract.errors import NonMonotonicTesseractTrajectoryError
@@ -87,3 +88,16 @@ def test_decreasing_native_time_fails_loudly():
 
     with pytest.raises(NonMonotonicTesseractTrajectoryError):
         joint_trajectory_from_result(_result(points), JOINT_TYPES)
+
+
+@pytest.mark.parametrize("field", ["positions", "velocities", "accelerations"])
+@pytest.mark.parametrize("invalid_value", [float("nan"), float("inf"), -float("inf")])
+def test_non_finite_native_vector_fails_before_compas_projection(
+    field,
+    invalid_value,
+):
+    point = _point()
+    setattr(point, field, np.array([0.0, invalid_value]))
+
+    with pytest.raises(MalformedTesseractTrajectoryError, match=field):
+        joint_trajectory_from_result(_result([point]), JOINT_TYPES)

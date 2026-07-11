@@ -7,7 +7,6 @@ from collections.abc import Iterable
 from typing import Optional
 from typing import TypeVar
 
-import numpy as np
 from attrs import define
 from tesseract_robotics.planning import TrajectoryPoint
 from tesseract_robotics.planning.composer import PlanningResult
@@ -20,6 +19,7 @@ from .native_quantities import NativeJointAcceleration
 from .native_quantities import NativeJointPosition
 from .native_quantities import NativeJointVelocity
 from .native_quantities import NativeTimeSeconds
+from .native_trajectory_vector import finite_native_vector
 
 OptionalRowValue = TypeVar("OptionalRowValue")
 
@@ -152,11 +152,12 @@ def _validated_trajectory(
         position_rows.append(
             tuple(
                 NativeJointPosition(value)
-                for value in _numeric_vector(
+                for value in finite_native_vector(
                     point.positions,
                     "positions",
                     index,
                     len(joint_names),
+                    MalformedTesseractNativeResultError,
                 )
             )
         )
@@ -198,33 +199,6 @@ def _joint_names(value: object) -> tuple[str, ...]:
     return tuple(names)
 
 
-def _numeric_vector(
-    value: object,
-    name: str,
-    point_index: int,
-    expected_size: int,
-) -> tuple[float, ...]:
-    try:
-        raw = np.asarray(value, dtype=object)
-        array = np.asarray(value, dtype=np.float64)
-    except (TypeError, ValueError) as vector_error:
-        raise MalformedTesseractNativeResultError(
-            "Native point {} {} is not a numeric vector.".format(
-                point_index,
-                name,
-            )
-        ) from vector_error
-    if raw.ndim != 1 or any(isinstance(item, (bool, np.bool_)) for item in raw) or array.ndim != 1 or array.size != expected_size or not np.isfinite(array).all():
-        raise MalformedTesseractNativeResultError(
-            "Native point {} {} must contain {} finite values.".format(
-                point_index,
-                name,
-                expected_size,
-            )
-        )
-    return tuple(float(item) for item in array)
-
-
 def _optional_velocity_row(
     value: object,
     point_index: int,
@@ -234,11 +208,12 @@ def _optional_velocity_row(
         return None
     return tuple(
         NativeJointVelocity(item)
-        for item in _numeric_vector(
+        for item in finite_native_vector(
             value,
             "velocities",
             point_index,
             expected_size,
+            MalformedTesseractNativeResultError,
         )
     )
 
@@ -252,11 +227,12 @@ def _optional_acceleration_row(
         return None
     return tuple(
         NativeJointAcceleration(item)
-        for item in _numeric_vector(
+        for item in finite_native_vector(
             value,
             "accelerations",
             point_index,
             expected_size,
+            MalformedTesseractNativeResultError,
         )
     )
 

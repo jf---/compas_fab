@@ -6,9 +6,6 @@ import math
 from typing import Mapping
 from typing import Optional
 
-import numpy as np
-from numpy.typing import NDArray
-
 from compas_fab.robots import Duration
 from compas_fab.robots import JointTrajectory
 from compas_fab.robots import JointTrajectoryPoint
@@ -21,6 +18,7 @@ from .errors import MissingTesseractTrajectoryFieldError
 from .errors import MissingTesseractTrajectoryNativeResultError
 from .errors import NonMonotonicTesseractTrajectoryError
 from .native import TesseractPlanningResult
+from .native_trajectory_vector import finite_native_vector
 
 NANOSECONDS_PER_SECOND = 1_000_000_000
 _NATIVE_RESULT_ATTRIBUTE = "_tesseract_native_result"
@@ -77,19 +75,34 @@ def joint_trajectory_from_result(
         if time < 0.0 or (previous_time is not None and time < previous_time):
             raise NonMonotonicTesseractTrajectoryError("Native trajectory time decreases from {} to {} at point {}.".format(previous_time, time, point_index))
 
-        positions = native_point.positions.tolist()
-        velocity_values = velocities.tolist()
-        acceleration_values = accelerations.tolist()
-        field_lengths = (len(positions), len(velocity_values), len(acceleration_values))
-        if any(length != len(names) for length in field_lengths):
-            raise MalformedTesseractTrajectoryError("Native point {} field lengths {} do not match {} joint names.".format(point_index, field_lengths, len(names)))
+        positions = finite_native_vector(
+            native_point.positions,
+            "positions",
+            point_index,
+            len(names),
+            MalformedTesseractTrajectoryError,
+        )
+        velocity_values = finite_native_vector(
+            velocities,
+            "velocities",
+            point_index,
+            len(names),
+            MalformedTesseractTrajectoryError,
+        )
+        acceleration_values = finite_native_vector(
+            accelerations,
+            "accelerations",
+            point_index,
+            len(names),
+            MalformedTesseractTrajectoryError,
+        )
 
         points.append(
             JointTrajectoryPoint(
-                joint_values=positions,
+                joint_values=list(positions),
                 joint_types=ordered_joint_types,
-                velocities=velocity_values,
-                accelerations=acceleration_values,
+                velocities=list(velocity_values),
+                accelerations=list(acceleration_values),
                 effort=[0.0] * len(names),
                 time_from_start=_duration_from_seconds(time),
                 joint_names=names,
@@ -124,10 +137,10 @@ def native_result_from_trajectory(trajectory: JointTrajectory) -> TesseractPlann
 
 
 def _required_field(
-    value: Optional[NDArray[np.float64]],
+    value: object,
     name: str,
     point_index: int,
-) -> NDArray[np.float64]:
+) -> object:
     if value is None:
         raise MissingTesseractTrajectoryFieldError("Native trajectory field {!r} is missing at point {}.".format(name, point_index))
     return value
