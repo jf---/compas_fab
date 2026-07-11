@@ -102,6 +102,13 @@ def test_publish_before_observation_fails_named() -> None:
         state.publish(identity("first"), "unobserved")
 
 
+def test_fail_before_observation_preserves_superseded_semantics() -> None:
+    state = CurrentOutputState[str].build()
+
+    with pytest.raises(SupersededComponentOutputError):
+        state.fail(identity("first"))
+
+
 @pytest.mark.parametrize("operation", ("observe", "publish", "fail", "current"))
 @pytest.mark.parametrize("invalid_identity", (None, object()))
 def test_state_operations_reject_identity_free_values_with_named_error(operation, invalid_identity) -> None:

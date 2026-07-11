@@ -79,8 +79,6 @@ class CurrentOutputState(Generic[T]):
 
     def fail(self, identity: ComponentInputIdentity) -> None:
         identity = self._validated_identity(identity)
-        if self._identity is None:
-            raise InvalidCurrentOutputTransitionError("Cannot fail output before observing its identity.")
         if identity != self._identity:
             raise SupersededComponentOutputError("Cannot fail superseded output.")
         self._value = None
