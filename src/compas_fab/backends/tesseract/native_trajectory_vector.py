@@ -25,13 +25,7 @@ def finite_native_vector(
                 name,
             )
         ) from vector_error
-    if (
-        raw.ndim != 1
-        or any(isinstance(item, (bool, np.bool_)) for item in raw)
-        or array.ndim != 1
-        or array.size != expected_size
-        or not np.isfinite(array).all()
-    ):
+    if raw.ndim != 1 or any(isinstance(item, (bool, np.bool_)) for item in raw) or array.ndim != 1 or array.size != expected_size or not np.isfinite(array).all():
         raise error_type(
             "Native point {} {} must contain {} finite values.".format(
                 point_index,
