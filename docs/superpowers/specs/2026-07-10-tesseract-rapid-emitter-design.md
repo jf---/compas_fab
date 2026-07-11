@@ -113,7 +113,7 @@ The emitter remains independent of planning provenance: it sees only the authore
 ## Deferred scope
 
 - No ABB controller upload, Robot Web Services integration, or execution control.
-- No RAPID parser, simulator, formatter fork, or RobotComponents action model.
+- No RAPID parser, simulator, formatter fork, or third-party action model.
 - No automatic conversion from COMPAS `JointTrajectory`, `TesseractPlanningRequest`, or `TesseractPlanningResult`.
 - No circular-motion reconstruction when the native emitter rejects a `CompositeInstruction` lacking a via point.
 - No automatic file saving from Grasshopper.
