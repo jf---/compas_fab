@@ -50,7 +50,7 @@ class MaterializedArtifact:
             UnsafeRobotResourceUrlError: A URL contains unsafe path traversal.
             RobotResourceContainmentError: A resolved target escapes the artifact root.
         """
-        root = (cache_root / artifact.identity.digest).resolve()
+        root = _contained_artifact_root(cache_root, artifact.identity.digest)
         materialized = tuple(_materialize_resource(root, resource) for resource in artifact.resources)
         return cls(root, materialized)
 
@@ -123,3 +123,17 @@ def _contained_target(root: Path, relative_path: Path, url: str) -> Path:
             )
         ) from error
     return resolved_target
+
+
+def _contained_artifact_root(cache_root: Path, digest: str) -> Path:
+    resolved_cache_root = cache_root.resolve()
+    resolved_artifact_root = (resolved_cache_root / digest).resolve()
+    if resolved_artifact_root.parent != resolved_cache_root:
+        raise RobotResourceContainmentError(
+            "Artifact {} resolves outside cache root {}: {}.".format(
+                digest,
+                resolved_cache_root,
+                resolved_artifact_root,
+            )
+        )
+    return resolved_artifact_root

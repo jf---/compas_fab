@@ -114,6 +114,25 @@ def test_materialization_target_cannot_follow_symlink_outside_artifact_root(
     assert not (outside / "one_joint" / "clouds" / "workpiece.pcd").exists()
 
 
+def test_materialization_rejects_digest_directory_symlink_outside_cache_root(
+    tmp_path,
+):
+    artifact = _artifact({"package://one_joint/clouds/workpiece.pcd": b"point-cloud"})
+    cache_root = tmp_path / "cache"
+    cache_root.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (cache_root / artifact.identity.digest).symlink_to(
+        outside,
+        target_is_directory=True,
+    )
+
+    with pytest.raises(RobotResourceContainmentError, match="cache root"):
+        MaterializedArtifact.build(artifact, cache_root)
+
+    assert not (outside / "package" / "one_joint" / "clouds" / "workpiece.pcd").exists()
+
+
 def test_unknown_resource_fails_loudly(tmp_path):
     environment = TesseractEnvironment.build(_artifact(), tmp_path)
 
