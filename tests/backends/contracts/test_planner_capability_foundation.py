@@ -26,6 +26,21 @@ class _TupleSubclass(tuple):
     pass
 
 
+class _BrokenSequence(list):
+    def __iter__(self):
+        raise TypeError("broken sequence")
+
+
+class _BrokenItemsMapping(dict):
+    def items(self):
+        raise AttributeError("broken items")
+
+
+class _MalformedItemsMapping(dict):
+    def items(self):
+        return (("planner_id",),)
+
+
 def test_all_five_exact_declarations_and_adapters() -> None:
     expected = (
         (
@@ -152,7 +167,14 @@ def test_resolved_option_factories_reject_non_mapping_inputs_with_named_error(fa
         factory(values)
 
 
-@pytest.mark.parametrize("operations", (None, object(), 4))
+@pytest.mark.parametrize("values", (_BrokenItemsMapping(), _MalformedItemsMapping()))
+@pytest.mark.parametrize("factory", (ResolvedPlannerOptions.verified, ResolvedPlannerOptions.unverifiable))
+def test_resolved_option_factories_translate_malformed_mapping_snapshots(factory, values) -> None:
+    with pytest.raises(InvalidPlannerOptionsError):
+        factory(values)
+
+
+@pytest.mark.parametrize("operations", (None, object(), 4, _BrokenSequence()))
 def test_capability_factory_rejects_non_sequence_operations_with_named_error(operations) -> None:
     with pytest.raises(InvalidPlannerCapabilitiesError):
         PlannerCapabilities.build(

@@ -78,6 +78,18 @@ def _digest(values: Tuple[Tuple[str, object], ...]) -> str:
     return sha256(payload).hexdigest()
 
 
+def _mapping_items(values: Mapping[str, object]) -> Tuple[Tuple[str, object], ...]:
+    if not isinstance(values, RuntimeMapping):
+        raise InvalidPlannerOptionsError("Planner options must be a mapping.")
+    try:
+        retained = tuple(values.items())
+    except (AttributeError, TypeError) as error:
+        raise InvalidPlannerOptionsError("Planner options must expose valid mapping items.") from error
+    if any(type(pair) is not tuple or len(pair) != 2 for pair in retained):
+        raise InvalidPlannerOptionsError("Each planner option must be an exact key-value tuple.")
+    return retained
+
+
 @define(frozen=True, slots=True)
 class ResolvedPlannerOptions:
     values: Tuple[Tuple[str, object], ...]
@@ -86,9 +98,7 @@ class ResolvedPlannerOptions:
 
     @classmethod
     def verified(cls, values: Mapping[str, object]) -> "ResolvedPlannerOptions":
-        if not isinstance(values, RuntimeMapping):
-            raise InvalidPlannerOptionsError("Planner options must be a mapping.")
-        retained = tuple(values.items())
+        retained = _mapping_items(values)
         if any(type(key) is not str or not key for key, _ in retained):
             raise InvalidPlannerOptionsError("Planner option names must be non-empty str.")
         canonical = tuple(sorted(retained))
@@ -96,9 +106,7 @@ class ResolvedPlannerOptions:
 
     @classmethod
     def unverifiable(cls, values: Mapping[str, object]) -> "ResolvedPlannerOptions":
-        if not isinstance(values, RuntimeMapping):
-            raise InvalidPlannerOptionsError("Planner options must be a mapping.")
-        return cls(tuple(values.items()), OptionIdentityState.UNVERIFIABLE, None)
+        return cls(_mapping_items(values), OptionIdentityState.UNVERIFIABLE, None)
 
     def __attrs_post_init__(self) -> None:
         if type(self.identity_state) is not OptionIdentityState:

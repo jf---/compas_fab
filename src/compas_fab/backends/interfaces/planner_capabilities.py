@@ -50,7 +50,11 @@ class PlannerCapabilities:
         )
         if invalid:
             raise InvalidPlannerCapabilitiesError("Planner capability inputs are inconsistent.")
-        return cls(implementation_id, tuple(operations), tolerance_policy)
+        try:
+            retained_operations = tuple(operations)
+        except (AttributeError, TypeError) as error:
+            raise InvalidPlannerCapabilitiesError("Planner operations must be a valid sequence.") from error
+        return cls(implementation_id, retained_operations, tolerance_policy)
 
     def __attrs_post_init__(self) -> None:
         invalid = (
