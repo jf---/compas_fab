@@ -9,6 +9,7 @@ from compas_fab.backends.tesseract.errors import AmbiguousRobotPackageError
 from compas_fab.backends.tesseract.errors import InvalidRobotResourceError
 from compas_fab.backends.tesseract.errors import MissingRobotPackageError
 from compas_fab.backends.tesseract.errors import MissingRobotResourceRootError
+from compas_fab.backends.tesseract.errors import RobotResourceContainmentError
 
 
 URDF = """<?xml version="1.0"?>
@@ -157,6 +158,24 @@ def test_loader_rejects_symlinked_package_outside_resource_root(tmp_path):
     )
 
     with pytest.raises(InvalidRobotResourceError, match="direct child"):
+        loader.load(CollisionMeshPolicy.PRESERVE)
+
+
+def test_loader_rejects_package_file_symlink_outside_package(tmp_path):
+    urdf_path, srdf_path = _write_descriptions(tmp_path)
+    resource_root = tmp_path / "resources"
+    package = resource_root / "robot_support"
+    (package / "meshes").mkdir(parents=True)
+    outside = tmp_path / "outside.dae"
+    outside.write_bytes(b"escaped mesh")
+    (package / "meshes" / "base.dae").symlink_to(outside)
+    loader = RobotArtifactLoader.build(
+        urdf_path,
+        srdf_path,
+        [ResourceRoot.build(resource_root)],
+    )
+
+    with pytest.raises(RobotResourceContainmentError, match="package directory"):
         loader.load(CollisionMeshPolicy.PRESERVE)
 
 

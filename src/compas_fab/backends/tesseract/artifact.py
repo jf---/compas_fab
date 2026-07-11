@@ -18,6 +18,7 @@ from .errors import InvalidUrdfError
 from .errors import KinematicsPluginConflictError
 from .errors import RobotArtifactIdentityMismatchError
 from .identity import BuildIdentity
+from .resource_url import PackageResourceUrl
 
 TESSERACT_XML_NAMESPACE = "https://github.com/tesseract-robotics/tesseract"
 TESSERACT_MAKE_CONVEX_ATTRIBUTE = "{{{}}}make_convex".format(TESSERACT_XML_NAMESPACE)
@@ -162,8 +163,16 @@ class RobotArtifact:
 
         Returns:
             Immutable, content-addressed artifact.
+
+        Raises:
+            InvalidRobotResourceError: A resource URL or payload is invalid.
         """
-        artifact_resources = tuple(RobotResource.build(url, resources[url]) for url in sorted(resources))
+        artifact_resources = tuple(
+            sorted(
+                (RobotResource.build(url, content) for url, content in resources.items()),
+                key=lambda resource: resource.url,
+            )
+        )
         identity = BuildIdentity.build(
             urdf,
             srdf,
@@ -314,11 +323,10 @@ class RobotArtifact:
 
 
 def _validate_resource(url: object, content: object) -> tuple[str, bytes]:
-    if not isinstance(url, str) or not url:
-        raise InvalidRobotResourceError("Robot resource URL must be non-empty text.")
+    normalized_url = PackageResourceUrl.build(url)
     if not isinstance(content, bytes):
         raise InvalidRobotResourceError("Robot resource {!r} must contain bytes, got {}.".format(url, type(content).__name__))
-    return url, bytes(content)
+    return normalized_url.value, bytes(content)
 
 
 def _validate_artifact_resources(resources: object) -> tuple[RobotResource, ...]:

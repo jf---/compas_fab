@@ -89,8 +89,12 @@ class InvalidSrdfError(TesseractBackendError):
     """A source string is not a valid SRDF robot document."""
 
 
-class UnsafeRobotResourceUrlError(TesseractBackendError):
+class UnsafeRobotResourceUrlError(InvalidRobotResourceError):
     """A robot resource URL would escape its content-addressed root."""
+
+
+class RobotResourceContainmentError(InvalidRobotResourceError):
+    """A robot resource filesystem path escapes its declared owning root."""
 
 
 class ArtifactMaterializationError(TesseractBackendError):

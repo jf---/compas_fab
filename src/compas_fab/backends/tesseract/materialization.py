@@ -5,8 +5,6 @@ from __future__ import annotations
 import hashlib
 import uuid
 from pathlib import Path
-from pathlib import PurePosixPath
-from urllib.parse import urlsplit
 
 from attrs import define
 from tesseract_robotics.tesseract_common import Resource
@@ -16,8 +14,9 @@ from tesseract_robotics.tesseract_common import SimpleLocatedResource
 from .artifact import RobotArtifact
 from .artifact import RobotResource
 from .errors import ArtifactMaterializationError
+from .errors import RobotResourceContainmentError
 from .errors import UnknownRobotResourceError
-from .errors import UnsafeRobotResourceUrlError
+from .resource_url import PackageResourceUrl
 
 
 @define(frozen=True, slots=True)
@@ -49,8 +48,9 @@ class MaterializedArtifact:
         Raises:
             ArtifactMaterializationError: Existing bytes disagree with the artifact.
             UnsafeRobotResourceUrlError: A URL contains unsafe path traversal.
+            RobotResourceContainmentError: A resolved target escapes the artifact root.
         """
-        root = cache_root / artifact.identity.digest
+        root = (cache_root / artifact.identity.digest).resolve()
         materialized = tuple(_materialize_resource(root, resource) for resource in artifact.resources)
         return cls(root, materialized)
 
@@ -81,7 +81,12 @@ class ArtifactResourceLocator(ResourceLocator):
 
 
 def _materialize_resource(root: Path, resource: RobotResource) -> MaterializedResource:
-    target = root / _relative_resource_path(resource.url)
+    normalized_url = PackageResourceUrl.build(resource.url)
+    target = _contained_target(
+        root,
+        normalized_url.materialization_path,
+        resource.url,
+    )
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists():
         _assert_materialized_content(target, resource)
@@ -104,16 +109,17 @@ def _assert_materialized_content(path: Path, resource: RobotResource) -> None:
         raise ArtifactMaterializationError("Materialized resource {!r} has digest {}, expected {}.".format(resource.url, actual_digest, expected_digest))
 
 
-def _relative_resource_path(url: str) -> Path:
-    parsed = urlsplit(url)
-    raw_parts = PurePosixPath(parsed.path).parts
-    path_parts = tuple(part for part in raw_parts if part not in ("", "/", "."))
-    if not path_parts or ".." in path_parts:
-        raise UnsafeRobotResourceUrlError("Robot resource URL has unsafe path: {!r}.".format(url))
-
-    scheme = parsed.scheme or "relative"
-    authority = parsed.netloc or "local"
-    variant = hashlib.sha256(url.encode("utf-8")).hexdigest() if parsed.query or parsed.fragment else None
-    if variant is None:
-        return Path(scheme, authority, *path_parts)
-    return Path(scheme, authority, "variants", variant, *path_parts)
+def _contained_target(root: Path, relative_path: Path, url: str) -> Path:
+    resolved_root = root.resolve()
+    resolved_target = (resolved_root / relative_path).resolve()
+    try:
+        resolved_target.relative_to(resolved_root)
+    except ValueError as error:
+        raise RobotResourceContainmentError(
+            "Robot resource {!r} materializes outside artifact root {}: {}.".format(
+                url,
+                resolved_root,
+                resolved_target,
+            )
+        ) from error
+    return resolved_target

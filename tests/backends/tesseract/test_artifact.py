@@ -15,6 +15,7 @@ from compas_fab.backends.tesseract.errors import ContactManagerPluginConflictErr
 from compas_fab.backends.tesseract.errors import KinematicsPluginConflictError
 from compas_fab.backends.tesseract.errors import InvalidRobotResourceError
 from compas_fab.backends.tesseract.errors import RobotArtifactIdentityMismatchError
+from compas_fab.backends.tesseract.errors import UnsafeRobotResourceUrlError
 from compas_fab.backends.tesseract.identity import BuildIdentity
 from compas_fab.robots import RobotSemantics
 
@@ -68,6 +69,24 @@ def test_artifact_identity_covers_exact_inputs():
 def test_resource_raw_constructor_cannot_bypass_invariants():
     with pytest.raises(InvalidRobotResourceError):
         RobotResource("", b"content")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "package://panda//etc/passwd",
+        "package://panda/../secret.stl",
+        r"package://panda/..\secret.stl",
+        r"package://panda/C:\secret.stl",
+        "package://panda/nested/C:/secret.stl",
+        "package://C:/secret.stl",
+    ],
+)
+def test_artifact_rejects_unsafe_package_resource_url(url):
+    urdf, srdf = _descriptions()
+
+    with pytest.raises(UnsafeRobotResourceUrlError, match="package resource URL"):
+        RobotArtifact.build(urdf, srdf, {url: b"escaped"})
 
 
 def test_artifact_raw_constructor_rejects_arbitrary_resources():

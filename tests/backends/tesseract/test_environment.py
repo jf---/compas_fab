@@ -7,6 +7,9 @@ from compas_fab.backends.tesseract.artifact import RobotArtifact
 from compas_fab.backends.tesseract.environment import TesseractEnvironment
 from compas_fab.backends.tesseract.errors import TesseractEnvironmentInitializationError
 from compas_fab.backends.tesseract.errors import UnknownRobotResourceError
+from compas_fab.backends.tesseract.errors import RobotResourceContainmentError
+from compas_fab.backends.tesseract.errors import UnsafeRobotResourceUrlError
+from compas_fab.backends.tesseract.materialization import MaterializedArtifact
 
 
 URDF = """<?xml version="1.0"?>
@@ -71,6 +74,44 @@ def test_resources_are_materialized_under_build_identity(tmp_path):
 
     assert located_path.read_bytes() == b"point-cloud"
     assert artifact.identity.digest in located_path.parts
+    assert located_path.relative_to(environment.materialized.root).parts == (
+        "package",
+        "one_joint",
+        "clouds",
+        "workpiece.pcd",
+    )
+
+
+def test_materialization_revalidates_retained_resource_url(tmp_path):
+    artifact = _artifact({"package://one_joint/clouds/workpiece.pcd": b"point-cloud"})
+    object.__setattr__(
+        artifact.resources[0],
+        "url",
+        "package://one_joint//escaped.pcd",
+    )
+
+    with pytest.raises(UnsafeRobotResourceUrlError, match="package resource URL"):
+        MaterializedArtifact.build(artifact, tmp_path)
+
+
+def test_materialization_target_cannot_follow_symlink_outside_artifact_root(
+    tmp_path,
+):
+    artifact = _artifact({"package://one_joint/clouds/workpiece.pcd": b"point-cloud"})
+    cache_root = tmp_path / "cache"
+    artifact_root = cache_root / artifact.identity.digest
+    artifact_root.mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (artifact_root / "package").symlink_to(
+        outside,
+        target_is_directory=True,
+    )
+
+    with pytest.raises(RobotResourceContainmentError, match="artifact root"):
+        MaterializedArtifact.build(artifact, cache_root)
+
+    assert not (outside / "one_joint" / "clouds" / "workpiece.pcd").exists()
 
 
 def test_unknown_resource_fails_loudly(tmp_path):

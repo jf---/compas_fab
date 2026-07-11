@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from pathlib import PurePosixPath
-from pathlib import PureWindowsPath
 from typing import Sequence
-from urllib.parse import urlsplit
 from xml.etree import ElementTree
 
 from attrs import define
@@ -24,7 +21,9 @@ from .errors import MissingRobotDescriptionFileError
 from .errors import MissingRobotPackageError
 from .errors import MissingRobotResourceRootError
 from .errors import RobotDescriptionReadError
+from .errors import RobotResourceContainmentError
 from .errors import RobotResourceReadError
+from .resource_url import PackageResourceUrl
 
 
 @define(frozen=True, slots=True)
@@ -125,11 +124,11 @@ class RobotArtifactLoader:
             AmbiguousRobotPackageError: Multiple roots contain a package.
             InvalidRobotResourceError: A referenced package URL is unsafe or absent.
         """
-        urls = _package_urls(self.urdf, "URDF") | _package_urls(self.srdf, "SRDF")
-        package_names = sorted(urlsplit(url).netloc for url in urls)
+        normalized_urls = _package_urls(self.urdf, "URDF") | _package_urls(self.srdf, "SRDF")
+        package_names = sorted({url.package for url in normalized_urls})
         packages = {package_name: _resolve_package(package_name, self.resource_roots) for package_name in package_names}
         resources = _read_packages(packages)
-        _assert_referenced_resources(urls, resources)
+        _assert_referenced_resources({url.value for url in normalized_urls}, resources)
         return RobotArtifact.from_compas_urdf(
             self.urdf,
             self.srdf,
@@ -153,25 +152,14 @@ def _read_description(path: Path, kind: str) -> str:
         raise InvalidRobotDescriptionEncodingError("{} description is not UTF-8: {}.".format(kind, path)) from error
 
 
-def _package_urls(description: str, kind: str) -> set[str]:
+def _package_urls(description: str, kind: str) -> set[PackageResourceUrl]:
     try:
         root = ElementTree.fromstring(description)
     except ElementTree.ParseError as error:
         error_type = InvalidUrdfError if kind == "URDF" else InvalidSrdfError
         raise error_type("{} XML cannot be parsed: {}".format(kind, error)) from error
 
-    urls = {value for element in root.iter() for value in element.attrib.values() if value.startswith("package://")}
-    for url in urls:
-        parsed = urlsplit(url)
-        parts = PurePosixPath(parsed.path).parts
-        if parsed.scheme != "package" or not _is_safe_package_authority(parsed.netloc) or not parts or ".." in parts or parsed.query or parsed.fragment:
-            raise InvalidRobotResourceError("{} contains invalid package resource URL {!r}.".format(kind, url))
-    return urls
-
-
-def _is_safe_package_authority(authority: str) -> bool:
-    windows_path = PureWindowsPath(authority)
-    return bool(authority) and authority not in (".", "..") and not windows_path.drive and not windows_path.root and windows_path.parts == (authority,)
+    return {PackageResourceUrl.build(value) for element in root.iter() for value in element.attrib.values() if value.startswith("package://")}
 
 
 def _resolve_package(
@@ -185,7 +173,7 @@ def _resolve_package(
             continue
         resolved_path = declared_path.resolve()
         if resolved_path.parent != root.path:
-            raise InvalidRobotResourceError(
+            raise RobotResourceContainmentError(
                 "Referenced robot package {!r} must resolve to a direct child of resource root {}, got {}.".format(
                     package_name,
                     root.path,
@@ -211,10 +199,21 @@ def _read_packages(packages: dict[str, Path]) -> dict[str, bytes]:
     resources: dict[str, bytes] = {}
     for package_name, package_path in packages.items():
         for resource_path in sorted(path for path in package_path.rglob("*") if path.is_file()):
-            relative_path = resource_path.relative_to(package_path).as_posix()
-            url = "package://{}/{}".format(package_name, relative_path)
+            resolved_resource_path = resource_path.resolve()
             try:
-                resources[url] = resource_path.read_bytes()
+                resolved_resource_path.relative_to(package_path)
+            except ValueError as error:
+                raise RobotResourceContainmentError(
+                    "Robot resource {} resolves outside package directory {}: {}.".format(
+                        resource_path,
+                        package_path,
+                        resolved_resource_path,
+                    )
+                ) from error
+            relative_path = resource_path.relative_to(package_path).as_posix()
+            url = PackageResourceUrl.build("package://{}/{}".format(package_name, relative_path)).value
+            try:
+                resources[url] = resolved_resource_path.read_bytes()
             except OSError as error:
                 raise RobotResourceReadError(
                     "Robot resource {!r} cannot be read from {}: {}.".format(
