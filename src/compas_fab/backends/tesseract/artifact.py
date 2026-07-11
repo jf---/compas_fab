@@ -16,6 +16,7 @@ from .errors import InvalidRobotResourceError
 from .errors import InvalidSrdfError
 from .errors import InvalidUrdfError
 from .errors import KinematicsPluginConflictError
+from .errors import RobotArtifactIdentityMismatchError
 from .identity import BuildIdentity
 
 TESSERACT_XML_NAMESPACE = "https://github.com/tesseract-robotics/tesseract"
@@ -98,6 +99,9 @@ class RobotResource:
     url: str
     content: bytes
 
+    def __attrs_post_init__(self) -> None:
+        _validate_resource(self.url, self.content)
+
     @classmethod
     def build(cls, url: str, content: bytes) -> RobotResource:
         """Validate and copy one robot resource.
@@ -112,11 +116,8 @@ class RobotResource:
         Raises:
             InvalidRobotResourceError: The URL is empty or content is not bytes.
         """
-        if not url:
-            raise InvalidRobotResourceError("Robot resource URL is empty.")
-        if not isinstance(content, bytes):
-            raise InvalidRobotResourceError("Robot resource {!r} must contain bytes, got {}.".format(url, type(content).__name__))
-        return cls(url, bytes(content))
+        validated_url, validated_content = _validate_resource(url, content)
+        return cls(validated_url, validated_content)
 
 
 @define(frozen=True, slots=True)
@@ -127,6 +128,23 @@ class RobotArtifact:
     srdf: str
     resources: tuple[RobotResource, ...]
     identity: BuildIdentity
+
+    def __attrs_post_init__(self) -> None:
+        resources = _validate_artifact_resources(self.resources)
+        if not isinstance(self.identity, BuildIdentity):
+            raise RobotArtifactIdentityMismatchError("Robot artifact identity must be BuildIdentity.")
+        expected_identity = BuildIdentity.build(
+            self.urdf,
+            self.srdf,
+            {resource.url: resource.content for resource in resources},
+        )
+        if self.identity != expected_identity:
+            raise RobotArtifactIdentityMismatchError(
+                "Robot artifact identity {} does not match recomputed identity {}.".format(
+                    self.identity.digest,
+                    expected_identity.digest,
+                )
+            )
 
     @classmethod
     def build(
@@ -293,6 +311,29 @@ class RobotArtifact:
             if resource.url == url:
                 return resource
         raise InvalidRobotResourceError("Robot artifact {} does not contain resource {!r}.".format(self.identity.digest, url))
+
+
+def _validate_resource(url: object, content: object) -> tuple[str, bytes]:
+    if not isinstance(url, str) or not url:
+        raise InvalidRobotResourceError("Robot resource URL must be non-empty text.")
+    if not isinstance(content, bytes):
+        raise InvalidRobotResourceError("Robot resource {!r} must contain bytes, got {}.".format(url, type(content).__name__))
+    return url, bytes(content)
+
+
+def _validate_artifact_resources(resources: object) -> tuple[RobotResource, ...]:
+    if not isinstance(resources, tuple):
+        raise InvalidRobotResourceError("Robot artifact resources must be an immutable tuple.")
+    for resource in resources:
+        if not isinstance(resource, RobotResource):
+            raise InvalidRobotResourceError("Robot artifact resources must contain RobotResource values, got {}.".format(type(resource).__name__))
+        _validate_resource(resource.url, resource.content)
+    urls = tuple(resource.url for resource in resources)
+    if len(urls) != len(set(urls)):
+        raise InvalidRobotResourceError("Robot artifact resource URLs must be unique.")
+    if urls != tuple(sorted(urls)):
+        raise InvalidRobotResourceError("Robot artifact resources must use canonical URL order.")
+    return resources
 
 
 def _kdl_plugin_yaml(configurations: list[KdlKinematics]) -> str:

@@ -9,10 +9,12 @@ from compas_fab.backends.tesseract.artifact import DiscreteContactManager
 from compas_fab.backends.tesseract.artifact import KdlInverseKinematics
 from compas_fab.backends.tesseract.artifact import KdlKinematics
 from compas_fab.backends.tesseract.artifact import RobotArtifact
+from compas_fab.backends.tesseract.artifact import RobotResource
 from compas_fab.backends.tesseract.errors import CollisionMeshPolicyConflictError
 from compas_fab.backends.tesseract.errors import ContactManagerPluginConflictError
 from compas_fab.backends.tesseract.errors import KinematicsPluginConflictError
 from compas_fab.backends.tesseract.errors import InvalidRobotResourceError
+from compas_fab.backends.tesseract.errors import RobotArtifactIdentityMismatchError
 from compas_fab.backends.tesseract.identity import BuildIdentity
 from compas_fab.robots import RobotSemantics
 
@@ -61,6 +63,33 @@ def test_artifact_identity_covers_exact_inputs():
     artifact = RobotArtifact.build(urdf, srdf, resources)
 
     assert artifact.identity == BuildIdentity.build(urdf, srdf, resources)
+
+
+def test_resource_raw_constructor_cannot_bypass_invariants():
+    with pytest.raises(InvalidRobotResourceError):
+        RobotResource("", b"content")
+
+
+def test_artifact_raw_constructor_rejects_arbitrary_resources():
+    urdf, srdf = _descriptions()
+    identity = BuildIdentity.build(urdf, srdf, {})
+
+    with pytest.raises(InvalidRobotResourceError):
+        RobotArtifact(urdf, srdf, (object(),), identity)
+
+
+def test_artifact_raw_constructor_rejects_forged_identity():
+    urdf, srdf = _descriptions()
+    valid = BuildIdentity.build(urdf, srdf, {})
+    forged = BuildIdentity(
+        "0" * 64,
+        valid.schema_version,
+        valid.compas_fab_version,
+        valid.tesseract_version,
+    )
+
+    with pytest.raises(RobotArtifactIdentityMismatchError):
+        RobotArtifact(urdf, srdf, (), forged)
 
 
 def test_unknown_resource_fails_loudly():

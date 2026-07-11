@@ -10,6 +10,8 @@ from compas_fab.backends.tesseract.errors import EmptyTesseractProgramError
 from compas_fab.backends.tesseract.errors import InvalidTesseractProgramError
 from compas_fab.backends.tesseract.errors import InvalidTesseractPipelineError
 from compas_fab.backends.tesseract.errors import InvalidTesseractProfilesError
+from compas_fab.backends.tesseract.errors import MalformedTesseractNativeResultError
+from compas_fab.backends.tesseract.errors import MissingTesseractOutputError
 from compas_fab.backends.tesseract.errors import TesseractPlanningFailedError
 from compas_fab.backends.tesseract.errors import TesseractProgramCopyError
 from compas_fab.backends.tesseract.errors import UnknownTesseractOptionError
@@ -111,6 +113,45 @@ def test_failed_native_result_fails_loudly():
 
     with pytest.raises(TesseractPlanningFailedError, match="TrajOptPipeline.*solver failed"):
         TesseractPlanningResult.build(request, native_result)
+
+
+def test_native_result_raw_constructor_rejects_failure():
+    request = TesseractPlanningRequest.build(
+        _program(),
+        "TrajOptPipeline",
+        ProfileDictionary(),
+        False,
+    )
+    native_result = PlanningResult(successful=False, message="solver failed")
+
+    with pytest.raises(TesseractPlanningFailedError, match="solver failed"):
+        TesseractPlanningResult(request, native_result, _program())
+
+
+def test_native_result_raw_constructor_rejects_missing_output():
+    request = TesseractPlanningRequest.build(
+        _program(),
+        "TrajOptPipeline",
+        ProfileDictionary(),
+        False,
+    )
+    native_result = PlanningResult(successful=True, raw_results=None)
+
+    with pytest.raises(MissingTesseractOutputError):
+        TesseractPlanningResult(request, native_result, _program())
+
+
+def test_native_result_raw_constructor_requires_exact_raw_output():
+    request = TesseractPlanningRequest.build(
+        _program(),
+        "TrajOptPipeline",
+        ProfileDictionary(),
+        False,
+    )
+    native_result = PlanningResult(successful=True, raw_results=request.program)
+
+    with pytest.raises(MalformedTesseractNativeResultError, match="raw output"):
+        TesseractPlanningResult(request, native_result, _program())
 
 
 def test_native_execution_exception_retains_pipeline_diagnostic():

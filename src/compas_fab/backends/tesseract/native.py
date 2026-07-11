@@ -11,6 +11,7 @@ from .errors import EmptyTesseractProgramError
 from .errors import InvalidTesseractPipelineError
 from .errors import InvalidTesseractProfilesError
 from .errors import InvalidTesseractProgramError
+from .errors import MalformedTesseractNativeResultError
 from .errors import MissingTesseractOutputError
 from .errors import TesseractPlanningFailedError
 from .errors import UnknownTesseractOptionError
@@ -67,6 +68,9 @@ class TesseractPlanningResult:
     native_result: PlanningResult
     raw_program: CompositeInstruction
 
+    def __attrs_post_init__(self) -> None:
+        _validate_result(self.request, self.native_result, self.raw_program)
+
     @classmethod
     def build(
         cls,
@@ -86,11 +90,12 @@ class TesseractPlanningResult:
             TesseractPlanningFailedError: Native planning reported failure.
             MissingTesseractOutputError: Success lacked a raw output program.
         """
-        if not native_result.successful:
-            raise TesseractPlanningFailedError(request.pipeline, native_result.message)
-        if native_result.raw_results is None:
-            raise MissingTesseractOutputError("Tesseract pipeline {!r} reported success without a raw program.".format(request.pipeline))
-        return cls(request, native_result, native_result.raw_results)
+        raw_program = _validate_result(
+            request,
+            native_result,
+            native_result.raw_results,
+        )
+        return cls(request, native_result, raw_program)
 
 
 def _validate_request(
@@ -109,3 +114,23 @@ def _validate_request(
         raise UnknownTesseractOptionError("auto_seed must be bool, got {}.".format(type(auto_seed).__name__))
     if program.empty():
         raise EmptyTesseractProgramError("Native Tesseract program contains no instructions.")
+
+
+def _validate_result(
+    request: object,
+    native_result: object,
+    raw_program: object,
+) -> CompositeInstruction:
+    if not isinstance(request, TesseractPlanningRequest):
+        raise MalformedTesseractNativeResultError("Native result request must be TesseractPlanningRequest.")
+    if not isinstance(native_result, PlanningResult):
+        raise MalformedTesseractNativeResultError("Native result must retain exact PlanningResult.")
+    if not native_result.successful:
+        raise TesseractPlanningFailedError(request.pipeline, native_result.message)
+    if native_result.raw_results is None:
+        raise MissingTesseractOutputError("Tesseract pipeline {!r} reported success without a raw program.".format(request.pipeline))
+    if not isinstance(raw_program, CompositeInstruction):
+        raise MalformedTesseractNativeResultError("Native result raw output must be CompositeInstruction.")
+    if raw_program is not native_result.raw_results:
+        raise MalformedTesseractNativeResultError("Retained raw output differs from PlanningResult raw output.")
+    return raw_program

@@ -10,9 +10,11 @@ from typing import Mapping
 from attrs import define
 
 from .errors import EmptyRobotDescriptionError
+from .errors import InvalidBuildIdentityError
 from .errors import InvalidRobotResourceError
 
 IDENTITY_SCHEMA_VERSION = "1"
+SHA256_HEX_LENGTH = hashlib.sha256().digest_size * 2
 
 
 @define(frozen=True, slots=True)
@@ -23,6 +25,14 @@ class BuildIdentity:
     schema_version: str
     compas_fab_version: str
     tesseract_version: str
+
+    def __attrs_post_init__(self) -> None:
+        _validate_identity(
+            self.digest,
+            self.schema_version,
+            self.compas_fab_version,
+            self.tesseract_version,
+        )
 
     @classmethod
     def build(cls, urdf: str, srdf: str, resources: Mapping[str, bytes]) -> BuildIdentity:
@@ -81,3 +91,19 @@ class BuildIdentity:
             compas_fab_version=compas_fab_version,
             tesseract_version=tesseract_version,
         )
+
+
+def _validate_identity(
+    digest: object,
+    schema_version: object,
+    compas_fab_version: object,
+    tesseract_version: object,
+) -> None:
+    if not isinstance(digest, str) or len(digest) != SHA256_HEX_LENGTH or any(character not in "0123456789abcdef" for character in digest):
+        raise InvalidBuildIdentityError("Robot build digest must be a lowercase SHA-256 hexadecimal string.")
+    if schema_version != IDENTITY_SCHEMA_VERSION:
+        raise InvalidBuildIdentityError("Robot build identity schema must be {!r}, got {!r}.".format(IDENTITY_SCHEMA_VERSION, schema_version))
+    if not isinstance(compas_fab_version, str) or not compas_fab_version:
+        raise InvalidBuildIdentityError("Robot build identity COMPAS FAB version must be non-empty text.")
+    if not isinstance(tesseract_version, str) or not tesseract_version:
+        raise InvalidBuildIdentityError("Robot build identity Tesseract version must be non-empty text.")

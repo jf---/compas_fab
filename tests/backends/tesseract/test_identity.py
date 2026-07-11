@@ -1,6 +1,7 @@
 import pytest
 
 from compas_fab.backends.tesseract.errors import EmptyRobotDescriptionError
+from compas_fab.backends.tesseract.errors import InvalidBuildIdentityError
 from compas_fab.backends.tesseract.identity import BuildIdentity
 
 
@@ -42,3 +43,27 @@ def test_identity_records_component_versions():
 def test_empty_robot_description_fails_loudly(urdf, srdf):
     with pytest.raises(EmptyRobotDescriptionError):
         BuildIdentity.build(urdf, srdf, {})
+
+
+@pytest.mark.parametrize(
+    ("digest", "schema_version", "compas_fab_version", "tesseract_version"),
+    [
+        ("not-a-sha", "1", "2.0.1", "0.35.0.6"),
+        ("0" * 64, "unknown", "2.0.1", "0.35.0.6"),
+        ("0" * 64, "1", "", "0.35.0.6"),
+        ("0" * 64, "1", "2.0.1", ""),
+    ],
+)
+def test_identity_raw_constructor_cannot_bypass_invariants(
+    digest,
+    schema_version,
+    compas_fab_version,
+    tesseract_version,
+):
+    with pytest.raises(InvalidBuildIdentityError):
+        BuildIdentity(
+            digest,
+            schema_version,
+            compas_fab_version,
+            tesseract_version,
+        )

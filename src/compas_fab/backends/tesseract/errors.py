@@ -17,6 +17,10 @@ class EmptyRobotDescriptionError(TesseractBackendError):
     """A required URDF or SRDF description is empty."""
 
 
+class InvalidBuildIdentityError(TesseractBackendError):
+    """A robot build identity has malformed or unknown fields."""
+
+
 class InvalidRobotResourceError(TesseractBackendError):
     """A robot resource URL or payload cannot be content-addressed."""
 
@@ -91,6 +95,10 @@ class UnsafeRobotResourceUrlError(TesseractBackendError):
 
 class ArtifactMaterializationError(TesseractBackendError):
     """Materialized resource bytes violate their artifact identity."""
+
+
+class RobotArtifactIdentityMismatchError(TesseractBackendError):
+    """A robot artifact identity does not cover its exact retained inputs."""
 
 
 class UnknownRobotResourceError(TesseractBackendError):
