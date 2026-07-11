@@ -6,11 +6,20 @@ from typing import Optional
 from typing import TypeVar
 
 from compas_fab.ghpython.component_identity import ComponentInputIdentity
+from compas_fab.ghpython.component_identity import InvalidComponentIdentityError
 
 T = TypeVar("T")
 
 
-class SupersededComponentOutputError(RuntimeError):
+class CurrentOutputTransitionError(RuntimeError):
+    pass
+
+
+class InvalidCurrentOutputTransitionError(CurrentOutputTransitionError):
+    pass
+
+
+class SupersededComponentOutputError(CurrentOutputTransitionError):
     pass
 
 
@@ -32,7 +41,18 @@ class CurrentOutputState(Generic[T]):
     def build(cls) -> "CurrentOutputState[T]":
         return cls()
 
+    @staticmethod
+    def _validated_identity(identity: ComponentInputIdentity) -> ComponentInputIdentity:
+        if type(identity) is not ComponentInputIdentity:
+            raise InvalidCurrentOutputTransitionError("Output transitions require an exact component input identity.")
+        try:
+            identity.__attrs_post_init__()
+        except (AttributeError, InvalidComponentIdentityError) as error:
+            raise InvalidCurrentOutputTransitionError("Output transitions require a valid component input identity.") from error
+        return identity
+
     def observe(self, identity: ComponentInputIdentity, compute: bool) -> ComputeDecision:
+        identity = self._validated_identity(identity)
         if type(compute) is not bool:
             raise TypeError("compute must be bool.")
         if self._identity != identity:
@@ -49,18 +69,25 @@ class CurrentOutputState(Generic[T]):
         return ComputeDecision.CURRENT if self._has_value else ComputeDecision.IDLE
 
     def publish(self, identity: ComponentInputIdentity, value: T) -> None:
+        identity = self._validated_identity(identity)
+        if self._identity is None:
+            raise InvalidCurrentOutputTransitionError("Cannot publish output before observing its identity.")
         if identity != self._identity:
             raise SupersededComponentOutputError("Cannot publish superseded output.")
         self._value = value
         self._has_value = True
 
     def fail(self, identity: ComponentInputIdentity) -> None:
+        identity = self._validated_identity(identity)
+        if self._identity is None:
+            raise InvalidCurrentOutputTransitionError("Cannot fail output before observing its identity.")
         if identity != self._identity:
             raise SupersededComponentOutputError("Cannot fail superseded output.")
         self._value = None
         self._has_value = False
 
     def current(self, identity: ComponentInputIdentity) -> Optional[T]:
+        identity = self._validated_identity(identity)
         if identity == self._identity and self._has_value:
             return self._value
         return None

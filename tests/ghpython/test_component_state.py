@@ -2,7 +2,7 @@ from attrs import evolve
 import pytest
 
 from compas_fab.ghpython.component_identity import CanonicalField, ComponentInputIdentity, ComponentInstanceId, InvalidComponentIdentityError
-from compas_fab.ghpython.current_output import ComputeDecision, CurrentOutputState, SupersededComponentOutputError
+from compas_fab.ghpython.current_output import ComputeDecision, CurrentOutputState, InvalidCurrentOutputTransitionError, SupersededComponentOutputError
 
 
 def identity(value: str) -> ComponentInputIdentity:
@@ -93,3 +93,62 @@ def test_clear_restores_initial_edge_state() -> None:
     assert state.current(first) is None
     assert state.observe(first, False) is ComputeDecision.IDLE
     assert state.observe(first, True) is ComputeDecision.EXECUTE
+
+
+def test_publish_before_observation_fails_named() -> None:
+    state = CurrentOutputState[str].build()
+
+    with pytest.raises(InvalidCurrentOutputTransitionError):
+        state.publish(identity("first"), "unobserved")
+
+
+@pytest.mark.parametrize("operation", ("observe", "publish", "fail", "current"))
+@pytest.mark.parametrize("invalid_identity", (None, object()))
+def test_state_operations_reject_identity_free_values_with_named_error(operation, invalid_identity) -> None:
+    state = CurrentOutputState[str].build()
+
+    with pytest.raises(InvalidCurrentOutputTransitionError):
+        if operation == "observe":
+            state.observe(invalid_identity, False)
+        elif operation == "publish":
+            state.publish(invalid_identity, "value")
+        elif operation == "fail":
+            state.fail(invalid_identity)
+        else:
+            state.current(invalid_identity)
+
+
+@pytest.mark.parametrize("operation", ("observe", "publish", "fail", "current"))
+def test_state_operations_reject_non_exact_identity_subclasses(operation) -> None:
+    class DerivedComponentInputIdentity(ComponentInputIdentity):
+        pass
+
+    valid = identity("first")
+    malformed = DerivedComponentInputIdentity(valid.component, valid.schema, valid.fields, valid.digest)
+    state = CurrentOutputState[str].build()
+
+    with pytest.raises(InvalidCurrentOutputTransitionError):
+        if operation == "observe":
+            state.observe(malformed, False)
+        elif operation == "publish":
+            state.publish(malformed, "value")
+        elif operation == "fail":
+            state.fail(malformed)
+        else:
+            state.current(malformed)
+
+
+@pytest.mark.parametrize("operation", ("observe", "publish", "fail", "current"))
+def test_state_operations_reject_uninitialized_exact_identities(operation) -> None:
+    malformed = object.__new__(ComponentInputIdentity)
+    state = CurrentOutputState[str].build()
+
+    with pytest.raises(InvalidCurrentOutputTransitionError):
+        if operation == "observe":
+            state.observe(malformed, False)
+        elif operation == "publish":
+            state.publish(malformed, "value")
+        elif operation == "fail":
+            state.fail(malformed)
+        else:
+            state.current(malformed)
