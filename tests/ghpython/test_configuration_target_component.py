@@ -1,3 +1,6 @@
+from math import inf
+from math import nan
+
 import pytest
 from compas_robots import Configuration
 
@@ -41,6 +44,40 @@ def test_explicit_lists_and_connected_empty_shape(monkeypatch) -> None:
     policy_path = component(monkeypatch, tolerance_above=True, tolerance_below=True, tolerance_policy=True)
     with pytest.raises(InvalidConfigurationToleranceInputError):
         policy_path.RunScript(Configuration.from_revolute_values([0.0]), [], [0.3], "legacy_defaults")
+
+
+def test_connected_policy_accepts_explicit_tolerance_lists(monkeypatch) -> None:
+    configured = component(monkeypatch, tolerance_above=True, tolerance_below=True, tolerance_policy=True)
+
+    target = configured.RunScript(
+        Configuration.from_revolute_values([0.0]),
+        [0.2],
+        [0.3],
+        "legacy_defaults",
+    )
+
+    assert target.tolerance_above == [0.2]
+    assert target.tolerance_below == [0.3]
+
+
+@pytest.mark.parametrize("invalid_tolerance", (-0.1, nan, inf, -inf))
+@pytest.mark.parametrize("input_name", ("tolerance_above", "tolerance_below"))
+def test_connected_policy_rejects_invalid_tolerances_through_run_script(
+    monkeypatch,
+    invalid_tolerance: float,
+    input_name: str,
+) -> None:
+    configured = component(monkeypatch, tolerance_above=True, tolerance_below=True, tolerance_policy=True)
+    above = [invalid_tolerance] if input_name == "tolerance_above" else [0.2]
+    below = [invalid_tolerance] if input_name == "tolerance_below" else [0.3]
+
+    with pytest.raises(InvalidConfigurationToleranceInputError):
+        configured.RunScript(
+            Configuration.from_revolute_values([0.0]),
+            above,
+            below,
+            "legacy_defaults",
+        )
 
 
 def test_preserve_absent_and_planner_policy(monkeypatch) -> None:
