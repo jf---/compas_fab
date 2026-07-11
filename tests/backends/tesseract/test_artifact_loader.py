@@ -6,6 +6,7 @@ from compas_fab.backends.tesseract.artifact import CollisionMeshPolicy
 from compas_fab.backends.tesseract.artifact_loader import ResourceRoot
 from compas_fab.backends.tesseract.artifact_loader import RobotArtifactLoader
 from compas_fab.backends.tesseract.errors import AmbiguousRobotPackageError
+from compas_fab.backends.tesseract.errors import InvalidRobotResourceError
 from compas_fab.backends.tesseract.errors import MissingRobotPackageError
 from compas_fab.backends.tesseract.errors import MissingRobotResourceRootError
 
@@ -110,6 +111,49 @@ def test_loader_fails_when_package_resolution_is_ambiguous(tmp_path):
     loader = RobotArtifactLoader.build(urdf_path, srdf_path, roots)
 
     with pytest.raises(AmbiguousRobotPackageError, match="robot_support"):
+        loader.load(CollisionMeshPolicy.PRESERVE)
+
+
+@pytest.mark.parametrize("authority", ["..", "."])
+def test_loader_rejects_unsafe_package_authority(tmp_path, authority):
+    urdf_path, srdf_path = _write_descriptions(tmp_path)
+    urdf_path.write_text(
+        URDF.replace("robot_support", authority),
+        encoding="utf-8",
+    )
+    resource_root = tmp_path / "resources"
+    resource_root.mkdir()
+    escaped_package = tmp_path / "meshes"
+    escaped_package.mkdir()
+    (escaped_package / "base.dae").write_bytes(b"escaped mesh")
+    loader = RobotArtifactLoader.build(
+        urdf_path,
+        srdf_path,
+        [ResourceRoot.build(resource_root)],
+    )
+
+    with pytest.raises(InvalidRobotResourceError, match="package resource URL"):
+        loader.load(CollisionMeshPolicy.PRESERVE)
+
+
+def test_loader_rejects_symlinked_package_outside_resource_root(tmp_path):
+    urdf_path, srdf_path = _write_descriptions(tmp_path)
+    resource_root = tmp_path / "resources"
+    resource_root.mkdir()
+    external_package = tmp_path / "external" / "robot_support"
+    (external_package / "meshes").mkdir(parents=True)
+    (external_package / "meshes" / "base.dae").write_bytes(b"escaped mesh")
+    (resource_root / "robot_support").symlink_to(
+        external_package,
+        target_is_directory=True,
+    )
+    loader = RobotArtifactLoader.build(
+        urdf_path,
+        srdf_path,
+        [ResourceRoot.build(resource_root)],
+    )
+
+    with pytest.raises(InvalidRobotResourceError, match="direct child"):
         loader.load(CollisionMeshPolicy.PRESERVE)
 
 

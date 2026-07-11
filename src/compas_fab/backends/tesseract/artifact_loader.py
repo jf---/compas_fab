@@ -163,16 +163,34 @@ def _package_urls(description: str, kind: str) -> set[str]:
     for url in urls:
         parsed = urlsplit(url)
         parts = PurePosixPath(parsed.path).parts
-        if parsed.scheme != "package" or not parsed.netloc or not parts or ".." in parts or parsed.query or parsed.fragment:
+        if parsed.scheme != "package" or not _is_safe_package_authority(parsed.netloc) or not parts or ".." in parts or parsed.query or parsed.fragment:
             raise InvalidRobotResourceError("{} contains invalid package resource URL {!r}.".format(kind, url))
     return urls
+
+
+def _is_safe_package_authority(authority: str) -> bool:
+    return bool(authority) and authority not in (".", "..")
 
 
 def _resolve_package(
     package_name: str,
     resource_roots: tuple[ResourceRoot, ...],
 ) -> Path:
-    candidates = {(root.path / package_name).resolve() for root in resource_roots if (root.path / package_name).is_dir()}
+    candidates: set[Path] = set()
+    for root in resource_roots:
+        declared_path = root.path / package_name
+        if not declared_path.is_dir():
+            continue
+        resolved_path = declared_path.resolve()
+        if resolved_path.parent != root.path:
+            raise InvalidRobotResourceError(
+                "Referenced robot package {!r} must resolve to a direct child of resource root {}, got {}.".format(
+                    package_name,
+                    root.path,
+                    resolved_path,
+                )
+            )
+        candidates.add(resolved_path)
     if not candidates:
         raise MissingRobotPackageError(
             "Referenced robot package {!r} was not found beneath: {}.".format(
