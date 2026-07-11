@@ -90,6 +90,10 @@ class TesseractPlanningResult:
             TesseractPlanningFailedError: Native planning reported failure.
             MissingTesseractOutputError: Success lacked a raw output program.
         """
+        if not isinstance(request, TesseractPlanningRequest):
+            raise MalformedTesseractNativeResultError("Native result request must be TesseractPlanningRequest.")
+        if not isinstance(native_result, PlanningResult):
+            raise MalformedTesseractNativeResultError("Native result must retain exact PlanningResult.")
         raw_program = _validate_result(
             request,
             native_result,

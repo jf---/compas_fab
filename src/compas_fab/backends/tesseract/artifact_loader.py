@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from pathlib import PurePosixPath
+from pathlib import PureWindowsPath
 from typing import Sequence
 from urllib.parse import urlsplit
 from xml.etree import ElementTree
@@ -169,7 +170,8 @@ def _package_urls(description: str, kind: str) -> set[str]:
 
 
 def _is_safe_package_authority(authority: str) -> bool:
-    return bool(authority) and authority not in (".", "..")
+    windows_path = PureWindowsPath(authority)
+    return bool(authority) and authority not in (".", "..") and not windows_path.drive and not windows_path.root and windows_path.parts == (authority,)
 
 
 def _resolve_package(

@@ -114,7 +114,10 @@ def test_loader_fails_when_package_resolution_is_ambiguous(tmp_path):
         loader.load(CollisionMeshPolicy.PRESERVE)
 
 
-@pytest.mark.parametrize("authority", ["..", "."])
+@pytest.mark.parametrize(
+    "authority",
+    ["..", ".", r"..\secret", r"C:\secret"],
+)
 def test_loader_rejects_unsafe_package_authority(tmp_path, authority):
     urdf_path, srdf_path = _write_descriptions(tmp_path)
     urdf_path.write_text(

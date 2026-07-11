@@ -154,6 +154,24 @@ def test_native_result_raw_constructor_requires_exact_raw_output():
         TesseractPlanningResult(request, native_result, _program())
 
 
+def test_native_result_factory_owns_wrong_type_error_model():
+    request = TesseractPlanningRequest.build(
+        _program(),
+        "TrajOptPipeline",
+        ProfileDictionary(),
+        False,
+    )
+    native_result = PlanningResult(
+        successful=True,
+        raw_results=request.program,
+    )
+
+    with pytest.raises(MalformedTesseractNativeResultError, match="request"):
+        TesseractPlanningResult.build(object(), native_result)
+    with pytest.raises(MalformedTesseractNativeResultError, match="PlanningResult"):
+        TesseractPlanningResult.build(request, object())
+
+
 def test_native_execution_exception_retains_pipeline_diagnostic():
     class FailingComposer:
         def plan(self, robot, program, *, pipeline, profiles, auto_seed):
