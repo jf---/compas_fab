@@ -104,7 +104,15 @@ class ResolvedPlannerOptions:
     def __attrs_post_init__(self) -> None:
         if type(self.identity_state) is not OptionIdentityState:
             raise InvalidPlannerOptionsError("identity_state must be OptionIdentityState.")
-        if len({key for key, _ in self.values}) != len(self.values):
+        if type(self.values) is not tuple:
+            raise InvalidPlannerOptionsError("Planner option values must be an exact tuple.")
+        for pair in self.values:
+            if type(pair) is not tuple or len(pair) != 2:
+                raise InvalidPlannerOptionsError("Each planner option must be an exact key-value tuple.")
+            if type(pair[0]) is not str or not pair[0]:
+                raise InvalidPlannerOptionsError("Planner option names must be non-empty str.")
+        keys = tuple(pair[0] for pair in self.values)
+        if len(set(keys)) != len(keys):
             raise InvalidPlannerOptionsError("Planner option names must be unique.")
         if self.identity_state is OptionIdentityState.VERIFIED:
             if self.identity_digest != _digest(self.values):

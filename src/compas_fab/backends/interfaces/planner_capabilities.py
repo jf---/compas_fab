@@ -46,10 +46,13 @@ class PlannerCapabilities:
     def __attrs_post_init__(self) -> None:
         invalid = (
             type(self.implementation_id) is not PlannerImplementationId
+            or type(self.operations) is not tuple
             or not self.operations
-            or len(set(self.operations)) != len(self.operations)
+            or type(self.configuration_tolerance_policy) is not ConfigurationTolerancePolicy
         )
-        invalid = invalid or any(type(operation) is not PlannerOperation for operation in self.operations)
-        invalid = invalid or type(self.configuration_tolerance_policy) is not ConfigurationTolerancePolicy
         if invalid:
             raise InvalidPlannerCapabilitiesError("Planner capabilities are inconsistent.")
+        if any(type(operation) is not PlannerOperation for operation in self.operations):
+            raise InvalidPlannerCapabilitiesError("Planner operations must be exact PlannerOperation values.")
+        if len(set(self.operations)) != len(self.operations):
+            raise InvalidPlannerCapabilitiesError("Planner operations must be unique.")

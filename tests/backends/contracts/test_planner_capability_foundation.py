@@ -21,6 +21,10 @@ from compas_fab.backends.tesseract.options import TesseractPlanOptions
 from compas_fab.backends.tesseract.planner import TesseractPlanner
 
 
+class _TupleSubclass(tuple):
+    pass
+
+
 def test_all_five_exact_declarations_and_adapters() -> None:
     expected = (
         (AnalyticalKinematicsPlanner, "compas_fab.analytical/v1", AnalyticalOptions, {PlannerOperation.INVERSE_KINEMATICS, PlannerOperation.PLAN_CARTESIAN_MOTION}, ConfigurationTolerancePolicy.LEGACY_DEFAULTS),
@@ -47,6 +51,78 @@ def test_raw_capability_and_option_constructors_revalidate() -> None:
     verified = ResolvedPlannerOptions.verified({"planner_id": "RRTConnect"})
     with pytest.raises(InvalidPlannerOptionsError):
         evolve(verified, identity_state="verified")
+
+
+def test_capability_build_snapshots_mutable_operation_sequence() -> None:
+    operations = [PlannerOperation.PLAN_MOTION]
+    capabilities = PlannerCapabilities.build(
+        PlannerImplementationId.build("test/v1"),
+        operations,
+        ConfigurationTolerancePolicy.LEGACY_DEFAULTS,
+    )
+
+    operations.append(PlannerOperation.CHECK_COLLISION)
+
+    assert capabilities.operations == (PlannerOperation.PLAN_MOTION,)
+
+
+@pytest.mark.parametrize(
+    "operations",
+    (
+        [PlannerOperation.PLAN_MOTION],
+        _TupleSubclass((PlannerOperation.PLAN_MOTION,)),
+        ("plan_motion",),
+        (([],),),
+        (PlannerOperation.PLAN_MOTION, PlannerOperation.PLAN_MOTION),
+    ),
+)
+def test_raw_capabilities_reject_mutable_malformed_and_duplicate_operations(operations) -> None:
+    with pytest.raises(InvalidPlannerCapabilitiesError):
+        PlannerCapabilities(
+            PlannerImplementationId.build("test/v1"),
+            operations,
+            ConfigurationTolerancePolicy.LEGACY_DEFAULTS,
+        )
+
+
+@pytest.mark.parametrize(
+    "values",
+    (
+        [("opaque", object())],
+        _TupleSubclass((("opaque", object()),)),
+        (["opaque", object()],),
+        (_TupleSubclass(("opaque", object())),),
+        (("opaque",),),
+        (([], object()),),
+        (("", object()),),
+        (("opaque", object()), ("opaque", object())),
+    ),
+)
+def test_raw_resolved_options_reject_mutable_malformed_and_duplicate_values(values) -> None:
+    with pytest.raises(InvalidPlannerOptionsError):
+        ResolvedPlannerOptions(values, OptionIdentityState.UNVERIFIABLE, None)
+
+
+def test_raw_resolved_options_revalidate_digest_rules() -> None:
+    verified = ResolvedPlannerOptions.verified({"planner_id": "RRTConnect"})
+    with pytest.raises(InvalidPlannerOptionsError):
+        evolve(verified, identity_digest="invalid")
+    unverifiable = ResolvedPlannerOptions.unverifiable({"opaque": object()})
+    with pytest.raises(InvalidPlannerOptionsError):
+        evolve(unverifiable, identity_digest="caller-digest")
+
+
+def test_unverifiable_options_snapshot_mapping_and_retain_exact_opaque_value() -> None:
+    opaque = []
+    source = {"opaque": opaque}
+    resolved = ResolvedPlannerOptions.unverifiable(source)
+
+    source["later"] = object()
+    opaque.append("retained")
+
+    backend_options = resolved.to_backend_options()
+    assert backend_options == {"opaque": ["retained"]}
+    assert backend_options["opaque"] is opaque
 
 
 @pytest.mark.parametrize("planner", (AnalyticalKinematicsPlanner, AnalyticalPyBulletPlanner, PyBulletPlanner))
