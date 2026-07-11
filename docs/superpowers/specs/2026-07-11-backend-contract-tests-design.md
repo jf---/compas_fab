@@ -26,7 +26,7 @@ Phase 1 covers:
 - input-state immutability across FK and IK;
 - reachable FK-to-IK round trips in `TargetMode.ROBOT`;
 - exact group joint-name order in projected configurations;
-- failure on unknown planning groups, with each case declaring its named backend error;
+- failure on unknown planning groups, with each case declaring its exact current exception type;
 - link-specific FK for PyBullet and Tesseract only.
 
 Phase 1 does not cover:
