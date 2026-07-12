@@ -16,6 +16,7 @@ from compas_fab.ghpython.tree_diagnostics import EmptySourceCoordinateError
 from compas_fab.ghpython.tree_diagnostics import InvalidReducedTopologyOutputError
 from compas_fab.ghpython.tree_diagnostics import InvalidSourceCoordinateEntryError
 from compas_fab.ghpython.tree_diagnostics import InvalidTopologyOutputError
+from compas_fab.ghpython.tree_diagnostics import NonCanonicalSourceCoordinateOrderError
 from compas_fab.ghpython.tree_diagnostics import ReducedTopologyOutput
 from compas_fab.ghpython.tree_diagnostics import SourceCoordinateEntry
 from compas_fab.ghpython.tree_diagnostics import SourceCoordinateMap
@@ -56,6 +57,43 @@ def test_reduction_maps_one_output_to_ordered_nonempty_sources() -> None:
         SourceCoordinateMap.build((SourceCoordinateEntry.build(output, sources), SourceCoordinateEntry.build(output, sources)))
     with pytest.raises(EmptySourceCoordinateError):
         SourceCoordinateEntry.build(output, ())
+
+
+def test_source_coordinate_map_keys_outputs_without_runtime_roots() -> None:
+    sources = (coordinate("source", (4,), 0),)
+
+    with pytest.raises(DuplicateSourceOutputError):
+        SourceCoordinateMap.build(
+            (
+                SourceCoordinateEntry.build(coordinate("output-a", (4,), 0), sources),
+                SourceCoordinateEntry.build(coordinate("output-b", (4,), 0), sources),
+            )
+        )
+
+    with pytest.raises(DuplicateSourceOutputError):
+        SourceCoordinateMap(
+            (
+                SourceCoordinateEntry.build(coordinate("output-a", (4,), 0), sources),
+                SourceCoordinateEntry.build(coordinate("output-b", (4,), 0), sources),
+            )
+        )
+
+
+def test_source_coordinate_map_requires_canonical_root_free_output_order() -> None:
+    first = SourceCoordinateEntry.build(
+        coordinate("output", (0,), 1),
+        (coordinate("source-b", (9,), 1), coordinate("source-a", (9,), 0)),
+    )
+    second = SourceCoordinateEntry.build(coordinate("output", (1,), 0), (coordinate("source", (1,), 0),))
+
+    mapping = SourceCoordinateMap.build((first, second))
+
+    assert mapping.entries == (first, second)
+    assert mapping.sources_for(first.output) == first.sources
+    with pytest.raises(NonCanonicalSourceCoordinateOrderError):
+        SourceCoordinateMap.build((second, first))
+    with pytest.raises(NonCanonicalSourceCoordinateOrderError):
+        SourceCoordinateMap((second, first))
 
 
 def test_source_coordinate_entry_rejects_raw_container_bypass() -> None:

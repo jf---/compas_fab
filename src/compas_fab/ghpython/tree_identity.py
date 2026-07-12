@@ -7,6 +7,7 @@ from hashlib import sha256
 from math import isfinite
 from struct import pack
 from typing import Callable
+from typing import Dict
 from typing import Generic
 from typing import Optional
 from typing import Tuple
@@ -21,6 +22,7 @@ from compas.geometry import Frame  # type: ignore[import-untyped]
 
 from compas_fab.ghpython.port_semantics import PortSemantics
 from compas_fab.ghpython.tree_coordinates import GhPath
+from compas_fab.ghpython.tree_coordinates import TreeCoordinate
 from compas_fab.ghpython.tree_diagnostics import SourceCoordinateMap
 from compas_fab.ghpython.tree_values import Tree
 from compas_fab.ghpython.tree_values import TreeBranch
@@ -30,15 +32,6 @@ T = TypeVar("T")
 SHA256_HEX_LENGTH = sha256().digest_size * 2
 SOURCE_TREE_SCHEMA = "compas_fab.ghpython.source_tree/v1"
 STAGE_TREE_SCHEMA = "compas_fab.ghpython.stage_tree/v1"
-REGISTERED_DETERMINISTIC_BUILDERS = frozenset(
-    {
-        "compas_fab.tesseract.pose_series/v1",
-        "compas_fab.tesseract.cartesian_target_series/v1",
-        "compas_fab.tesseract.target_series/v1",
-        "compas_fab.tesseract.motion_program_series/v1",
-        "compas_fab.tesseract.program_series/v1",
-    }
-)
 _IDENTITY_FACTORY_TOKEN = object()
 
 
@@ -74,6 +67,26 @@ class InvalidStageTreeIdentityError(TreeIdentityContractError):
     """Raised when stage-tree identity fields or provenance are inconsistent."""
 
 
+class UnknownStageBuilderSchemaError(InvalidStageTreeIdentityError):
+    """Raised when a stage claims verification without an audited builder schema."""
+
+
+class UnknownStageOutputCoordinateError(InvalidStageTreeIdentityError):
+    """Raised when stage attribution names an absent output coordinate."""
+
+
+class UnknownStageSourceCoordinateError(InvalidStageTreeIdentityError):
+    """Raised when stage attribution names an absent prior coordinate."""
+
+
+class IncompleteStageSourceCoordinatesError(InvalidStageTreeIdentityError):
+    """Raised when stage attribution does not meet its audited coverage contract."""
+
+
+class InvalidAuditedStageSchemaError(TreeIdentityContractError):
+    """Raised when an implementation-coupled stage schema is malformed."""
+
+
 class UnknownIdentityBranchError(TreeIdentityContractError):
     """Raised when an identity has no branch at a requested path."""
 
@@ -81,6 +94,48 @@ class UnknownIdentityBranchError(TreeIdentityContractError):
 class IdentityVerification(Enum):
     VERIFIED = "verified"
     UNVERIFIABLE = "unverifiable"
+
+
+class SourceCoordinateCoverage(Enum):
+    """Observed root-free output attribution coverage."""
+
+    COMPLETE_OUTPUTS = "complete_outputs"
+    PARTIAL_OUTPUTS = "partial_outputs"
+
+
+class SourceCoordinateRequirement(Enum):
+    """Audited source-attribution requirement for a deterministic builder."""
+
+    COMPLETE_OUTPUTS = "complete_outputs"
+
+
+@define(frozen=True, slots=True)
+class _AuditedStageSchema:
+    """Private schema evidence coupled to one implemented deterministic builder."""
+
+    schema: str
+    implementation: Callable[..., object] = field(eq=False, repr=False)
+    source_requirement: SourceCoordinateRequirement
+
+    @classmethod
+    def build(
+        cls,
+        schema: str,
+        implementation: Callable[..., object],
+        source_requirement: SourceCoordinateRequirement,
+    ) -> "_AuditedStageSchema":
+        return cls(schema, implementation, source_requirement)
+
+    def __attrs_post_init__(self) -> None:
+        if type(self.schema) is not str or not self.schema or self.schema != self.schema.strip():
+            raise InvalidAuditedStageSchemaError("Audited stage schema must be non-empty canonical text.")
+        if not callable(self.implementation):
+            raise InvalidAuditedStageSchemaError("Audited stage schema must reference its deterministic implementation.")
+        if type(self.source_requirement) is not SourceCoordinateRequirement:
+            raise InvalidAuditedStageSchemaError("Audited stage schema requires an exact source-coordinate contract.")
+
+
+_AUDITED_STAGE_SCHEMAS: Dict[str, _AuditedStageSchema] = {}
 
 
 def _valid_digest(value: object) -> bool:
@@ -405,6 +460,35 @@ class StageParameter:
         return _part(_text(self.name)) + _part(_text(self.kind.value)) + _part(payload)
 
 
+def _coordinate_key(coordinate: TreeCoordinate) -> Tuple[Tuple[int, ...], int]:
+    return coordinate.branch.path.canonical_key(), coordinate.item_index.value
+
+
+def _topology_coordinate_keys(topology: TreeTopology) -> frozenset[Tuple[Tuple[int, ...], int]]:
+    return frozenset((path.canonical_key(), item_index) for path, item_count in zip(topology.paths, topology.item_counts) for item_index in range(item_count))
+
+
+def _validate_source_coordinates(
+    mapping: SourceCoordinateMap,
+    output_topology: TreeTopology,
+    prior_topology: TreeTopology,
+) -> SourceCoordinateCoverage:
+    output_keys = _topology_coordinate_keys(output_topology)
+    prior_keys = _topology_coordinate_keys(prior_topology)
+    mapped_output_keys = set()
+    for entry in mapping.entries:
+        output_key = _coordinate_key(entry.output)
+        if output_key not in output_keys:
+            raise UnknownStageOutputCoordinateError("Stage source mapping output must exist in the output topology.")
+        mapped_output_keys.add(output_key)
+        for source in entry.sources:
+            if _coordinate_key(source) not in prior_keys:
+                raise UnknownStageSourceCoordinateError("Stage source mapping source must exist in the prior topology.")
+    if mapped_output_keys == output_keys:
+        return SourceCoordinateCoverage.COMPLETE_OUTPUTS
+    return SourceCoordinateCoverage.PARTIAL_OUTPUTS
+
+
 @define(frozen=True, slots=True)
 class StageTreeIdentity:
     """Identity derived from prior content and registered builder provenance."""
@@ -416,6 +500,7 @@ class StageTreeIdentity:
     parameters: Tuple[StageParameter, ...]
     topology: TreeTopology
     source_coordinates: SourceCoordinateMap = field(eq=False)
+    source_coverage: SourceCoordinateCoverage
     verification: IdentityVerification
     _canonical: bytes
     _branch_canonical: Tuple[bytes, ...]
@@ -433,8 +518,8 @@ class StageTreeIdentity:
     ) -> "StageTreeIdentity":
         if type(prior) is not SourceTreeIdentity and type(prior) is not StageTreeIdentity:
             raise InvalidStageTreeIdentityError("Stage identity requires an exact prior tree identity.")
-        if type(builder_schema) is not str or builder_schema not in REGISTERED_DETERMINISTIC_BUILDERS:
-            raise InvalidStageTreeIdentityError("Stage identity requires a registered deterministic builder schema.")
+        if type(builder_schema) is not str or not builder_schema or builder_schema != builder_schema.strip():
+            raise InvalidStageTreeIdentityError("Stage identity requires a non-empty canonical builder schema.")
         if type(parameters) is not tuple or any(type(parameter) is not StageParameter for parameter in parameters):
             raise InvalidStageTreeIdentityError("Stage identity requires an exact parameter tuple.")
         names = tuple(parameter.name for parameter in parameters)
@@ -447,7 +532,20 @@ class StageTreeIdentity:
             raise InvalidStageTreeIdentityError("Stage identity requires an exact source-coordinate map.")
         if verification is not None and verification is not IdentityVerification.UNVERIFIABLE:
             raise InvalidStageTreeIdentityError("Caller-supplied stage verification may only downgrade to UNVERIFIABLE.")
+        audited_schema = _AUDITED_STAGE_SCHEMAS.get(builder_schema)
+        if audited_schema is None and verification is not IdentityVerification.UNVERIFIABLE:
+            raise UnknownStageBuilderSchemaError("Unknown builder schemas require explicit UNVERIFIABLE identity.")
+        if audited_schema is not None and audited_schema.schema != builder_schema:
+            raise InvalidStageTreeIdentityError("Audited builder schema registry key and descriptor disagree.")
         resolved_verification = prior.verification if verification is None else verification
+        source_coverage = _validate_source_coordinates(mapping, topology, prior.topology)
+        if (
+            resolved_verification is IdentityVerification.VERIFIED
+            and audited_schema is not None
+            and audited_schema.source_requirement is SourceCoordinateRequirement.COMPLETE_OUTPUTS
+            and source_coverage is not SourceCoordinateCoverage.COMPLETE_OUTPUTS
+        ):
+            raise IncompleteStageSourceCoordinatesError("Verified stage source attribution does not satisfy its audited schema contract.")
         parameter_payload = b"".join(_part(parameter.identity_bytes()) for parameter in parameters)
         common = b"".join(
             (
@@ -455,6 +553,7 @@ class StageTreeIdentity:
                 _part(_text(builder_schema)),
                 _part(_text(prior.digest.value)),
                 _part(parameter_payload),
+                _part(_text(source_coverage.value)),
                 _part(_text(resolved_verification.value)),
             )
         )
@@ -464,6 +563,7 @@ class StageTreeIdentity:
                 prior,
                 builder_schema,
                 parameter_payload,
+                source_coverage,
                 resolved_verification,
                 topology,
                 index,
@@ -481,6 +581,7 @@ class StageTreeIdentity:
             parameters,
             topology,
             mapping,
+            source_coverage,
             resolved_verification,
             canonical,
             branch_canonical,
@@ -494,11 +595,13 @@ class StageTreeIdentity:
             and all(type(digest) is BranchContentDigest for digest in self.branch_digests)
             and type(self.prior_digest) is TreeContentDigest
             and type(self.builder_schema) is str
-            and self.builder_schema in REGISTERED_DETERMINISTIC_BUILDERS
+            and bool(self.builder_schema)
+            and self.builder_schema == self.builder_schema.strip()
             and type(self.parameters) is tuple
             and all(type(parameter) is StageParameter for parameter in self.parameters)
             and type(self.topology) is TreeTopology
             and type(self.source_coordinates) is SourceCoordinateMap
+            and type(self.source_coverage) is SourceCoordinateCoverage
             and type(self.verification) is IdentityVerification
             and type(self._canonical) is bytes
             and type(self._branch_canonical) is tuple
@@ -538,6 +641,7 @@ def _stage_branch_bytes(
     prior: TreeIdentity,
     builder_schema: str,
     parameter_payload: bytes,
+    source_coverage: SourceCoordinateCoverage,
     verification: IdentityVerification,
     topology: TreeTopology,
     branch_index: int,
@@ -550,13 +654,13 @@ def _stage_branch_bytes(
         for source in entry.sources:
             if source.branch.path not in source_paths:
                 source_paths.append(source.branch.path)
-    if not source_paths:
-        source_paths.append(output_path)
-    try:
+    if source_paths:
         prior_digests = tuple(prior.branch(path) for path in source_paths)
-    except UnknownIdentityBranchError as error:
-        raise InvalidStageTreeIdentityError("Stage source mapping must reference branches present in the prior identity.") from error
-    prior_payload = b"".join(_part(_text(digest.value)) for digest in prior_digests)
+        prior_payload = b"".join(_part(_text(digest.value)) for digest in prior_digests)
+    elif topology.item_counts[branch_index] == 0 and output_path in prior.topology.paths:
+        prior_payload = _part(_text(prior.branch(output_path).value))
+    else:
+        prior_payload = _part(_text(prior.digest.value))
     mapping_payload = SourceCoordinateMap.build(relevant_entries).root_free_identity_bytes()
     return b"".join(
         (
@@ -564,6 +668,7 @@ def _stage_branch_bytes(
             _part(_text(builder_schema)),
             _part(prior_payload),
             _part(parameter_payload),
+            _part(_text(source_coverage.value)),
             _part(_text(verification.value)),
             _part(_topology_branch_bytes(topology, branch_index)),
             _part(mapping_payload),

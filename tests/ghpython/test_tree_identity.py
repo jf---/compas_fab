@@ -11,6 +11,7 @@ from hypothesis import assume
 from hypothesis import given
 from hypothesis import strategies as st
 
+import compas_fab.ghpython.tree_identity as tree_identity
 from compas_fab.ghpython.item_values import ItemShape
 from compas_fab.ghpython.item_values import ShapeTag
 from compas_fab.ghpython.port_semantics import BranchSemantics
@@ -28,15 +29,21 @@ from compas_fab.ghpython.tree_identity import FLOAT64_CODEC
 from compas_fab.ghpython.tree_identity import FRAME_CODEC
 from compas_fab.ghpython.tree_identity import TEXT_CODEC
 from compas_fab.ghpython.tree_identity import IdentityVerification
+from compas_fab.ghpython.tree_identity import IncompleteStageSourceCoordinatesError
 from compas_fab.ghpython.tree_identity import InvalidExactItemCodecError
 from compas_fab.ghpython.tree_identity import InvalidItemPayloadError
 from compas_fab.ghpython.tree_identity import InvalidSourceTreeIdentityError
 from compas_fab.ghpython.tree_identity import InvalidStageParameterError
 from compas_fab.ghpython.tree_identity import InvalidStageTreeIdentityError
 from compas_fab.ghpython.tree_identity import SourceTreeIdentity
+from compas_fab.ghpython.tree_identity import SourceCoordinateCoverage
+from compas_fab.ghpython.tree_identity import SourceCoordinateRequirement
 from compas_fab.ghpython.tree_identity import StageParameter
 from compas_fab.ghpython.tree_identity import StageTreeIdentity
 from compas_fab.ghpython.tree_identity import TreeContentDigest
+from compas_fab.ghpython.tree_identity import UnknownStageBuilderSchemaError
+from compas_fab.ghpython.tree_identity import UnknownStageOutputCoordinateError
+from compas_fab.ghpython.tree_identity import UnknownStageSourceCoordinateError
 from compas_fab.ghpython.tree_values import Tree
 from compas_fab.ghpython.tree_values import TreeBranch
 from compas_fab.ghpython.tree_values import TreeItem
@@ -52,6 +59,22 @@ FRAME_TREE_SEMANTICS = PortSemantics.build(
     BranchSemantics.ORDERED_SEQUENCE,
     ItemShape.domain_atomic(ShapeTag.build("compas.geometry.Frame")),
 )
+TEST_STAGE_SCHEMA = "tests.ghpython.verified_stage/v1"
+
+
+def _test_stage_builder() -> None:
+    pass
+
+
+@pytest.fixture
+def audited_stage_schema(monkeypatch: pytest.MonkeyPatch) -> str:
+    descriptor = tree_identity._AuditedStageSchema.build(
+        TEST_STAGE_SCHEMA,
+        _test_stage_builder,
+        SourceCoordinateRequirement.COMPLETE_OUTPUTS,
+    )
+    monkeypatch.setitem(tree_identity._AUDITED_STAGE_SCHEMAS, TEST_STAGE_SCHEMA, descriptor)
+    return TEST_STAGE_SCHEMA
 
 
 def text_tree(root: TreeRootId, branches: Tuple[Tuple[Tuple[int, ...], Tuple[str | None, ...]], ...]) -> Tree[str]:
@@ -92,16 +115,18 @@ def test_runtime_root_never_changes_content_digest(root_a: str, root_b: str) -> 
     assert SourceTreeIdentity.build(left, TEXT_CODEC, TEXT_TREE_SEMANTICS) == SourceTreeIdentity.build(right, TEXT_CODEC, TEXT_TREE_SEMANTICS)
 
 
-def test_stage_identity_is_provenance_not_native_object_serialization() -> None:
+def test_stage_identity_is_provenance_not_native_object_serialization(audited_stage_schema: str) -> None:
     source = SourceTreeIdentity.build(frame_tree(), FRAME_CODEC, FRAME_TREE_SEMANTICS)
+    source_map = SourceCoordinateMap.build((SourceCoordinateEntry.build(coordinate("output", (0,), 0), (coordinate("frames", (0,), 0),)),))
     built = StageTreeIdentity.build(
         source,
-        "compas_fab.tesseract.pose_series/v1",
+        audited_stage_schema,
         (
             StageParameter.f64("metres_per_user_unit", 0.001),
             StageParameter.text("working_frame", "base_link"),
         ),
         source.topology,
+        source_map,
     )
 
     assert built.verification is IdentityVerification.VERIFIED
@@ -194,24 +219,38 @@ def test_arbitrary_native_objects_require_an_exact_codec() -> None:
         SourceTreeIdentity.build(cast(Any, native_tree), TEXT_CODEC, TEXT_TREE_SEMANTICS)
 
 
-def test_stage_hashes_root_free_topology_source_map_and_ordered_parameters() -> None:
+def test_stage_hashes_root_free_topology_source_map_and_ordered_parameters(audited_stage_schema: str) -> None:
     source = SourceTreeIdentity.build(text_tree(TreeRootId.build("source"), (((3,), ("a",)),)), TEXT_CODEC, TEXT_TREE_SEMANTICS)
     left_map = SourceCoordinateMap.build((SourceCoordinateEntry.build(coordinate("out-a", (3,), 0), (coordinate("source-a", (3,), 0),)),))
     right_map = SourceCoordinateMap.build((SourceCoordinateEntry.build(coordinate("out-b", (3,), 0), (coordinate("source-b", (3,), 0),)),))
     parameters = (StageParameter.text("frame", "base"), StageParameter.bool("normalize", True))
-    left = StageTreeIdentity.build(source, "compas_fab.tesseract.pose_series/v1", parameters, source.topology, left_map)
-    right = StageTreeIdentity.build(source, "compas_fab.tesseract.pose_series/v1", parameters, source.topology, right_map)
-    reordered = StageTreeIdentity.build(source, "compas_fab.tesseract.pose_series/v1", tuple(reversed(parameters)), source.topology, left_map)
+    left = StageTreeIdentity.build(source, audited_stage_schema, parameters, source.topology, left_map)
+    right = StageTreeIdentity.build(source, audited_stage_schema, parameters, source.topology, right_map)
+    reordered = StageTreeIdentity.build(source, audited_stage_schema, tuple(reversed(parameters)), source.topology, left_map)
 
     assert left == right
     assert left.digest != reordered.digest
 
 
-def test_invalid_stage_schema_parameter_and_raw_identities_fail() -> None:
+@pytest.mark.parametrize(
+    "builder_schema",
+    (
+        "compas_fab.tesseract.pose_series/v1",
+        "compas_fab.tesseract.cartesian_target_series/v1",
+        "compas_fab.tesseract.target_series/v1",
+        "compas_fab.tesseract.motion_program_series/v1",
+        "compas_fab.tesseract.program_series/v1",
+        "compas_fab.tesseract.planning/v1",
+    ),
+)
+def test_unimplemented_builder_schema_cannot_claim_verified(builder_schema: str) -> None:
     source = SourceTreeIdentity.build(text_tree(TreeRootId.build("source"), (((0,), ("a",)),)), TEXT_CODEC, TEXT_TREE_SEMANTICS)
 
-    with pytest.raises(InvalidStageTreeIdentityError):
-        StageTreeIdentity.build(source, "caller.native.dumps/v1", (), source.topology)
+    with pytest.raises(UnknownStageBuilderSchemaError):
+        StageTreeIdentity.build(source, builder_schema, (), source.topology)
+
+
+def test_invalid_stage_parameter_and_raw_source_identity_fail() -> None:
     with pytest.raises(InvalidStageParameterError):
         StageParameter.f64("scale", inf)
     with pytest.raises(InvalidStageParameterError):
@@ -233,7 +272,7 @@ def test_external_native_stage_is_explicitly_unverifiable_and_not_cacheable() ->
 
     external = StageTreeIdentity.build(
         source,
-        "compas_fab.tesseract.pose_series/v1",
+        "external.native.pose_series/v1",
         (),
         source.topology,
         verification=IdentityVerification.UNVERIFIABLE,
@@ -242,9 +281,118 @@ def test_external_native_stage_is_explicitly_unverifiable_and_not_cacheable() ->
     assert external.verification is IdentityVerification.UNVERIFIABLE
     assert external.requires_fresh_compute_token
     assert not external.reusable_from_content_cache
+    assert external.source_coverage is SourceCoordinateCoverage.PARTIAL_OUTPUTS
 
 
-def test_stage_branch_digest_isolates_unchanged_sibling_content() -> None:
+@pytest.mark.parametrize(
+    "output",
+    (
+        coordinate("output", (7,), 0),
+        coordinate("output", (0,), 1),
+    ),
+)
+def test_stage_rejects_nonexistent_output_coordinates(output: TreeCoordinate) -> None:
+    source = SourceTreeIdentity.build(text_tree(TreeRootId.build("source"), (((0,), ("a",)),)), TEXT_CODEC, TEXT_TREE_SEMANTICS)
+    source_map = SourceCoordinateMap.build((SourceCoordinateEntry.build(output, (coordinate("source", (0,), 0),)),))
+
+    with pytest.raises(UnknownStageOutputCoordinateError):
+        StageTreeIdentity.build(
+            source,
+            "external.native.pose_series/v1",
+            (),
+            source.topology,
+            source_map,
+            verification=IdentityVerification.UNVERIFIABLE,
+        )
+
+
+@pytest.mark.parametrize(
+    "mapped_source",
+    (
+        coordinate("source", (7,), 0),
+        coordinate("source", (0,), 1),
+    ),
+)
+def test_stage_rejects_nonexistent_source_coordinates(mapped_source: TreeCoordinate) -> None:
+    source = SourceTreeIdentity.build(text_tree(TreeRootId.build("source"), (((0,), ("a",)),)), TEXT_CODEC, TEXT_TREE_SEMANTICS)
+    source_map = SourceCoordinateMap.build((SourceCoordinateEntry.build(coordinate("output", (0,), 0), (mapped_source,)),))
+
+    with pytest.raises(UnknownStageSourceCoordinateError):
+        StageTreeIdentity.build(
+            source,
+            "external.native.pose_series/v1",
+            (),
+            source.topology,
+            source_map,
+            verification=IdentityVerification.UNVERIFIABLE,
+        )
+
+
+def test_verified_stage_requires_complete_output_attribution(audited_stage_schema: str) -> None:
+    source = SourceTreeIdentity.build(
+        text_tree(TreeRootId.build("source"), (((0,), ("a", "b")), ((1,), ("c",)))),
+        TEXT_CODEC,
+        TEXT_TREE_SEMANTICS,
+    )
+    incomplete_map = SourceCoordinateMap.build(
+        (
+            SourceCoordinateEntry.build(coordinate("output", (0,), 0), (coordinate("source", (0,), 0),)),
+            SourceCoordinateEntry.build(coordinate("output", (0,), 1), (coordinate("source", (0,), 1),)),
+        )
+    )
+    complete_map = SourceCoordinateMap.build(incomplete_map.entries + (SourceCoordinateEntry.build(coordinate("output", (1,), 0), (coordinate("source", (1,), 0),)),))
+
+    with pytest.raises(IncompleteStageSourceCoordinatesError):
+        StageTreeIdentity.build(source, audited_stage_schema, (), source.topology, incomplete_map)
+
+    built = StageTreeIdentity.build(source, audited_stage_schema, (), source.topology, complete_map)
+
+    assert built.verification is IdentityVerification.VERIFIED
+    assert built.source_coverage is SourceCoordinateCoverage.COMPLETE_OUTPUTS
+
+
+def test_unverifiable_stage_records_partial_output_attribution() -> None:
+    source = SourceTreeIdentity.build(
+        text_tree(TreeRootId.build("source"), (((0,), ("a", "b")),)),
+        TEXT_CODEC,
+        TEXT_TREE_SEMANTICS,
+    )
+    partial_map = SourceCoordinateMap.build((SourceCoordinateEntry.build(coordinate("output", (0,), 0), (coordinate("source", (0,), 0),)),))
+
+    built = StageTreeIdentity.build(
+        source,
+        "external.native.pose_series/v1",
+        (),
+        source.topology,
+        partial_map,
+        verification=IdentityVerification.UNVERIFIABLE,
+    )
+
+    assert built.source_coverage is SourceCoordinateCoverage.PARTIAL_OUTPUTS
+
+
+def test_stage_tree_identity_rejects_raw_construction(audited_stage_schema: str) -> None:
+    source = SourceTreeIdentity.build(text_tree(TreeRootId.build("source"), (((0,), ("a",)),)), TEXT_CODEC, TEXT_TREE_SEMANTICS)
+    source_map = SourceCoordinateMap.build((SourceCoordinateEntry.build(coordinate("output", (0,), 0), (coordinate("source", (0,), 0),)),))
+    built = StageTreeIdentity.build(source, audited_stage_schema, (), source.topology, source_map)
+
+    with pytest.raises(InvalidStageTreeIdentityError):
+        StageTreeIdentity(
+            built.digest,
+            built.branch_digests,
+            built.prior_digest,
+            built.builder_schema,
+            built.parameters,
+            built.topology,
+            built.source_coordinates,
+            built.source_coverage,
+            built.verification,
+            built._canonical,
+            built._branch_canonical,
+        )
+
+
+def test_stage_branch_digest_isolates_unchanged_sibling_content(audited_stage_schema: str) -> None:
     left_source = SourceTreeIdentity.build(
         text_tree(TreeRootId.build("source-a"), (((0,), ("left",)), ((1,), ("stable",)))),
         TEXT_CODEC,
@@ -265,8 +413,8 @@ def test_stage_branch_digest_isolates_unchanged_sibling_content() -> None:
         )
     )
 
-    left = StageTreeIdentity.build(left_source, "compas_fab.tesseract.pose_series/v1", (), left_source.topology, source_map)
-    right = StageTreeIdentity.build(right_source, "compas_fab.tesseract.pose_series/v1", (), right_source.topology, source_map)
+    left = StageTreeIdentity.build(left_source, audited_stage_schema, (), left_source.topology, source_map)
+    right = StageTreeIdentity.build(right_source, audited_stage_schema, (), right_source.topology, source_map)
 
     assert left.branch(GhPath.build(0)) != right.branch(GhPath.build(0))
     assert left.branch(GhPath.build(1)) == right.branch(GhPath.build(1))

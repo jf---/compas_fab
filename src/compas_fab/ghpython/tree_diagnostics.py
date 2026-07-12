@@ -39,6 +39,10 @@ class DuplicateSourceOutputError(TreeDiagnosticContractError):
     """Raised when an output coordinate occurs more than once."""
 
 
+class NonCanonicalSourceCoordinateOrderError(InvalidSourceCoordinateMapError):
+    """Raised when source-coordinate entries are not in root-free host order."""
+
+
 class InvalidBranchDiagnosticMapError(TreeDiagnosticContractError):
     """Raised when a branch-diagnostic map is malformed."""
 
@@ -74,6 +78,10 @@ def _integer_bytes(value: int) -> bytes:
 def _coordinate_identity_bytes(coordinate: TreeCoordinate) -> bytes:
     path = b"".join(_part(_integer_bytes(index)) for index in coordinate.branch.path.indices)
     return _part(path) + _part(_integer_bytes(coordinate.item_index.value))
+
+
+def _coordinate_key(coordinate: TreeCoordinate) -> Tuple[Tuple[int, ...], int]:
+    return coordinate.branch.path.canonical_key(), coordinate.item_index.value
 
 
 @define(frozen=True, slots=True)
@@ -114,9 +122,11 @@ class SourceCoordinateMap:
     def __attrs_post_init__(self) -> None:
         if type(self.entries) is not tuple or any(type(entry) is not SourceCoordinateEntry for entry in self.entries):
             raise InvalidSourceCoordinateMapError("Source-coordinate map requires an exact entry tuple.")
-        outputs = tuple(entry.output for entry in self.entries)
-        if len(set(outputs)) != len(outputs):
-            raise DuplicateSourceOutputError("Source-coordinate output keys must be unique.")
+        output_keys = tuple(_coordinate_key(entry.output) for entry in self.entries)
+        if len(set(output_keys)) != len(output_keys):
+            raise DuplicateSourceOutputError("Root-free source-coordinate output keys must be unique.")
+        if output_keys != tuple(sorted(output_keys)):
+            raise NonCanonicalSourceCoordinateOrderError("Source-coordinate entries must retain canonical root-free output order.")
 
     def sources_for(self, output: TreeCoordinate) -> Tuple[TreeCoordinate, ...]:
         """Return ordered sources for one exact runtime output coordinate."""
