@@ -279,3 +279,52 @@ def test_matched_rows_reject_name_count_and_nested_null_bypass() -> None:
     object.__setattr__(mutated_row, "items", (invalid_null,))
     with pytest.raises(InvalidMatchedRowsError):
         MatchedBranch.build(GhPath.build(0), (mutated_row,))
+
+
+def test_matched_tree_revalidates_nested_branch_rows() -> None:
+    matched = match_inputs(
+        (MatchInput.tree("source", tree("source", (((0,), (1,)),))),),
+        MatchPolicy.build(("source",), (MatchRole.EXACT_TREE,)),
+    )
+    list_mutated_branch = matched.branches[0]
+    object.__setattr__(list_mutated_branch, "rows", list(list_mutated_branch.rows))
+
+    with pytest.raises(InvalidMatchedRowsError):
+        MatchedTree.build(
+            matched.root_id,
+            matched.item_names,
+            (list_mutated_branch,),
+            matched.global_items,
+        )
+
+    invalid_null = TreeItem.null()
+    object.__setattr__(invalid_null, "is_null", False)
+    invalid_row = MatchedRow.build((TreeItem.value(1),))
+    object.__setattr__(invalid_row, "items", (invalid_null,))
+    nested_mutated_branch = MatchedBranch.build(GhPath.build(0), (MatchedRow.build((TreeItem.value(1),)),))
+    object.__setattr__(nested_mutated_branch, "rows", (invalid_row,))
+
+    with pytest.raises(InvalidMatchedRowsError):
+        MatchedTree.build(
+            matched.root_id,
+            matched.item_names,
+            (nested_mutated_branch,),
+            matched.global_items,
+        )
+
+
+def test_matched_tree_rejects_non_row_nested_value_with_named_error() -> None:
+    matched = match_inputs(
+        (MatchInput.tree("source", tree("source", (((0,), (1,)),))),),
+        MatchPolicy.build(("source",), (MatchRole.EXACT_TREE,)),
+    )
+    mutated_branch = matched.branches[0]
+    object.__setattr__(mutated_branch, "rows", (object(),))
+
+    with pytest.raises(InvalidMatchedRowsError):
+        MatchedTree.build(
+            matched.root_id,
+            matched.item_names,
+            (mutated_branch,),
+            matched.global_items,
+        )

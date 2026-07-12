@@ -12,10 +12,12 @@ from compas_fab.ghpython.tree_coordinates import ItemIndex
 from compas_fab.ghpython.tree_coordinates import TreeCoordinate
 from compas_fab.ghpython.tree_coordinates import TreeRootId
 from compas_fab.ghpython.tree_expansion import CrossProductLimitError
+from compas_fab.ghpython.tree_expansion import CrossProductPair
 from compas_fab.ghpython.tree_expansion import CrossProductPolicy
 from compas_fab.ghpython.tree_expansion import CrossProductResult
 from compas_fab.ghpython.tree_expansion import CrossProductSourceMapMismatchError
 from compas_fab.ghpython.tree_expansion import IncompleteCrossProductGridError
+from compas_fab.ghpython.tree_expansion import InvalidCrossProductResultError
 from compas_fab.ghpython.tree_expansion import InvalidCrossProductPolicyError
 from compas_fab.ghpython.tree_expansion import InvalidMaximumExpandedItemsError
 from compas_fab.ghpython.tree_expansion import MaximumExpandedItems
@@ -257,11 +259,12 @@ def test_cross_product_count_guard_handles_zero_exact_bound_and_overbound_before
     exact_left = tree("left", (((0,), (1, 2)),))
     exact_right = tree("right", (((1,), (3, 4, 5)),))
 
-    assert cross_product(
+    exact_result = cross_product(
         exact_left,
         exact_right,
         CrossProductPolicy.build(MaximumExpandedItems.build(6)),
-    ).pairs
+    )
+    assert len(exact_result.pairs) == 6
 
     monkeypatch.setattr(
         "compas_fab.ghpython.tree_expansion._multiply_item_counts",
@@ -301,6 +304,46 @@ def test_cross_product_result_rejects_incomplete_coordinate_grid() -> None:
 
     with pytest.raises(IncompleteCrossProductGridError):
         CrossProductResult(retained_pairs, retained_map)
+
+
+def test_cross_product_result_rejects_diagonal_grid_before_expected_pair_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    axis_size = 128
+    valid_item = TreeItem.value(1)
+    diagonal_pairs = tuple(
+        CrossProductPair.build(
+            valid_item,
+            valid_item,
+            CrossProductCoordinate.build(
+                tree_coordinate((0,), index, "left"),
+                tree_coordinate((1,), index, "right"),
+            ),
+        )
+        for index in range(axis_size)
+    )
+    monkeypatch.setattr(
+        CrossProductCoordinate,
+        "build",
+        lambda *_args: pytest.fail("expected pair generation began before cardinality rejection"),
+    )
+
+    with pytest.raises(IncompleteCrossProductGridError):
+        CrossProductResult.build(diagonal_pairs, SourceCoordinateMap.build(()))
+
+
+def test_cross_product_pair_revalidates_nested_tree_items() -> None:
+    valid_item = TreeItem.value(1)
+    invalid_null = TreeItem.null()
+    object.__setattr__(invalid_null, "is_null", False)
+    coordinate = CrossProductCoordinate.build(
+        tree_coordinate((0,), 0, "left"),
+        tree_coordinate((1,), 0, "right"),
+    )
+
+    for left, right in ((invalid_null, valid_item), (valid_item, invalid_null)):
+        with pytest.raises(InvalidCrossProductResultError):
+            CrossProductPair.build(left, right, coordinate)
 
 
 def test_cross_product_result_rejects_pair_path_source_map_mismatch() -> None:

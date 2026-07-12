@@ -114,7 +114,7 @@ class CrossProductPair(Generic[LeftT, RightT]):
         return cls(left, right, coordinate)
 
     def __attrs_post_init__(self) -> None:
-        if type(self.left) is not TreeItem or type(self.right) is not TreeItem or type(self.coordinate) is not CrossProductCoordinate:
+        if not _is_valid_tree_item(self.left) or not _is_valid_tree_item(self.right) or type(self.coordinate) is not CrossProductCoordinate:
             raise InvalidCrossProductResultError("Cross-product pair requires exact left/right items and a source coordinate.")
 
     @property
@@ -158,11 +158,19 @@ class CrossProductResult(Generic[LeftT, RightT]):
                 key=_coordinate_axis_key,
             )
         )
-        expected_coordinates = tuple(CrossProductCoordinate.build(left, right) for left in left_axis for right in right_axis)
-        if len(coordinates) != len(expected_coordinates) or set(coordinates) != set(expected_coordinates):
+        if coordinates and not _has_exact_axis_cardinality(
+            len(coordinates),
+            len(left_axis),
+            len(right_axis),
+        ):
             raise IncompleteCrossProductGridError("Cross-product result coordinates must form one complete Cartesian grid.")
-        if coordinates != expected_coordinates:
-            raise NonLeftMajorCrossProductOrderError("Cross-product result coordinates must retain deterministic left-major order.")
+        coordinate_index = 0
+        for left in left_axis:
+            for right in right_axis:
+                coordinate = coordinates[coordinate_index]
+                if coordinate.left != left or coordinate.right != right:
+                    raise NonLeftMajorCrossProductOrderError("Cross-product result coordinates must retain deterministic left-major order.")
+                coordinate_index += 1
         for pair in self.pairs:
             if ExpansionPathCodec.decode(pair.path) != pair.coordinate:
                 raise CrossProductPairPathMismatchError("Cross-product pair path must reconstruct its exact coordinate.")
@@ -191,6 +199,19 @@ def _coordinate_axis_key(coordinate: TreeCoordinate) -> Tuple[str, Tuple[int, ..
         coordinate.branch.path.canonical_key(),
         coordinate.item_index.value,
     )
+
+
+def _is_valid_tree_item(value: object) -> bool:
+    return type(value) is TreeItem and type(value.is_null) is bool and value.is_null == (value.item is None)
+
+
+def _has_exact_axis_cardinality(
+    pair_count: int,
+    left_axis_count: int,
+    right_axis_count: int,
+) -> bool:
+    right_quotient, remainder = divmod(pair_count, left_axis_count)
+    return remainder == 0 and right_quotient == right_axis_count
 
 
 def _multiply_item_counts(left_count: int, right_count: int) -> int:

@@ -222,6 +222,10 @@ class MatchedTree:
             raise InvalidMatchedItemNamesError("Matched item names must be unique non-empty text without surrounding whitespace.")
         if type(self.branches) is not tuple or any(type(branch) is not MatchedBranch for branch in self.branches):
             raise InvalidMatchedBranchOrderError("Matched tree branches must be an exact MatchedBranch tuple.")
+        if any(type(branch.path) is not GhPath for branch in self.branches):
+            raise InvalidMatchedBranchOrderError("Matched tree branches must retain exact paths.")
+        if any(not _has_valid_matched_rows(branch) for branch in self.branches):
+            raise InvalidMatchedRowsError("Matched tree branches must retain exact rows and valid null slots.")
         if type(self.global_items) is not tuple or any(type(item) is not MatchedGlobal for item in self.global_items):
             raise InvalidMatchedGlobalNamesError("Matched globals must be an exact MatchedGlobal tuple.")
         global_names = tuple(item.name for item in self.global_items)
@@ -242,6 +246,12 @@ def _is_valid_name(value: object) -> bool:
 
 def _is_valid_tree_item(value: object) -> bool:
     return type(value) is TreeItem and type(value.is_null) is bool and value.is_null == (value.item is None)
+
+
+def _has_valid_matched_rows(branch: MatchedBranch) -> bool:
+    if type(branch.rows) is not tuple:
+        return False
+    return all(type(row) is MatchedRow and type(row.items) is tuple and all(_is_valid_tree_item(item) for item in row.items) for row in branch.rows)
 
 
 def _paths(tree: Tree[object]) -> Tuple[Tuple[int, ...], ...]:
