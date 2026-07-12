@@ -17,6 +17,7 @@ from .client import TesseractClient
 from .native import TesseractPlanningRequest
 from .native import TesseractPlanningResult
 from .options import TesseractPlanOptions
+from .scene_identity import NativeSceneContentIdentity
 
 
 class TesseractPlanner(
@@ -56,3 +57,13 @@ class TesseractPlanner(
     def native_scene_revision(self) -> int:
         """Return the revision of exact state applied to native plan clones."""
         return self._client.native_scene_revision
+
+    @property
+    def native_artifact_digest(self) -> str:
+        """Return the immutable native robot artifact digest."""
+        return self._client.native_artifact_digest
+
+    @property
+    def native_scene_content_identity(self) -> NativeSceneContentIdentity:
+        """Return exact scene content or opaque-command evidence."""
+        return self._client.native_scene_content_identity

@@ -24,6 +24,8 @@ from .errors import TesseractRuntimeInitializationError
 from .errors import UnsupportedTesseractCellStateError
 from .joint_state import apply_active_joint_state
 from .runtime import TesseractRuntime
+from .scene_identity import DirectSceneGeneration
+from .scene_identity import NativeSceneContentIdentity
 from .warmup import WarmupSelection
 from .warmup import warmup_composer
 
@@ -48,7 +50,13 @@ class TesseractClient(ClientInterface):
         self._robot_cell_state: Optional[RobotCellState] = None
         self._native_scene_revision = 0
         self._scene_projection_identity: Optional[NativeProjectionIdentity] = None
+        self._direct_scene_generation = DirectSceneGeneration.build(0)
         self.artifact = artifact
+        self._native_scene_content_identity = NativeSceneContentIdentity.build(
+            artifact.identity,
+            ("", None),
+            self._direct_scene_generation,
+        )
         self.cache_root = cache_root
         if composer is not None and not isinstance(composer, TaskComposer):
             raise InvalidTesseractRuntimeConfigurationError("composer must be TaskComposer, got {}.".format(type(composer).__name__))
@@ -89,6 +97,16 @@ class TesseractClient(ClientInterface):
     def native_scene_revision(self) -> int:
         """Monotonic revision of exact state consumed by native clones."""
         return self._native_scene_revision
+
+    @property
+    def native_artifact_digest(self) -> str:
+        """Return the exact immutable robot artifact digest."""
+        return self.artifact.identity.digest
+
+    @property
+    def native_scene_content_identity(self) -> NativeSceneContentIdentity:
+        """Return complete content or opaque-command scene evidence."""
+        return self._native_scene_content_identity
 
     @property
     def robot_cell(self) -> Optional[RobotCell]:  # type: ignore[override]
@@ -173,12 +191,24 @@ class TesseractClient(ClientInterface):
         if identity != self._scene_projection_identity:
             self._native_scene_revision += 1
             self._scene_projection_identity = identity
+            self._native_scene_content_identity = NativeSceneContentIdentity.build(
+                self.artifact.identity,
+                identity,
+                self._direct_scene_generation,
+            )
         self._robot_cell = robot_cell
         self._robot_cell_state = robot_cell_state
 
     def _mark_native_scene_changed(self) -> None:
         """Advance the revision after a direct native scene command."""
         self._native_scene_revision += 1
+        self._direct_scene_generation = self._direct_scene_generation.next()
+        projection = self._scene_projection_identity or ("", None)
+        self._native_scene_content_identity = NativeSceneContentIdentity.build(
+            self.artifact.identity,
+            projection,
+            self._direct_scene_generation,
+        )
 
     def require_planning_contact_managers(self) -> None:
         """Require both managers used by the conventional free-motion path."""

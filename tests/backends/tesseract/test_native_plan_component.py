@@ -11,6 +11,8 @@ from tesseract_robotics.tesseract_command_language import ProfileDictionary
 from tesseract_robotics.tesseract_command_language import SetDigitalInstruction
 
 from compas_fab.backends.tesseract.errors import InvalidTesseractNativePlanError
+from compas_fab.backends.tesseract.errors import NativePlanInputsChangedBeforeExecutionError
+from compas_fab.backends.tesseract.errors import NativePlanInputsChangedDuringExecutionError
 from compas_fab.backends.tesseract.errors import TesseractPlanningFailedError
 from compas_fab.backends.tesseract.native import TesseractPlanningResult
 from compas_fab.backends.tesseract.native_plan import NativePlanCall
@@ -115,6 +117,51 @@ def test_native_plan_call_executes_only_plan_native():
     result = call.execute()
 
     assert result.request is call.request
+    assert planner.requests == [call.request]
+
+
+@pytest.mark.parametrize("changed", ["program", "scene", "profiles", "pipeline", "auto_seed"])
+def test_native_plan_call_rejects_observable_drift_before_execution(changed):
+    planner = CapturingPlanner()
+    program = _program()
+    profiles = ProfileDictionary()
+    call = NativePlanCall.build(planner, program, "DescartesFPipeline", profiles, False)
+
+    if changed == "program":
+        program.setDescription("queued mutation")
+    elif changed == "scene":
+        planner.scene_revision += 1
+    elif changed == "profiles":
+        object.__setattr__(call.request, "profiles", ProfileDictionary())
+    elif changed == "pipeline":
+        object.__setattr__(call.request, "pipeline", "DescartesDPipeline")
+    else:
+        object.__setattr__(call.request, "auto_seed", True)
+
+    with pytest.raises(NativePlanInputsChangedBeforeExecutionError):
+        call.execute()
+    assert planner.requests == []
+
+
+@pytest.mark.parametrize("changed", ["program", "scene"])
+def test_native_plan_call_discards_result_when_inputs_drift_during_execution(changed):
+    planner = CapturingPlanner()
+    program = _program()
+    call = NativePlanCall.build(planner, program, "DescartesFPipeline", ProfileDictionary(), False)
+    original = planner.plan_native
+
+    def mutate_during(request):
+        result = original(request)
+        if changed == "program":
+            program.setDescription("active mutation")
+        else:
+            planner.scene_revision += 1
+        return result
+
+    planner.plan_native = mutate_during
+
+    with pytest.raises(NativePlanInputsChangedDuringExecutionError):
+        call.execute()
     assert planner.requests == [call.request]
 
 

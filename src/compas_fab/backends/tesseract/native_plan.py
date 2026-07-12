@@ -7,6 +7,8 @@ from tesseract_robotics.tesseract_command_language import CompositeInstruction
 from tesseract_robotics.tesseract_command_language import ProfileDictionary
 
 from .errors import InvalidTesseractNativePlanError
+from .errors import NativePlanInputsChangedBeforeExecutionError
+from .errors import NativePlanInputsChangedDuringExecutionError
 from .native import TesseractPlanningRequest
 from .native import TesseractPlanningResult
 from .native_program_identity import NativeProgramIdentity
@@ -84,8 +86,17 @@ class NativePlanCall:
         return cls(planner, request, _signature(planner, request))
 
     def execute(self) -> TesseractPlanningResult:
-        """Execute only the planner's exact native path."""
-        return self.planner.plan_native(self.request)
+        """Execute once and discard a result if observable inputs drift."""
+        self.validate_inputs_before_execution()
+        result = self.planner.plan_native(self.request)
+        if _signature(self.planner, self.request) != self.signature:
+            raise NativePlanInputsChangedDuringExecutionError("Native planning inputs changed while the planner call was active; result discarded.")
+        return result
+
+    def validate_inputs_before_execution(self) -> None:
+        """Require every observable queued input to match its sealed signature."""
+        if _signature(self.planner, self.request) != self.signature:
+            raise NativePlanInputsChangedBeforeExecutionError("Native planning inputs changed before planner execution.")
 
 
 def required_native_plan_bool(value: object, name: str) -> bool:
