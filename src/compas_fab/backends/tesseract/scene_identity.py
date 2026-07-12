@@ -9,7 +9,7 @@ from typing import Tuple
 from attrs import define
 from attrs import field
 
-from compas_fab.ghpython.tree_identity import IdentityVerification
+from compas_fab.identity_verification import IdentityVerification
 
 from .identity import BuildIdentity
 

@@ -16,6 +16,7 @@ from compas_fab.backends.tesseract.errors import NativePlanInputsChangedDuringEx
 from compas_fab.backends.tesseract.errors import TesseractPlanningFailedError
 from compas_fab.backends.tesseract.native import TesseractPlanningResult
 from compas_fab.backends.tesseract.native_plan import NativePlanCall
+from compas_fab.backends.tesseract.native_plan import NativePlanSignature
 from compas_fab.backends.tesseract.planner import TesseractPlanner
 
 COMPONENT = Path(__file__).parents[3] / "src" / "compas_fab" / "ghpython" / "components_cpython" / "Cf_TesseractNativePlan" / "code.py"
@@ -120,6 +121,20 @@ def test_native_plan_call_executes_only_plan_native():
     assert planner.requests == [call.request]
 
 
+def test_same_profile_dictionary_internal_content_is_intentionally_opaque():
+    planner = CapturingPlanner()
+    profiles = ProfileDictionary()
+    call = NativePlanCall.build(planner, _program(), "DescartesFPipeline", profiles, False)
+    signature = call.signature
+
+    # 0.35.0.6 has no enumeration or canonical ProfileDictionary serializer.
+    profiles.clear()
+
+    result = call.execute()
+    assert call.signature == signature
+    assert result.request.profiles is profiles
+
+
 @pytest.mark.parametrize("changed", ["program", "scene", "profiles", "pipeline", "auto_seed"])
 def test_native_plan_call_rejects_observable_drift_before_execution(changed):
     planner = CapturingPlanner()
@@ -176,6 +191,22 @@ def test_native_plan_call_raw_constructor_cannot_bypass_signature():
 
     with pytest.raises(InvalidTesseractNativePlanError):
         evolve(call, planner=CapturingPlanner())
+
+
+@pytest.mark.parametrize("field", ["planner_identity", "scene_revision", "profile_identity"])
+def test_native_plan_signature_rejects_boolean_integer_fields(field):
+    call = NativePlanCall.build(CapturingPlanner(), _program(), "DescartesFPipeline", ProfileDictionary(), False)
+    values = {
+        "planner_identity": call.signature.planner_identity,
+        "scene_revision": call.signature.scene_revision,
+        "program_identity": call.signature.program_identity,
+        "pipeline": call.signature.pipeline,
+        "profile_identity": call.signature.profile_identity,
+        "auto_seed": call.signature.auto_seed,
+    }
+    values[field] = True
+    with pytest.raises(InvalidTesseractNativePlanError):
+        NativePlanSignature(**values)
 
 
 @pytest.mark.parametrize(

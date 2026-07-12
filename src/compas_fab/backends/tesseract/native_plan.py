@@ -36,7 +36,7 @@ class NativePlanSignature:
             raise InvalidTesseractNativePlanError("Native plan signature requires program content identity.")
         if not isinstance(self.pipeline, str) or not self.pipeline.strip():
             raise InvalidTesseractNativePlanError("Native plan signature requires an exact pipeline name.")
-        if not isinstance(self.profile_identity, int) or self.profile_identity <= 0:
+        if type(self.profile_identity) is not int or self.profile_identity <= 0:
             raise InvalidTesseractNativePlanError("Native plan signature requires profile object identity.")
         required_native_plan_bool(self.auto_seed, "auto_seed")
 
@@ -90,7 +90,7 @@ class NativePlanCall:
         self.validate_inputs_before_execution()
         result = self.planner.plan_native(self.request)
         if _signature(self.planner, self.request) != self.signature:
-            raise NativePlanInputsChangedDuringExecutionError("Native planning inputs changed while the planner call was active; result discarded.")
+            raise NativePlanInputsChangedDuringExecutionError("Native planning inputs differ at the post-call observation; result discarded.")
         return result
 
     def validate_inputs_before_execution(self) -> None:
