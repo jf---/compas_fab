@@ -171,6 +171,37 @@ def test_native_authoring_component_contract(
     assert _png_size(COMPONENTS / component / "icon.png") == (24, 24)
 
 
+def test_native_authoring_uses_grasshopper_vectorization():
+    expected = {
+        "Cf_TesseractPose": {"frame": 0, "metres_per_user_unit": 0, "working_frame": 0},
+        "Cf_TesseractCartesianTarget": {"pose": 0, "move_type": 0, "profile": 0},
+        "Cf_TesseractJointTarget": {"positions": 1, "joint_names": 1, "move_type": 0, "profile": 0},
+        "Cf_TesseractStateTarget": {
+            "positions": 1,
+            "joint_names": 1,
+            "velocities": 1,
+            "accelerations": 1,
+            "time": 0,
+            "move_type": 0,
+            "profile": 0,
+        },
+        "Cf_TesseractMotionProgram": {
+            "native_robot": 0,
+            "targets": 1,
+            "group_name": 0,
+            "tcp_frame": 0,
+            "working_frame": 0,
+            "profile": 0,
+        },
+    }
+    for component, access in expected.items():
+        _, metadata = _component(component)
+        assert {
+            item["name"]: item.get("scriptParamAccess", 0)
+            for item in metadata["ghpython"]["inputParameters"]
+        } == access
+
+
 def test_pose_component_is_the_only_new_geometry_unit_boundary():
     pose_code, _ = _component("Cf_TesseractPose")
     cartesian_code, _ = _component("Cf_TesseractCartesianTarget")

@@ -150,6 +150,7 @@ nav:
   - CAD front-ends:
       - Overview: frontends.md
       - Grasshopper: frontends/ghpython.md
+      - Tesseract series: frontends/ghpython-tesseract-series.md
       - Configuration Target: frontends/ghpython-configuration-target.md
   - Concepts: concepts.md
   - Backends:
