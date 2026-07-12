@@ -24,6 +24,9 @@ TESSERACT_USER_OBJECTS = (
     "Cf_TesseractDescartesProfile.ghuser",
     "Cf_TesseractNativePlan.ghuser",
     "Cf_TesseractNativeResult.ghuser",
+    "Cf_TesseractNativeForwardKinematics.ghuser",
+    "Cf_TesseractNativeInverseKinematics.ghuser",
+    "Cf_TesseractNativeCollision.ghuser",
 )
 
 
@@ -372,6 +375,9 @@ def test_tesseract_components_require_nanobind_distribution_only():
         "Cf_TesseractDescartesProfile",
         "Cf_TesseractNativePlan",
         "Cf_TesseractNativeResult",
+        "Cf_TesseractNativeForwardKinematics",
+        "Cf_TesseractNativeInverseKinematics",
+        "Cf_TesseractNativeCollision",
     ):
         code, _ = _component(name)
         assert "# r: tesseract-robotics-nanobind==0.35.0.7" in code

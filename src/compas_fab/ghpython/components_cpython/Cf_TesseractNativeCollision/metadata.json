@@ -1,0 +1,48 @@
+{
+    "name": "Tesseract Native Collision",
+    "nickname": "Tesseract Native Collision",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Run an exact native Tesseract contact request and retain every contact.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "planner",
+                "description": "TesseractPlanner from Tesseract Planner. Only check_collision_native is used."
+            },
+            {
+                "name": "robot_cell_state",
+                "description": "Exact RobotCellState supplying the native collision-check configuration."
+            },
+            {
+                "name": "request",
+                "description": "Exact native ContactRequest controlling the contact query."
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "result",
+                "description": "Exact TesseractCollisionResult wrapper retaining request, map, and contacts."
+            },
+            {
+                "name": "native_map",
+                "description": "Exact native ContactResultMap from the contact manager."
+            },
+            {
+                "name": "native_contacts",
+                "description": "Complete native ContactResultVector, including separated contacts."
+            },
+            {
+                "name": "colliding_contacts",
+                "description": "Contacts at signed distance less than or equal to zero metres."
+            },
+            {
+                "name": "in_collision",
+                "description": "True when at least one native contact is touching or penetrating."
+            }
+        ]
+    }
+}
