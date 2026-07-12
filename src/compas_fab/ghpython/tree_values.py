@@ -15,6 +15,7 @@ from compas_fab.ghpython.tree_errors import DuplicateTreePathError
 from compas_fab.ghpython.tree_errors import InvalidTreeBranchError
 from compas_fab.ghpython.tree_errors import InvalidTreeItemError
 from compas_fab.ghpython.tree_errors import InvalidTreeRootIdError
+from compas_fab.ghpython.tree_errors import InvalidTreeTopologyError
 from compas_fab.ghpython.tree_errors import NonCanonicalTreeOrderError
 
 T = TypeVar("T")
@@ -71,7 +72,7 @@ class TreeTopology:
     @classmethod
     def build(cls, branches: Tuple[TreeBranch[T], ...]) -> "TreeTopology":
         if type(branches) is not tuple or any(type(branch) is not TreeBranch for branch in branches):
-            raise InvalidTreeBranchError("Tree topology requires an exact tuple of TreeBranch values.")
+            raise InvalidTreeTopologyError("Tree topology requires an exact tuple of TreeBranch values.")
         return cls(
             paths=tuple(branch.path for branch in branches),
             item_counts=tuple(len(branch.items) for branch in branches),
@@ -80,14 +81,14 @@ class TreeTopology:
 
     def __attrs_post_init__(self) -> None:
         if type(self.paths) is not tuple or type(self.item_counts) is not tuple or type(self.null_bitmaps) is not tuple:
-            raise InvalidTreeBranchError("Tree topology fields must be exact tuples.")
+            raise InvalidTreeTopologyError("Tree topology fields must be exact tuples.")
         if len(self.paths) != len(self.item_counts) or len(self.paths) != len(self.null_bitmaps):
-            raise InvalidTreeBranchError("Tree topology fields must describe the same branches.")
+            raise InvalidTreeTopologyError("Tree topology fields must describe the same branches.")
         for path, count, bitmap in zip(self.paths, self.item_counts, self.null_bitmaps):
             if type(path) is not GhPath or type(count) is not int or count < 0 or type(bitmap) is not tuple:
-                raise InvalidTreeBranchError("Tree topology contains invalid branch metadata.")
+                raise InvalidTreeTopologyError("Tree topology contains invalid branch metadata.")
             if len(bitmap) != count or any(type(bit) is not bool for bit in bitmap):
-                raise InvalidTreeBranchError("Tree topology null bitmap must match its item count.")
+                raise InvalidTreeTopologyError("Tree topology null bitmap must match its item count.")
         keys = tuple(path.canonical_key() for path in self.paths)
         if len(set(keys)) != len(keys):
             raise DuplicateTreePathError("Tree topology paths must be unique.")
