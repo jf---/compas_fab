@@ -183,6 +183,17 @@ def test_encode_rejects_raw_nested_branch_and_path_mutation() -> None:
         encode_tree(tree, UTF8_CODEC)
 
 
+def test_encode_rejects_nested_path_indices_list_without_normalizing() -> None:
+    tree = Tree.build(
+        TreeRootId.build("route"),
+        (TreeBranch.build(GhPath.build(0), (TreeItem.value("value"),)),),
+    )
+    object.__setattr__(tree.branches[0].path, "indices", [0])
+
+    with pytest.raises(InvalidEncodedTreeError):
+        encode_tree(tree, UTF8_CODEC)
+
+
 def test_decode_rejects_unsorted_host_paths_instead_of_reordering() -> None:
     encoded = encoded_tree(paths=((2,), (1,)))
     with pytest.raises(NonCanonicalTreeOrderError):

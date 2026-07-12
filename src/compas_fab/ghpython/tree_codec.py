@@ -149,6 +149,8 @@ def _validated_tree_for_encoding(tree: Tree[T]) -> Tree[T]:
         for branch in tree.branches:
             if type(branch) is not TreeBranch or type(branch.path) is not GhPath or type(branch.items) is not tuple:
                 raise InvalidEncodedTreeError("Tree producer branches must remain exact branch values.")
+            if type(branch.path.indices) is not tuple:
+                raise InvalidEncodedTreeError("Tree producer path indices must remain an exact tuple.")
             path = GhPath.build(*branch.path.indices)
             items: List[TreeItem[T]] = []
             for item in branch.items:
