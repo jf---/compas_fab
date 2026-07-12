@@ -1,30 +1,32 @@
 # Tesseract series in Grasshopper
 
-Tesseract authoring components use Grasshopper's standard item matching and
-data-tree behavior. No COMPAS FAB tree or series wrapper is needed:
+Tesseract authoring components declare Grasshopper item or list access instead
+of introducing a COMPAS FAB tree or series wrapper:
 
 ```text
-Frames -> Tesseract Pose -> Tesseract Cartesian Target -> Tesseract Motion Program
-                         \-> Tesseract Joint/State Target -/
+Frame items -> Pose items -> Cartesian Target items --\
+Joint-vector branches -> one Joint/State Target each --+-> ordered target branch -> Motion Program
 ```
 
-`Tesseract Pose` and the target components produce one output item for each
-matched input item. Grasshopper preserves branches and broadcasts single-item
-inputs in the usual way, so shared move types, profiles, or frames can remain
-single items while frames vary across a list or tree.
+`Tesseract Pose` reads `frame` as an item, and `Tesseract Cartesian Target`
+reads `pose` as an item. These ports use standard Grasshopper item matching;
+shared item inputs such as move type, profile, and working frame participate in
+that matching normally.
 
-## One program per branch
+`Tesseract Joint Target` and `Tesseract State Target` instead read each joint
+vector as a list. One ordered branch of positions, names, velocities, or
+accelerations forms one atomic target. The scalar values inside that branch are
+joint coordinates, not a series of targets.
 
-`Tesseract Motion Program` reads `targets` as a list. Each target branch is
-therefore one ordered program: the component runs once per branch and passes
-that branch's complete target sequence to Tesseract. With several target
-branches, the output contains the corresponding program branches.
+`Tesseract Motion Program` likewise reads `targets` as a list. Treat each
+ordered target branch as one program. For the one-item convenience case, wire a
+single Cartesian, Joint, or State target directly to `targets`; no custom
+container is part of the component contract.
 
-Joint data has the same atomic rule. `positions`, `joint_names`, `velocities`,
-and `accelerations` are list inputs, so one branch is one joint vector, not a
-series of scalar target items. To author several joint or state targets, put
-each complete vector on its own branch and let Grasshopper match those branches.
+## Evidence and acceptance
 
-For the common one-item case, connect one frame through Pose and Cartesian
-Target directly into Motion Program. Grasshopper supplies the lone target as a
-one-item target list; no grafting, wrapping, or custom container is required.
+The automated metadata test pins the declared item/list access contract in the
+component sources. Windows Rhino CI compiles the components and inventories the
+expected `.ghuser` files. It does not run a Grasshopper canvas: exact Rhino
+path preservation, branch matching, and one-item list coercion remain pending
+Rhino acceptance testing.
