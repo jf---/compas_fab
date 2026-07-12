@@ -28,9 +28,9 @@ class NativePlanSignature:
     auto_seed: bool
 
     def __attrs_post_init__(self) -> None:
-        if not isinstance(self.planner_identity, int) or self.planner_identity <= 0:
+        if type(self.planner_identity) is not int or self.planner_identity <= 0:
             raise InvalidTesseractNativePlanError("Native plan signature requires planner object identity.")
-        if not isinstance(self.scene_revision, int) or self.scene_revision < 0:
+        if type(self.scene_revision) is not int or self.scene_revision < 0:
             raise InvalidTesseractNativePlanError("Native plan signature requires non-negative scene revision.")
         if not isinstance(self.program_identity, NativeProgramIdentity):
             raise InvalidTesseractNativePlanError("Native plan signature requires program content identity.")

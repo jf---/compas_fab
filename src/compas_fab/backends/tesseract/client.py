@@ -54,7 +54,7 @@ class TesseractClient(ClientInterface):
         self.artifact = artifact
         self._native_scene_content_identity = NativeSceneContentIdentity.build(
             artifact.identity,
-            ("", None),
+            None,
             self._direct_scene_generation,
         )
         self.cache_root = cache_root
@@ -203,7 +203,7 @@ class TesseractClient(ClientInterface):
         """Advance the revision after a direct native scene command."""
         self._native_scene_revision += 1
         self._direct_scene_generation = self._direct_scene_generation.next()
-        projection = self._scene_projection_identity or ("", None)
+        projection = self._scene_projection_identity
         self._native_scene_content_identity = NativeSceneContentIdentity.build(
             self.artifact.identity,
             projection,
