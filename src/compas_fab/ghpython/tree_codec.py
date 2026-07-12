@@ -130,6 +130,7 @@ class EncodedTree:
     def __attrs_post_init__(self) -> None:
         if type(self.root_id) is not TreeRootId or type(self.canonical_json) is not bytes:
             raise InvalidEncodedTreeError("Encoded tree requires an exact runtime root and JSON byte payload.")
+        _validated_runtime_root(self.root_id)
 
 
 def _validated_runtime_root(root_id: TreeRootId) -> TreeRootId:
@@ -137,6 +138,34 @@ def _validated_runtime_root(root_id: TreeRootId) -> TreeRootId:
         return TreeRootId.build(root_id.value)
     except (AttributeError, ValueError) as error:
         raise InvalidEncodedTreeError("Encoded tree runtime root must remain a valid exact routing value.") from error
+
+
+def _validated_tree_for_encoding(tree: Tree[T]) -> Tree[T]:
+    try:
+        root_id = _validated_runtime_root(tree.root_id)
+        if type(tree.branches) is not tuple:
+            raise InvalidEncodedTreeError("Tree producer branches must remain an exact tuple.")
+        branches: List[TreeBranch[T]] = []
+        for branch in tree.branches:
+            if type(branch) is not TreeBranch or type(branch.path) is not GhPath or type(branch.items) is not tuple:
+                raise InvalidEncodedTreeError("Tree producer branches must remain exact branch values.")
+            path = GhPath.build(*branch.path.indices)
+            items: List[TreeItem[T]] = []
+            for item in branch.items:
+                if type(item) is not TreeItem:
+                    raise InvalidEncodedTreeError("Tree producer items must remain exact TreeItem values.")
+                if type(item.is_null) is not bool or item.is_null != (item.item is None):
+                    raise InvalidEncodedTreeError("Tree producer items must retain exact null/value state.")
+                if item.is_null:
+                    items.append(TreeItem.null())
+                else:
+                    items.append(TreeItem.value(cast(T, item.item)))
+            branches.append(TreeBranch.build(path, tuple(items)))
+        return Tree.build(root_id, tuple(branches))
+    except InvalidEncodedTreeError:
+        raise
+    except (AttributeError, TypeError, ValueError) as error:
+        raise InvalidEncodedTreeError("Tree producer contains invalid nested topology or item state.") from error
 
 
 @define(frozen=True, slots=True)
@@ -228,8 +257,9 @@ def encode_tree(tree: Tree[T], codec: TreeValueCodec[T]) -> EncodedTree:
         raise InvalidEncodedTreeError("Tree encoder requires an exact Tree value.")
     if type(codec) is not TreeValueCodec:
         raise InvalidTreeValueCodecError("Tree encoder requires an exact TreeValueCodec value.")
-    branches = _encode_branches(tree, codec)
-    return EncodedTree.build(tree.root_id, _canonical_json(branches))
+    validated_tree = _validated_tree_for_encoding(tree)
+    branches = _encode_branches(validated_tree, codec)
+    return EncodedTree.build(validated_tree.root_id, _canonical_json(branches))
 
 
 def _parse_document(canonical_json: bytes) -> Dict[str, object]:

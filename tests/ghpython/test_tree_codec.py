@@ -15,6 +15,7 @@ from compas_fab.ghpython.tree_codec import InvalidEncodedBranchError
 from compas_fab.ghpython.tree_codec import InvalidEncodedSlotError
 from compas_fab.ghpython.tree_codec import InvalidEncodedTreeError
 from compas_fab.ghpython.tree_codec import InvalidTreeValueCodecError
+from compas_fab.ghpython.tree_codec import MalformedTreeJsonError
 from compas_fab.ghpython.tree_codec import MalformedTreePayloadError
 from compas_fab.ghpython.tree_codec import NonCanonicalTreeJsonError
 from compas_fab.ghpython.tree_codec import TreeSchemaError
@@ -106,6 +107,24 @@ def test_tree_codec_retains_prefix_nonzero_empty_null_and_empty_payload() -> Non
     assert decode_tree(encoded, UTF8_CODEC) == tree
 
 
+def test_tree_codec_pins_full_canonical_compact_sorted_utf8_bytes() -> None:
+    tree = Tree.build(
+        TreeRootId.build("runtime-only"),
+        (
+            TreeBranch.build(
+                GhPath.build(2),
+                (TreeItem.null(), TreeItem.value(""), TreeItem.value("exact")),
+            ),
+            TreeBranch.build(GhPath.build(2, 0), ()),
+            TreeBranch.build(GhPath.build(9, 4), (TreeItem.value("tail"),)),
+        ),
+    )
+
+    assert encode_tree(tree, UTF8_CODEC).canonical_json == (
+        b'{"branches":[{"path":[2],"slots":[null,"","ZXhhY3Q="]},{"path":[2,0],"slots":[]},{"path":[9,4],"slots":["dGFpbA=="]}],"schema":"compas_fab.gh_tree/v1"}'
+    )
+
+
 def test_encoded_records_are_frozen_slotted_and_raw_safe() -> None:
     null = EncodedSlot.null()
     empty = EncodedSlot.value(b"")
@@ -134,6 +153,36 @@ def test_decode_rejects_nested_runtime_root_mutation() -> None:
         decode_tree(encoded, UTF8_CODEC)
 
 
+def test_encoded_tree_factory_rejects_nested_runtime_root_mutation() -> None:
+    root_id = TreeRootId.build("route")
+    object.__setattr__(root_id, "value", "")
+
+    with pytest.raises(InvalidEncodedTreeError):
+        EncodedTree.build(root_id, b"{}")
+
+
+def test_encode_rejects_nested_null_item_payload_mutation_before_data_loss() -> None:
+    tree = Tree.build(
+        TreeRootId.build("route"),
+        (TreeBranch.build(GhPath.build(0), (TreeItem.null(),)),),
+    )
+    object.__setattr__(tree.branches[0].items[0], "item", "silently-lost")
+
+    with pytest.raises(InvalidEncodedTreeError):
+        encode_tree(tree, UTF8_CODEC)
+
+
+def test_encode_rejects_raw_nested_branch_and_path_mutation() -> None:
+    tree = Tree.build(
+        TreeRootId.build("route"),
+        (TreeBranch.build(GhPath.build(0), (TreeItem.value("value"),)),),
+    )
+    object.__setattr__(tree.branches[0].path, "indices", (True,))
+
+    with pytest.raises(InvalidEncodedTreeError):
+        encode_tree(tree, UTF8_CODEC)
+
+
 def test_decode_rejects_unsorted_host_paths_instead_of_reordering() -> None:
     encoded = encoded_tree(paths=((2,), (1,)))
     with pytest.raises(NonCanonicalTreeOrderError):
@@ -151,6 +200,41 @@ def test_decode_rejects_wrong_schema_and_malformed_base64_with_named_errors() ->
         decode_tree(encoded_tree(((0,),), schema="compas_fab.gh_tree/v2"), UTF8_CODEC)
     with pytest.raises(MalformedTreePayloadError):
         decode_tree(encoded_tree(((0,),), slots=(("not base64!",),)), UTF8_CODEC)
+
+
+def test_decode_rejects_noncanonical_but_decodable_base64() -> None:
+    encoded = encoded_tree(((0,),), slots=(("YR==",),))
+
+    with pytest.raises(MalformedTreePayloadError, match="non-canonical base64"):
+        decode_tree(encoded, UTF8_CODEC)
+
+
+def test_decode_rejects_duplicate_json_keys() -> None:
+    encoded = EncodedTree.build(
+        TreeRootId.build("route"),
+        b'{"branches":[],"schema":"compas_fab.gh_tree/v1","schema":"compas_fab.gh_tree/v1"}',
+    )
+
+    with pytest.raises(MalformedTreeJsonError, match="unique-key"):
+        decode_tree(encoded, UTF8_CODEC)
+
+
+@pytest.mark.parametrize(
+    "canonical_json",
+    (
+        b"[]",
+        b'{"branches":[],"extra":0,"schema":"compas_fab.gh_tree/v1"}',
+        b'{"branches":{},"schema":"compas_fab.gh_tree/v1"}',
+        b'{"branches":[{"path":[0]}],"schema":"compas_fab.gh_tree/v1"}',
+        b'{"branches":[{"path":0,"slots":[]}],"schema":"compas_fab.gh_tree/v1"}',
+        b'{"branches":[{"path":[0],"slots":{}}],"schema":"compas_fab.gh_tree/v1"}',
+    ),
+)
+def test_decode_rejects_malformed_document_and_branch_shapes(canonical_json: bytes) -> None:
+    encoded = EncodedTree.build(TreeRootId.build("route"), canonical_json)
+
+    with pytest.raises(MalformedTreeJsonError):
+        decode_tree(encoded, UTF8_CODEC)
 
 
 def test_decode_requires_canonical_json_byte_equality() -> None:
