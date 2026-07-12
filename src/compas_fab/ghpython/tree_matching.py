@@ -56,6 +56,26 @@ class InvalidMatchedTreeError(TreeMatchingError):
     """Raised when a matched output is structurally invalid."""
 
 
+class InvalidMatchedItemNamesError(InvalidMatchedTreeError):
+    """Raised when matched row names are malformed or repeated."""
+
+
+class InvalidMatchedGlobalNamesError(InvalidMatchedTreeError):
+    """Raised when operation-scoped names are malformed or repeated."""
+
+
+class MatchedTreeNameOverlapError(InvalidMatchedTreeError):
+    """Raised when row and operation-scoped inputs share a name."""
+
+
+class InvalidMatchedBranchOrderError(InvalidMatchedTreeError):
+    """Raised when matched branches are not unique and canonical."""
+
+
+class InvalidMatchedRowsError(InvalidMatchedTreeError):
+    """Raised when matched rows violate name-count or null-slot structure."""
+
+
 class MatchRole(Enum):
     EXACT_TREE = "exact_tree"
     BROADCASTABLE_SCALAR = "broadcastable_scalar"
@@ -139,8 +159,8 @@ class MatchedGlobal:
         return cls(name, value)
 
     def __attrs_post_init__(self) -> None:
-        if type(self.name) is not str or not self.name:
-            raise InvalidMatchedTreeError("Matched global requires a non-empty exact name.")
+        if not _is_valid_name(self.name):
+            raise InvalidMatchedGlobalNamesError("Matched global name must be non-empty text without surrounding whitespace.")
 
 
 @define(frozen=True, slots=True)
@@ -154,8 +174,8 @@ class MatchedRow:
         return cls(items)
 
     def __attrs_post_init__(self) -> None:
-        if type(self.items) is not tuple or any(type(item) is not TreeItem for item in self.items):
-            raise InvalidMatchedTreeError("Matched row requires an exact tuple of TreeItem values.")
+        if type(self.items) is not tuple or any(not _is_valid_tree_item(item) for item in self.items):
+            raise InvalidMatchedRowsError("Matched row requires exact TreeItem values with valid null-slot structure.")
 
 
 @define(frozen=True, slots=True)
@@ -171,9 +191,9 @@ class MatchedBranch:
 
     def __attrs_post_init__(self) -> None:
         if type(self.path) is not GhPath or type(self.rows) is not tuple:
-            raise InvalidMatchedTreeError("Matched branch requires an exact path and row tuple.")
-        if any(type(row) is not MatchedRow for row in self.rows):
-            raise InvalidMatchedTreeError("Matched branch rows must be exact MatchedRow values.")
+            raise InvalidMatchedBranchOrderError("Matched branch requires an exact path and row tuple.")
+        if any(type(row) is not MatchedRow or type(row.items) is not tuple or any(not _is_valid_tree_item(item) for item in row.items) for row in self.rows):
+            raise InvalidMatchedRowsError("Matched branch rows must retain exact rows and valid null slots.")
 
 
 @define(frozen=True, slots=True)
@@ -198,17 +218,30 @@ class MatchedTree:
     def __attrs_post_init__(self) -> None:
         if type(self.root_id) is not TreeRootId or type(self.item_names) is not tuple:
             raise InvalidMatchedTreeError("Matched tree requires an exact root and item-name tuple.")
-        if any(type(name) is not str or not name for name in self.item_names):
-            raise InvalidMatchedTreeError("Matched item names must be exact non-empty text.")
+        if not self.item_names or any(not _is_valid_name(name) for name in self.item_names) or len(set(self.item_names)) != len(self.item_names):
+            raise InvalidMatchedItemNamesError("Matched item names must be unique non-empty text without surrounding whitespace.")
         if type(self.branches) is not tuple or any(type(branch) is not MatchedBranch for branch in self.branches):
-            raise InvalidMatchedTreeError("Matched tree branches must be an exact MatchedBranch tuple.")
+            raise InvalidMatchedBranchOrderError("Matched tree branches must be an exact MatchedBranch tuple.")
         if type(self.global_items) is not tuple or any(type(item) is not MatchedGlobal for item in self.global_items):
-            raise InvalidMatchedTreeError("Matched globals must be an exact MatchedGlobal tuple.")
+            raise InvalidMatchedGlobalNamesError("Matched globals must be an exact MatchedGlobal tuple.")
+        global_names = tuple(item.name for item in self.global_items)
+        if any(not _is_valid_name(name) for name in global_names) or len(set(global_names)) != len(global_names):
+            raise InvalidMatchedGlobalNamesError("Matched global names must be unique non-empty text without surrounding whitespace.")
+        if set(self.item_names).intersection(global_names):
+            raise MatchedTreeNameOverlapError("Matched item and global names must be disjoint.")
         keys = tuple(branch.path.canonical_key() for branch in self.branches)
         if keys != tuple(sorted(keys)) or len(keys) != len(set(keys)):
-            raise InvalidMatchedTreeError("Matched branches must retain unique canonical path order.")
-        if any(len(row.items) != len(self.item_names) for branch in self.branches for row in branch.rows):
-            raise InvalidMatchedTreeError("Every matched row must match the declared item names.")
+            raise InvalidMatchedBranchOrderError("Matched branches must retain unique canonical path order.")
+        if any(len(row.items) != len(self.item_names) or any(not _is_valid_tree_item(item) for item in row.items) for branch in self.branches for row in branch.rows):
+            raise InvalidMatchedRowsError("Every matched row must match declared names and retain valid null slots.")
+
+
+def _is_valid_name(value: object) -> bool:
+    return type(value) is str and bool(value) and value == value.strip()
+
+
+def _is_valid_tree_item(value: object) -> bool:
+    return type(value) is TreeItem and type(value.is_null) is bool and value.is_null == (value.item is None)
 
 
 def _paths(tree: Tree[object]) -> Tuple[Tuple[int, ...], ...]:

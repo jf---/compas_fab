@@ -50,6 +50,22 @@ class InvalidCrossProductResultError(TreeExpansionError):
     """Raised when a cross-product output is structurally invalid."""
 
 
+class IncompleteCrossProductGridError(InvalidCrossProductResultError):
+    """Raised when result coordinates do not form one exact Cartesian grid."""
+
+
+class NonLeftMajorCrossProductOrderError(InvalidCrossProductResultError):
+    """Raised when result coordinates do not retain deterministic left-major order."""
+
+
+class CrossProductPairPathMismatchError(InvalidCrossProductResultError):
+    """Raised when an encoded pair path does not reconstruct its exact coordinate."""
+
+
+class CrossProductSourceMapMismatchError(InvalidCrossProductResultError):
+    """Raised when product provenance does not correspond exactly to its pairs."""
+
+
 @define(frozen=True, slots=True)
 class MaximumExpandedItems:
     """Maximum allowed pair count for one explicit product operation."""
@@ -129,10 +145,30 @@ class CrossProductResult(Generic[LeftT, RightT]):
             raise InvalidCrossProductResultError("Cross-product result requires an exact source-coordinate map.")
         coordinates = tuple(pair.coordinate for pair in self.pairs)
         if len(coordinates) != len(set(coordinates)):
-            raise InvalidCrossProductResultError("Cross-product result coordinates must be unique.")
+            raise IncompleteCrossProductGridError("Cross-product result coordinates must be unique.")
+        left_axis = tuple(
+            sorted(
+                set(coordinate.left for coordinate in coordinates),
+                key=_coordinate_axis_key,
+            )
+        )
+        right_axis = tuple(
+            sorted(
+                set(coordinate.right for coordinate in coordinates),
+                key=_coordinate_axis_key,
+            )
+        )
+        expected_coordinates = tuple(CrossProductCoordinate.build(left, right) for left in left_axis for right in right_axis)
+        if len(coordinates) != len(expected_coordinates) or set(coordinates) != set(expected_coordinates):
+            raise IncompleteCrossProductGridError("Cross-product result coordinates must form one complete Cartesian grid.")
+        if coordinates != expected_coordinates:
+            raise NonLeftMajorCrossProductOrderError("Cross-product result coordinates must retain deterministic left-major order.")
+        for pair in self.pairs:
+            if ExpansionPathCodec.decode(pair.path) != pair.coordinate:
+                raise CrossProductPairPathMismatchError("Cross-product pair path must reconstruct its exact coordinate.")
         expected_entries = _source_entries(self.pairs)
         if self.source_coordinates.entries != expected_entries:
-            raise InvalidCrossProductResultError("Cross-product source map must exactly cover every product pair.")
+            raise CrossProductSourceMapMismatchError("Cross-product source map must exactly correspond to every encoded pair path.")
 
     @property
     def paths(self) -> Tuple[GhPath, ...]:
@@ -147,6 +183,36 @@ def _coordinate(branch: TreeBranch[ItemT], root_id: TreeRootId, item_index: int)
         BranchCoordinate.build(root_id, branch.path),
         ItemIndex.build(item_index),
     )
+
+
+def _coordinate_axis_key(coordinate: TreeCoordinate) -> Tuple[str, Tuple[int, ...], int]:
+    return (
+        coordinate.branch.root_id.value,
+        coordinate.branch.path.canonical_key(),
+        coordinate.item_index.value,
+    )
+
+
+def _multiply_item_counts(left_count: int, right_count: int) -> int:
+    return left_count * right_count
+
+
+def _bounded_product_count(
+    left_count: int,
+    right_count: int,
+    maximum_expanded_items: MaximumExpandedItems,
+) -> int:
+    if left_count == 0 or right_count == 0:
+        return 0
+    if right_count > maximum_expanded_items.value // left_count:
+        raise CrossProductLimitError(
+            "Cross-product item counts {0} x {1} exceed declared maximum {2}.".format(
+                left_count,
+                right_count,
+                maximum_expanded_items.value,
+            )
+        )
+    return _multiply_item_counts(left_count, right_count)
 
 
 def _build_pair(
@@ -203,14 +269,11 @@ def cross_product(
 
     left_count = sum(len(branch.items) for branch in left.branches)
     right_count = sum(len(branch.items) for branch in right.branches)
-    expanded_count = left_count * right_count
-    if expanded_count > policy.maximum_expanded_items.value:
-        raise CrossProductLimitError(
-            "Cross-product item count {0} exceeds declared maximum {1}.".format(
-                expanded_count,
-                policy.maximum_expanded_items.value,
-            )
-        )
+    _bounded_product_count(
+        left_count,
+        right_count,
+        policy.maximum_expanded_items,
+    )
 
     pairs = []
     for left_branch in left.branches:

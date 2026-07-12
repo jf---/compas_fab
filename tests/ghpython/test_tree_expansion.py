@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Tuple
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from compas_fab.ghpython.tree_coordinates import BranchCoordinate
 from compas_fab.ghpython.tree_coordinates import GhPath
@@ -11,9 +13,13 @@ from compas_fab.ghpython.tree_coordinates import TreeCoordinate
 from compas_fab.ghpython.tree_coordinates import TreeRootId
 from compas_fab.ghpython.tree_expansion import CrossProductLimitError
 from compas_fab.ghpython.tree_expansion import CrossProductPolicy
+from compas_fab.ghpython.tree_expansion import CrossProductResult
+from compas_fab.ghpython.tree_expansion import CrossProductSourceMapMismatchError
+from compas_fab.ghpython.tree_expansion import IncompleteCrossProductGridError
 from compas_fab.ghpython.tree_expansion import InvalidCrossProductPolicyError
 from compas_fab.ghpython.tree_expansion import InvalidMaximumExpandedItemsError
 from compas_fab.ghpython.tree_expansion import MaximumExpandedItems
+from compas_fab.ghpython.tree_expansion import NonLeftMajorCrossProductOrderError
 from compas_fab.ghpython.tree_expansion import cross_product
 from compas_fab.ghpython.tree_expansion_codec import CrossProductCoordinate
 from compas_fab.ghpython.tree_expansion_codec import ExpandedBranchCoordinate
@@ -23,6 +29,8 @@ from compas_fab.ghpython.tree_expansion_codec import InvalidRequestOrdinalError
 from compas_fab.ghpython.tree_expansion_codec import InvalidResultOrdinalError
 from compas_fab.ghpython.tree_expansion_codec import RequestOrdinal
 from compas_fab.ghpython.tree_expansion_codec import ResultOrdinal
+from compas_fab.ghpython.tree_diagnostics import SourceCoordinateEntry
+from compas_fab.ghpython.tree_diagnostics import SourceCoordinateMap
 from compas_fab.ghpython.tree_values import Tree
 from compas_fab.ghpython.tree_values import TreeBranch
 from compas_fab.ghpython.tree_values import TreeItem
@@ -46,6 +54,32 @@ def tree(root: str, branches: Tuple[Tuple[Tuple[int, ...], Tuple[object | None, 
             )
             for path, items in branches
         ),
+    )
+
+
+UNICODE_ROOTS = st.text(
+    alphabet=st.characters(exclude_categories=("Cs",)),
+    min_size=1,
+    max_size=8,
+)
+PATHS = st.lists(st.integers(min_value=0, max_value=8), min_size=1, max_size=4).map(tuple)
+ORDINALS = st.integers(min_value=0, max_value=32)
+
+
+@st.composite
+def cross_product_coordinates(draw: st.DrawFn) -> CrossProductCoordinate:
+    return CrossProductCoordinate.build(
+        tree_coordinate(draw(PATHS), draw(ORDINALS), draw(UNICODE_ROOTS)),
+        tree_coordinate(draw(PATHS), draw(ORDINALS), draw(UNICODE_ROOTS)),
+    )
+
+
+@st.composite
+def expanded_branch_coordinates(draw: st.DrawFn) -> ExpandedBranchCoordinate:
+    return ExpandedBranchCoordinate.build(
+        branch_coordinate(draw(PATHS), draw(UNICODE_ROOTS)),
+        RequestOrdinal.build(draw(ORDINALS)),
+        ResultOrdinal.build(draw(ORDINALS)),
     )
 
 
@@ -84,6 +118,81 @@ def test_codec_round_trip_retains_distinct_unicode_runtime_roots() -> None:
     )
 
     assert ExpansionPathCodec.decode(ExpansionPathCodec.encode(coordinate)) == coordinate
+
+
+@given(cross_product_coordinates(), cross_product_coordinates())
+def test_cross_product_codec_is_round_trip_injective(
+    first: CrossProductCoordinate,
+    second: CrossProductCoordinate,
+) -> None:
+    first_path = ExpansionPathCodec.encode(first)
+    second_path = ExpansionPathCodec.encode(second)
+
+    assert ExpansionPathCodec.decode(first_path) == first
+    assert ExpansionPathCodec.decode(second_path) == second
+    assert (first_path == second_path) is (first == second)
+
+
+@given(expanded_branch_coordinates(), expanded_branch_coordinates())
+def test_expanded_branch_codec_is_round_trip_injective(
+    first: ExpandedBranchCoordinate,
+    second: ExpandedBranchCoordinate,
+) -> None:
+    first_path = ExpansionPathCodec.encode(first)
+    second_path = ExpansionPathCodec.encode(second)
+
+    assert ExpansionPathCodec.decode(first_path) == first
+    assert ExpansionPathCodec.decode(second_path) == second
+    assert (first_path == second_path) is (first == second)
+
+
+@given(
+    UNICODE_ROOTS,
+    PATHS,
+    st.lists(st.integers(min_value=0, max_value=8), min_size=1, max_size=3).map(tuple),
+    ORDINALS,
+    ORDINALS,
+)
+def test_codec_distinguishes_prefix_related_source_paths(
+    root: str,
+    prefix: Tuple[int, ...],
+    suffix: Tuple[int, ...],
+    request_ordinal: int,
+    result_ordinal: int,
+) -> None:
+    prefix_coordinate = ExpandedBranchCoordinate.build(
+        branch_coordinate(prefix, root),
+        RequestOrdinal.build(request_ordinal),
+        ResultOrdinal.build(result_ordinal),
+    )
+    extension_coordinate = ExpandedBranchCoordinate.build(
+        branch_coordinate(prefix + suffix, root),
+        RequestOrdinal.build(request_ordinal),
+        ResultOrdinal.build(result_ordinal),
+    )
+
+    assert ExpansionPathCodec.encode(prefix_coordinate) != ExpansionPathCodec.encode(extension_coordinate)
+
+
+def test_codec_rejects_invalid_utf8_tags_lengths_and_trailing_segments() -> None:
+    valid = ExpansionPathCodec.encode(
+        ExpandedBranchCoordinate.build(
+            branch_coordinate((2,), "valid"),
+            RequestOrdinal.build(3),
+            ResultOrdinal.build(5),
+        )
+    )
+    malformed_paths = (
+        GhPath.build(0, 1, 128),
+        GhPath.build(77),
+        GhPath.build(1, 0),
+        GhPath.build(1, 4, 65),
+        GhPath.build(*valid.indices, 0),
+    )
+
+    for malformed in malformed_paths:
+        with pytest.raises(InvalidExpansionPathError):
+            ExpansionPathCodec.decode(malformed)
 
 
 def test_cross_product_is_left_major_bounded_and_retains_null_operands() -> None:
@@ -138,6 +247,74 @@ def test_cross_product_checks_total_before_allocating(monkeypatch: pytest.Monkey
     )
     with pytest.raises(CrossProductLimitError):
         cross_product(left, right, policy)
+
+
+def test_cross_product_count_guard_handles_zero_exact_bound_and_overbound_before_multiplication(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    empty = tree("empty", (((0,), ()),))
+    populated = tree("populated", (((1,), (1, 2, 3)),))
+    exact_left = tree("left", (((0,), (1, 2)),))
+    exact_right = tree("right", (((1,), (3, 4, 5)),))
+
+    assert cross_product(
+        exact_left,
+        exact_right,
+        CrossProductPolicy.build(MaximumExpandedItems.build(6)),
+    ).pairs
+
+    monkeypatch.setattr(
+        "compas_fab.ghpython.tree_expansion._multiply_item_counts",
+        lambda *_args: pytest.fail("multiplication reached before zero/limit guard"),
+    )
+    empty_policy = CrossProductPolicy.build(MaximumExpandedItems.build(1))
+    assert cross_product(empty, populated, empty_policy).pairs == ()
+    assert cross_product(populated, empty, empty_policy).pairs == ()
+    with pytest.raises(CrossProductLimitError):
+        cross_product(
+            exact_left,
+            exact_right,
+            CrossProductPolicy.build(MaximumExpandedItems.build(5)),
+        )
+
+
+def test_cross_product_result_rejects_non_left_major_permutations() -> None:
+    result = cross_product(
+        tree("left", (((0,), (1, 2)),)),
+        tree("right", (((1,), (3, 4)),)),
+        CrossProductPolicy.build(MaximumExpandedItems.build(4)),
+    )
+
+    with pytest.raises(NonLeftMajorCrossProductOrderError):
+        CrossProductResult.build(tuple(reversed(result.pairs)), result.source_coordinates)
+
+
+def test_cross_product_result_rejects_incomplete_coordinate_grid() -> None:
+    result = cross_product(
+        tree("left", (((0,), (1, 2)),)),
+        tree("right", (((1,), (3, 4)),)),
+        CrossProductPolicy.build(MaximumExpandedItems.build(4)),
+    )
+    retained_pairs = result.pairs[:-1]
+    retained_paths = {pair.path for pair in retained_pairs}
+    retained_map = SourceCoordinateMap.build(tuple(entry for entry in result.source_coordinates.entries if entry.output.branch.path in retained_paths))
+
+    with pytest.raises(IncompleteCrossProductGridError):
+        CrossProductResult(retained_pairs, retained_map)
+
+
+def test_cross_product_result_rejects_pair_path_source_map_mismatch() -> None:
+    result = cross_product(
+        tree("left", (((0,), (1,)),)),
+        tree("right", (((1,), (2,)),)),
+        CrossProductPolicy.build(MaximumExpandedItems.build(1)),
+    )
+    entry = result.source_coordinates.entries[0]
+    wrong_sources = (entry.sources[1], entry.sources[0])
+    wrong_map = SourceCoordinateMap.build((SourceCoordinateEntry.build(entry.output, wrong_sources),))
+
+    with pytest.raises(CrossProductSourceMapMismatchError):
+        CrossProductResult.build(result.pairs, wrong_map)
 
 
 def test_expansion_factories_and_raw_constructors_enforce_exact_types() -> None:
