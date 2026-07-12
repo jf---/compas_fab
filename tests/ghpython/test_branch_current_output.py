@@ -6,9 +6,14 @@ from typing import cast
 
 import pytest
 
+import compas_fab.ghpython.branch_current_output as branch_current_output
 from compas_fab.ghpython.branch_current_output import BranchDecision
 from compas_fab.ghpython.branch_current_output import BranchOutputState
+from compas_fab.ghpython.branch_current_output import ConflictingBranchTerminalTransitionError
+from compas_fab.ghpython.branch_current_output import DuplicateBranchTerminalTransitionError
+from compas_fab.ghpython.branch_current_output import InvalidBranchDecisionStateError
 from compas_fab.ghpython.branch_current_output import InvalidBranchOutputStateError
+from compas_fab.ghpython.branch_current_output import RetiredBranchRequestError
 from compas_fab.ghpython.branch_current_output import StaleBranchGenerationError
 from compas_fab.ghpython.branch_runtime_identity import BranchRequestGeneration
 from compas_fab.ghpython.branch_runtime_identity import BranchRuntimeIdentity
@@ -21,8 +26,10 @@ from compas_fab.ghpython.branch_runtime_identity import InvalidTreeRuntimeSnapsh
 from compas_fab.ghpython.branch_runtime_identity import SharedInputsChanged
 from compas_fab.ghpython.branch_runtime_identity import SharedInputsUnchanged
 from compas_fab.ghpython.branch_runtime_identity import SolveGeneration
+from compas_fab.ghpython.branch_runtime_identity import StaleBranchRequestRetryError
 from compas_fab.ghpython.branch_runtime_identity import TreeRuntimeSnapshot
 from compas_fab.ghpython.branch_runtime_identity import UnknownRuntimeBranchError
+from compas_fab.ghpython.branch_runtime_identity import advance_branch_request
 from compas_fab.ghpython.branch_runtime_identity import advance_runtime
 from compas_fab.ghpython.component_identity import CanonicalField
 from compas_fab.ghpython.item_values import ItemShape
@@ -31,13 +38,20 @@ from compas_fab.ghpython.port_semantics import PortSemantics
 from compas_fab.ghpython.port_semantics import TopologyRole
 from compas_fab.ghpython.tree_coordinates import BranchCoordinate
 from compas_fab.ghpython.tree_coordinates import GhPath
+from compas_fab.ghpython.tree_coordinates import ItemIndex
+from compas_fab.ghpython.tree_coordinates import TreeCoordinate
 from compas_fab.ghpython.tree_coordinates import TreeRootId
+from compas_fab.ghpython.tree_diagnostics import SourceCoordinateEntry
+from compas_fab.ghpython.tree_diagnostics import SourceCoordinateMap
 from compas_fab.ghpython.tree_identity import BranchContentDigest
+from compas_fab.ghpython.tree_identity import IdentityVerification
 from compas_fab.ghpython.tree_identity import SourceTreeIdentity
+from compas_fab.ghpython.tree_identity import StageTreeIdentity
 from compas_fab.ghpython.tree_identity import TEXT_CODEC
 from compas_fab.ghpython.tree_values import Tree
 from compas_fab.ghpython.tree_values import TreeBranch
 from compas_fab.ghpython.tree_values import TreeItem
+from compas_fab.ghpython.tree_values import TreeTopology
 
 
 TEXT_TREE_SEMANTICS = PortSemantics.build(
@@ -75,6 +89,39 @@ def path(index: int) -> GhPath:
     return GhPath.build(index)
 
 
+def reduction_identity(source: SourceTreeIdentity) -> StageTreeIdentity:
+    output_root = TreeRootId.build("aggregate-output")
+    source_root = TreeRootId.build("aggregate-source")
+    output_topology = TreeTopology.build(
+        tuple(
+            TreeBranch.build(source_path, (TreeItem.value("aggregate"),))
+            for source_path in source.topology.paths
+        )
+    )
+    entries = []
+    for source_path, item_count in zip(source.topology.paths, source.topology.item_counts):
+        output = TreeCoordinate.build(
+            BranchCoordinate.build(output_root, source_path),
+            ItemIndex.build(0),
+        )
+        sources = tuple(
+            TreeCoordinate.build(
+                BranchCoordinate.build(source_root, source_path),
+                ItemIndex.build(item_index),
+            )
+            for item_index in range(item_count)
+        )
+        entries.append(SourceCoordinateEntry.build(output, sources))
+    return StageTreeIdentity.build(
+        source,
+        "tests.ghpython.sequence_reduction/v1",
+        (),
+        output_topology,
+        SourceCoordinateMap.build(tuple(entries)),
+        IdentityVerification.UNVERIFIABLE,
+    )
+
+
 def test_branch_edit_preserves_unchanged_sibling_but_shared_edit_clears_all() -> None:
     first = initial(content_tree(((0,), ("a",)), ((1,), ("b",))))
     state = BranchOutputState[str].build(first)
@@ -91,8 +138,8 @@ def test_branch_edit_preserves_unchanged_sibling_but_shared_edit_clears_all() ->
     assert local.solve_generation == first.solve_generation
     assert local.branch(path(0)).request_generation == BranchRequestGeneration.build(1)
     assert local.branch(path(1)) == first.branch(path(1))
-    assert reconciled[path(0)] is BranchDecision.CLEARED
-    assert reconciled[path(1)] is BranchDecision.CURRENT
+    assert reconciled[local.branch(path(0)).coordinate] is BranchDecision.CLEARED
+    assert reconciled[local.branch(path(1)).coordinate] is BranchDecision.CURRENT
     assert tuple(reconciled.decisions) == tuple(branch.coordinate for branch in local.branches)
     assert reconciled.current(local.branch(path(0))) is None
     assert reconciled.current(local.branch(path(1))) == "right"
@@ -156,6 +203,55 @@ def test_topology_change_invalidates_survivors_and_initializes_new_branch() -> N
     assert changed.branch(path(1)).request_generation == BranchRequestGeneration.build(0)
     with pytest.raises(UnknownRuntimeBranchError):
         changed.branch(path(2))
+
+
+def test_empty_branch_add_and_remove_each_close_the_root_dependency() -> None:
+    first = initial(content_tree(((0,), ("a",))))
+    added = advance_runtime(
+        first,
+        content_tree(((0,), ("a",)), ((2,), ())),
+        SharedInputsUnchanged.build(),
+    )
+    removed = advance_runtime(
+        added,
+        content_tree(((0,), ("a",))),
+        SharedInputsUnchanged.build(),
+    )
+
+    assert added.solve_generation == SolveGeneration.build(1)
+    assert added.branch(path(0)).request_generation == BranchRequestGeneration.build(1)
+    assert added.branch(path(2)).request_generation == BranchRequestGeneration.build(0)
+    assert removed.solve_generation == SolveGeneration.build(2)
+    assert removed.branch(path(0)).request_generation == BranchRequestGeneration.build(2)
+
+
+def test_branch_cardinality_change_closes_the_root_dependency() -> None:
+    first = initial(content_tree(((0,), ("a",)), ((1,), ("sibling",))))
+    changed = advance_runtime(
+        first,
+        content_tree(((0,), ("a", "b")), ((1,), ("sibling",))),
+        SharedInputsUnchanged.build(),
+    )
+
+    assert changed.solve_generation == SolveGeneration.build(1)
+    assert changed.branch(path(0)).request_generation == BranchRequestGeneration.build(1)
+    assert changed.branch(path(1)).request_generation == BranchRequestGeneration.build(1)
+
+
+def test_sequence_reduction_provenance_keeps_element_edit_branch_local() -> None:
+    first_content = reduction_identity(
+        content_tree(((0,), ("a", "b")), ((1,), ("sibling",)))
+    )
+    changed_content = reduction_identity(
+        content_tree(((0,), ("changed", "b")), ((1,), ("sibling",)))
+    )
+    first = TreeRuntimeSnapshot.initial(first_content, TreeRootId.build("runtime"))
+
+    changed = advance_runtime(first, changed_content, SharedInputsUnchanged.build())
+
+    assert changed.solve_generation == first.solve_generation
+    assert changed.branch(path(0)).request_generation == BranchRequestGeneration.build(1)
+    assert changed.branch(path(1)) == first.branch(path(1))
 
 
 def test_unchanged_advance_is_idempotent() -> None:
@@ -230,6 +326,47 @@ def test_stale_publish_fail_and_cancel_are_rejected_after_reconcile() -> None:
     assert published.current(next_snapshot.branch(path(0))) == "next"
 
 
+@pytest.mark.parametrize("terminal", ["fail", "cancel"])
+def test_failed_or_cancelled_request_is_retired_until_branch_generation_advances(
+    terminal: str,
+) -> None:
+    snapshot = initial(content_tree(((0,), ("a",)), ((1,), ("sibling",))))
+    identity = snapshot.branch(path(0))
+    state = BranchOutputState[str].build(snapshot)
+    retired = state.fail(identity) if terminal == "fail" else state.cancel(identity)
+
+    with pytest.raises(RetiredBranchRequestError):
+        retired.publish(identity, "late")
+    with pytest.raises(DuplicateBranchTerminalTransitionError):
+        retired.fail(identity) if terminal == "fail" else retired.cancel(identity)
+    with pytest.raises(ConflictingBranchTerminalTransitionError):
+        retired.cancel(identity) if terminal == "fail" else retired.fail(identity)
+
+    retry = advance_branch_request(snapshot, identity)
+    assert retry.solve_generation == snapshot.solve_generation
+    assert retry.branch(path(0)).content_digest == identity.content_digest
+    assert retry.branch(path(0)).request_generation == BranchRequestGeneration.build(1)
+    assert retry.branch(path(1)) == snapshot.branch(path(1))
+    with pytest.raises(StaleBranchRequestRetryError):
+        advance_branch_request(retry, identity)
+    retried = retired.reconcile(retry).publish(retry.branch(path(0)), "retry")
+    assert retried.current(retry.branch(path(0))) == "retry"
+
+
+def test_published_success_is_terminal_and_cannot_be_erased() -> None:
+    snapshot = initial(content_tree(((0,), ("a",))))
+    identity = snapshot.branch(path(0))
+    published = BranchOutputState[str].build(snapshot).publish(identity, "success")
+
+    with pytest.raises(DuplicateBranchTerminalTransitionError):
+        published.publish(identity, "duplicate")
+    with pytest.raises(ConflictingBranchTerminalTransitionError):
+        published.fail(identity)
+    with pytest.raises(ConflictingBranchTerminalTransitionError):
+        published.cancel(identity)
+    assert published.current(identity) == "success"
+
+
 def test_output_state_uses_exact_coordinates_and_rejects_unknown_paths() -> None:
     snapshot = initial(content_tree(((0,), ("a",))))
     state = BranchOutputState[str].build(snapshot)
@@ -244,6 +381,12 @@ def test_output_state_uses_exact_coordinates_and_rejects_unknown_paths() -> None
         state.publish(wrong_root, "wrong")
     with pytest.raises(UnknownRuntimeBranchError):
         snapshot.branch(path(4))
+    with pytest.raises(UnknownRuntimeBranchError):
+        state[wrong_root.coordinate]
+    with pytest.raises(UnknownRuntimeBranchError):
+        state[BranchCoordinate.build(snapshot.root_id, path(4))]
+    with pytest.raises(UnknownRuntimeBranchError):
+        state[cast(BranchCoordinate, path(0))]
     with pytest.raises(UnknownRuntimeBranchError):
         state.current(
             BranchRuntimeIdentity.build(
@@ -280,4 +423,52 @@ def test_generation_and_runtime_raw_constructors_fail_loudly() -> None:
             snapshot.branches,
         )
     with pytest.raises(InvalidBranchOutputStateError):
-        BranchOutputState(snapshot.branches, (), ())
+        BranchOutputState(snapshot.branches, (), (), ())
+
+
+def test_output_state_factory_rejects_malformed_decision_entries_before_indexing() -> None:
+    snapshot = initial(content_tree(((0,), ("a",))))
+    state = BranchOutputState[str].build(snapshot)
+
+    with pytest.raises(InvalidBranchDecisionStateError):
+        state._from_parts(
+            state.expected,
+            (),
+            cast(Tuple[Tuple[BranchCoordinate, BranchDecision], ...], ((),)),
+            (),
+        )
+    with pytest.raises(InvalidBranchDecisionStateError):
+        state._from_parts(
+            state.expected,
+            (),
+            ((state.expected[0].coordinate, BranchDecision.CURRENT),),
+            (),
+        )
+
+    published = branch_current_output._PublishedBranch(state.expected[0], "value")
+    with pytest.raises(InvalidBranchDecisionStateError):
+        state._from_parts(
+            state.expected,
+            (published,),
+            ((state.expected[0].coordinate, BranchDecision.ABSENT),),
+            (),
+        )
+    with pytest.raises(InvalidBranchOutputStateError):
+        state._from_parts(
+            state.expected,
+            (),
+            ((state.expected[0].coordinate, BranchDecision.ABSENT),),
+            cast(Tuple[branch_current_output._TerminalBranch, ...], ((),)),
+        )
+
+    failed = branch_current_output._TerminalBranch(
+        state.expected[0],
+        branch_current_output._BranchTerminal.FAILED,
+    )
+    with pytest.raises(InvalidBranchDecisionStateError):
+        state._from_parts(
+            state.expected,
+            (),
+            ((state.expected[0].coordinate, BranchDecision.ABSENT),),
+            (failed,),
+        )

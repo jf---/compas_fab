@@ -55,6 +55,10 @@ class UnknownRuntimeBranchError(BranchRuntimeContractError):
     """Raised when a runtime snapshot has no requested exact branch."""
 
 
+class StaleBranchRequestRetryError(BranchRuntimeContractError):
+    """Raised when retry advancement targets an obsolete branch request."""
+
+
 _RUNTIME_FACTORY_TOKEN = object()
 
 
@@ -244,6 +248,40 @@ class TreeRuntimeSnapshot:
 def _root_topology(content: TreeIdentity) -> Tuple[Tuple[GhPath, int], ...]:
     """Return branch-set and cardinality dependencies; null/order stay branch-local."""
     return tuple(zip(content.topology.paths, content.topology.item_counts))
+
+
+def advance_branch_request(
+    previous: TreeRuntimeSnapshot,
+    identity: BranchRuntimeIdentity,
+) -> TreeRuntimeSnapshot:
+    """Advance only one exact branch request generation for retry."""
+    if type(previous) is not TreeRuntimeSnapshot or type(identity) is not BranchRuntimeIdentity:
+        raise StaleBranchRequestRetryError("Branch retry requires an exact current branch request identity.")
+    branches = []
+    found = False
+    for branch in previous.branches:
+        if branch.coordinate == identity.coordinate:
+            if branch != identity:
+                raise StaleBranchRequestRetryError("Branch retry targets obsolete content or generations.")
+            found = True
+            branches.append(
+                BranchRuntimeIdentity.build(
+                    branch.coordinate,
+                    branch.content_digest,
+                    branch.solve_generation,
+                    branch.request_generation.next(),
+                )
+            )
+        else:
+            branches.append(branch)
+    if not found:
+        raise UnknownRuntimeBranchError("Runtime snapshot has no exact branch coordinate to retry.")
+    return TreeRuntimeSnapshot.build(
+        previous.root_id,
+        previous.content,
+        previous.solve_generation,
+        tuple(branches),
+    )
 
 
 def advance_runtime(
