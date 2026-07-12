@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Generic
+from typing import Optional
 from typing import Tuple
 from typing import TypeVar
 
@@ -80,33 +81,50 @@ def _coordinate_identity_bytes(coordinate: TreeCoordinate) -> bytes:
     return _part(path) + _part(_integer_bytes(coordinate.item_index.value))
 
 
+def _branch_coordinate_identity_bytes(coordinate: BranchCoordinate) -> bytes:
+    return b"".join(_part(_integer_bytes(index)) for index in coordinate.path.indices)
+
+
 def _coordinate_key(coordinate: TreeCoordinate) -> Tuple[Tuple[int, ...], int]:
     return coordinate.branch.path.canonical_key(), coordinate.item_index.value
 
 
 @define(frozen=True, slots=True)
 class SourceCoordinateEntry:
-    """One output coordinate and its ordered, non-empty source coordinates."""
+    """One output attributed to ordered items or one exact empty source branch."""
 
     output: TreeCoordinate
     sources: Tuple[TreeCoordinate, ...]
+    empty_source_branch: Optional[BranchCoordinate] = None
 
     @classmethod
     def build(cls, output: TreeCoordinate, sources: Tuple[TreeCoordinate, ...]) -> "SourceCoordinateEntry":
         return cls(output, sources)
 
+    @classmethod
+    def from_empty_branch(cls, output: TreeCoordinate, source_branch: BranchCoordinate) -> "SourceCoordinateEntry":
+        """Attribute one output to a deterministic reduction over an empty branch."""
+        return cls(output, (), source_branch)
+
     def __attrs_post_init__(self) -> None:
         if type(self.output) is not TreeCoordinate or type(self.sources) is not tuple:
             raise InvalidSourceCoordinateEntryError("Source entry requires an exact output and source tuple.")
-        if not self.sources:
-            raise EmptySourceCoordinateError("Every mapped output requires at least one source coordinate.")
         if any(type(source) is not TreeCoordinate for source in self.sources):
             raise InvalidSourceCoordinateEntryError("Source entry coordinates must be exact TreeCoordinate values.")
+        if self.empty_source_branch is not None and type(self.empty_source_branch) is not BranchCoordinate:
+            raise InvalidSourceCoordinateEntryError("Empty-branch provenance requires an exact BranchCoordinate value.")
+        if self.sources and self.empty_source_branch is not None:
+            raise InvalidSourceCoordinateEntryError("Source entry requires exactly one provenance form.")
+        if not self.sources and self.empty_source_branch is None:
+            raise EmptySourceCoordinateError("Every mapped output requires at least one source coordinate.")
 
     def root_free_identity_bytes(self) -> bytes:
-        """Encode canonical paths and item indices without runtime roots."""
+        """Encode the provenance kind and coordinates without runtime roots."""
+        output = _part(_coordinate_identity_bytes(self.output))
+        if self.empty_source_branch is not None:
+            return _part(b"empty_branch") + output + _part(_branch_coordinate_identity_bytes(self.empty_source_branch))
         sources = b"".join(_part(_coordinate_identity_bytes(source)) for source in self.sources)
-        return _part(_coordinate_identity_bytes(self.output)) + _part(sources)
+        return _part(b"items") + output + _part(sources)
 
 
 @define(frozen=True, slots=True)
@@ -240,12 +258,18 @@ class ReducedTopologyOutput(Generic[ValueT, StatusT, DiagnosticT]):
     def _validate_source_coordinates(self) -> None:
         expected_entries = []
         for output_branch, source_branch in zip(self.values.branches, self.item_diagnostics.branches):
-            if not source_branch.items:
-                continue
             output = TreeCoordinate.build(
                 BranchCoordinate.build(self.values.root_id, output_branch.path),
                 ItemIndex.build(0),
             )
+            if not source_branch.items:
+                expected_entries.append(
+                    SourceCoordinateEntry.from_empty_branch(
+                        output,
+                        BranchCoordinate.build(self.item_diagnostics.root_id, source_branch.path),
+                    )
+                )
+                continue
             sources = tuple(
                 TreeCoordinate.build(
                     BranchCoordinate.build(self.item_diagnostics.root_id, source_branch.path),
@@ -255,4 +279,4 @@ class ReducedTopologyOutput(Generic[ValueT, StatusT, DiagnosticT]):
             )
             expected_entries.append(SourceCoordinateEntry.build(output, sources))
         if self.source_coordinates.entries != tuple(expected_entries):
-            raise InvalidReducedTopologyOutputError("Reduced source mapping must cover every non-empty source branch completely and in order.")
+            raise InvalidReducedTopologyOutputError("Reduced source mapping must cover every source branch completely and in order.")

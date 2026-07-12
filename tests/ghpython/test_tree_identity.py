@@ -35,6 +35,7 @@ from compas_fab.ghpython.tree_identity import InvalidItemPayloadError
 from compas_fab.ghpython.tree_identity import InvalidSourceTreeIdentityError
 from compas_fab.ghpython.tree_identity import InvalidStageParameterError
 from compas_fab.ghpython.tree_identity import InvalidStageTreeIdentityError
+from compas_fab.ghpython.tree_identity import NonEmptyStageSourceBranchError
 from compas_fab.ghpython.tree_identity import SourceTreeIdentity
 from compas_fab.ghpython.tree_identity import SourceCoordinateCoverage
 from compas_fab.ghpython.tree_identity import SourceCoordinateRequirement
@@ -43,6 +44,7 @@ from compas_fab.ghpython.tree_identity import StageTreeIdentity
 from compas_fab.ghpython.tree_identity import TreeContentDigest
 from compas_fab.ghpython.tree_identity import UnknownStageBuilderSchemaError
 from compas_fab.ghpython.tree_identity import UnknownStageOutputCoordinateError
+from compas_fab.ghpython.tree_identity import UnknownStageSourceBranchError
 from compas_fab.ghpython.tree_identity import UnknownStageSourceCoordinateError
 from compas_fab.ghpython.tree_values import Tree
 from compas_fab.ghpython.tree_values import TreeBranch
@@ -328,6 +330,77 @@ def test_stage_rejects_nonexistent_source_coordinates(mapped_source: TreeCoordin
         )
 
 
+def test_verified_stage_accepts_explicit_empty_source_branch_reduction(audited_stage_schema: str) -> None:
+    source = SourceTreeIdentity.build(
+        text_tree(TreeRootId.build("source"), (((0,), ("a",)), ((1,), ()))),
+        TEXT_CODEC,
+        TEXT_TREE_SEMANTICS,
+    )
+    output_topology = text_tree(
+        TreeRootId.build("output"),
+        (((0,), ("reduced",)), ((1,), (None,))),
+    ).topology
+    source_map = SourceCoordinateMap.build(
+        (
+            SourceCoordinateEntry.build(
+                coordinate("output", (0,), 0),
+                (coordinate("source", (0,), 0),),
+            ),
+            SourceCoordinateEntry.from_empty_branch(
+                coordinate("output", (1,), 0),
+                BranchCoordinate.build(TreeRootId.build("source"), GhPath.build(1)),
+            ),
+        )
+    )
+
+    built = StageTreeIdentity.build(source, audited_stage_schema, (), output_topology, source_map)
+
+    assert built.verification is IdentityVerification.VERIFIED
+    assert built.source_coverage is SourceCoordinateCoverage.COMPLETE_OUTPUTS
+
+
+@pytest.mark.parametrize(
+    ("source_branch", "expected_error"),
+    (
+        (
+            BranchCoordinate.build(TreeRootId.build("source"), GhPath.build(9)),
+            UnknownStageSourceBranchError,
+        ),
+        (
+            BranchCoordinate.build(TreeRootId.build("source"), GhPath.build(0)),
+            NonEmptyStageSourceBranchError,
+        ),
+    ),
+)
+def test_stage_rejects_invalid_explicit_empty_source_branch(
+    source_branch: BranchCoordinate,
+    expected_error: type[InvalidStageTreeIdentityError],
+) -> None:
+    source = SourceTreeIdentity.build(
+        text_tree(TreeRootId.build("source"), (((0,), ("a",)), ((1,), ()))),
+        TEXT_CODEC,
+        TEXT_TREE_SEMANTICS,
+    )
+    source_map = SourceCoordinateMap.build(
+        (
+            SourceCoordinateEntry.from_empty_branch(
+                coordinate("output", (0,), 0),
+                source_branch,
+            ),
+        )
+    )
+
+    with pytest.raises(expected_error):
+        StageTreeIdentity.build(
+            source,
+            "external.native.pose_series/v1",
+            (),
+            text_tree(TreeRootId.build("output"), (((0,), ("reduced",)),)).topology,
+            source_map,
+            verification=IdentityVerification.UNVERIFIABLE,
+        )
+
+
 def test_verified_stage_requires_complete_output_attribution(audited_stage_schema: str) -> None:
     source = SourceTreeIdentity.build(
         text_tree(TreeRootId.build("source"), (((0,), ("a", "b")), ((1,), ("c",)))),
@@ -419,3 +492,40 @@ def test_stage_branch_digest_isolates_unchanged_sibling_content(audited_stage_sc
     assert left.branch(GhPath.build(0)) != right.branch(GhPath.build(0))
     assert left.branch(GhPath.build(1)) == right.branch(GhPath.build(1))
     assert left.digest != right.digest
+
+
+def test_stage_branch_digest_hashes_branch_local_attribution_coverage(audited_stage_schema: str) -> None:
+    source = SourceTreeIdentity.build(
+        text_tree(TreeRootId.build("source"), (((0,), ("stable",)), ((1,), ("sibling",)))),
+        TEXT_CODEC,
+        TEXT_TREE_SEMANTICS,
+    )
+    stable_entry = SourceCoordinateEntry.build(
+        coordinate("output", (0,), 0),
+        (coordinate("source", (0,), 0),),
+    )
+    sibling_entry = SourceCoordinateEntry.build(
+        coordinate("output", (1,), 0),
+        (coordinate("source", (1,), 0),),
+    )
+    partial = StageTreeIdentity.build(
+        source,
+        audited_stage_schema,
+        (),
+        source.topology,
+        SourceCoordinateMap.build((stable_entry,)),
+        verification=IdentityVerification.UNVERIFIABLE,
+    )
+    complete = StageTreeIdentity.build(
+        source,
+        audited_stage_schema,
+        (),
+        source.topology,
+        SourceCoordinateMap.build((stable_entry, sibling_entry)),
+        verification=IdentityVerification.UNVERIFIABLE,
+    )
+
+    assert partial.source_coverage is SourceCoordinateCoverage.PARTIAL_OUTPUTS
+    assert complete.source_coverage is SourceCoordinateCoverage.COMPLETE_OUTPUTS
+    assert partial.branch(GhPath.build(0)) == complete.branch(GhPath.build(0))
+    assert partial.digest != complete.digest

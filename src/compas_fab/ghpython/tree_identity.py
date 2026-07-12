@@ -79,6 +79,14 @@ class UnknownStageSourceCoordinateError(InvalidStageTreeIdentityError):
     """Raised when stage attribution names an absent prior coordinate."""
 
 
+class UnknownStageSourceBranchError(InvalidStageTreeIdentityError):
+    """Raised when empty-branch attribution names an absent prior branch."""
+
+
+class NonEmptyStageSourceBranchError(InvalidStageTreeIdentityError):
+    """Raised when empty-branch attribution names a nonempty prior branch."""
+
+
 class IncompleteStageSourceCoordinatesError(InvalidStageTreeIdentityError):
     """Raised when stage attribution does not meet its audited coverage contract."""
 
@@ -475,6 +483,7 @@ def _validate_source_coordinates(
 ) -> SourceCoordinateCoverage:
     output_keys = _topology_coordinate_keys(output_topology)
     prior_keys = _topology_coordinate_keys(prior_topology)
+    prior_branch_item_counts = {path.canonical_key(): item_count for path, item_count in zip(prior_topology.paths, prior_topology.item_counts)}
     mapped_output_keys = set()
     for entry in mapping.entries:
         output_key = _coordinate_key(entry.output)
@@ -484,6 +493,12 @@ def _validate_source_coordinates(
         for source in entry.sources:
             if _coordinate_key(source) not in prior_keys:
                 raise UnknownStageSourceCoordinateError("Stage source mapping source must exist in the prior topology.")
+        if entry.empty_source_branch is not None:
+            source_branch_key = entry.empty_source_branch.path.canonical_key()
+            if source_branch_key not in prior_branch_item_counts:
+                raise UnknownStageSourceBranchError("Stage empty-branch attribution must name a branch in the prior topology.")
+            if prior_branch_item_counts[source_branch_key] != 0:
+                raise NonEmptyStageSourceBranchError("Stage empty-branch attribution must name an empty prior branch.")
     if mapped_output_keys == output_keys:
         return SourceCoordinateCoverage.COMPLETE_OUTPUTS
     return SourceCoordinateCoverage.PARTIAL_OUTPUTS
@@ -563,7 +578,6 @@ class StageTreeIdentity:
                 prior,
                 builder_schema,
                 parameter_payload,
-                source_coverage,
                 resolved_verification,
                 topology,
                 index,
@@ -641,7 +655,6 @@ def _stage_branch_bytes(
     prior: TreeIdentity,
     builder_schema: str,
     parameter_payload: bytes,
-    source_coverage: SourceCoordinateCoverage,
     verification: IdentityVerification,
     topology: TreeTopology,
     branch_index: int,
@@ -649,11 +662,16 @@ def _stage_branch_bytes(
 ) -> bytes:
     output_path = topology.paths[branch_index]
     relevant_entries = tuple(entry for entry in mapping.entries if entry.output.branch.path == output_path)
+    mapped_item_indices = {entry.output.item_index.value for entry in relevant_entries}
+    expected_item_indices = set(range(topology.item_counts[branch_index]))
+    source_coverage = SourceCoordinateCoverage.COMPLETE_OUTPUTS if mapped_item_indices == expected_item_indices else SourceCoordinateCoverage.PARTIAL_OUTPUTS
     source_paths = []
     for entry in relevant_entries:
         for source in entry.sources:
             if source.branch.path not in source_paths:
                 source_paths.append(source.branch.path)
+        if entry.empty_source_branch is not None and entry.empty_source_branch.path not in source_paths:
+            source_paths.append(entry.empty_source_branch.path)
     if source_paths:
         prior_digests = tuple(prior.branch(path) for path in source_paths)
         prior_payload = b"".join(_part(_text(digest.value)) for digest in prior_digests)

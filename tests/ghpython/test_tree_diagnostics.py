@@ -104,6 +104,51 @@ def test_source_coordinate_entry_rejects_raw_container_bypass() -> None:
         SourceCoordinateEntry(output, [source])  # type: ignore[arg-type]
 
 
+def test_empty_source_branch_provenance_is_explicit_root_free_and_mutually_exclusive() -> None:
+    output = coordinate("out-a", (2,), 0)
+    empty_branch = BranchCoordinate.build(TreeRootId.build("source-a"), GhPath.build(2))
+    rerooted = SourceCoordinateEntry.from_empty_branch(
+        coordinate("out-b", (2,), 0),
+        BranchCoordinate.build(TreeRootId.build("source-b"), GhPath.build(2)),
+    )
+
+    entry = SourceCoordinateEntry.from_empty_branch(output, empty_branch)
+
+    assert entry.sources == ()
+    assert entry.empty_source_branch == empty_branch
+    assert entry.root_free_identity_bytes() == rerooted.root_free_identity_bytes()
+    assert b"empty_branch" in entry.root_free_identity_bytes()
+    with pytest.raises(EmptySourceCoordinateError):
+        SourceCoordinateEntry(output, ())
+    with pytest.raises(InvalidSourceCoordinateEntryError):
+        SourceCoordinateEntry(output, (coordinate("source", (2,), 0),), empty_branch)
+
+
+def test_source_coordinate_map_applies_uniqueness_and_order_across_provenance_forms() -> None:
+    item_entry = SourceCoordinateEntry.build(
+        coordinate("out", (0,), 0),
+        (coordinate("source", (0,), 0),),
+    )
+    empty_entry = SourceCoordinateEntry.from_empty_branch(
+        coordinate("out", (1,), 0),
+        BranchCoordinate.build(TreeRootId.build("source"), GhPath.build(1)),
+    )
+
+    assert SourceCoordinateMap.build((item_entry, empty_entry)).entries == (item_entry, empty_entry)
+    with pytest.raises(DuplicateSourceOutputError):
+        SourceCoordinateMap.build(
+            (
+                item_entry,
+                SourceCoordinateEntry.from_empty_branch(
+                    coordinate("other-root", (0,), 0),
+                    BranchCoordinate.build(TreeRootId.build("source"), GhPath.build(1)),
+                ),
+            )
+        )
+    with pytest.raises(NonCanonicalSourceCoordinateOrderError):
+        SourceCoordinateMap.build((empty_entry, item_entry))
+
+
 def test_source_coordinate_identity_bytes_exclude_runtime_roots() -> None:
     left = SourceCoordinateMap.build((SourceCoordinateEntry.build(coordinate("out-a", (2,), 0), (coordinate("in-a", (2,), 1),)),))
     right = SourceCoordinateMap.build((SourceCoordinateEntry.build(coordinate("out-b", (2,), 0), (coordinate("in-b", (2,), 1),)),))
@@ -161,8 +206,14 @@ def test_reduced_output_has_one_aggregate_and_source_shaped_diagnostics() -> Non
     empty_branch = BranchCoordinate.build(TreeRootId.build("source"), GhPath.build(7))
     branch_diagnostics = BranchDiagnosticMap.build(((empty_branch, "empty ordered series"),))
     output_coordinate = coordinate("out-values", (0,), 0)
+    empty_output_coordinate = coordinate("out-values", (7,), 0)
     sources = tuple(coordinate("source", (0,), index) for index in range(3))
-    source_coordinates = SourceCoordinateMap.build((SourceCoordinateEntry.build(output_coordinate, sources),))
+    source_coordinates = SourceCoordinateMap.build(
+        (
+            SourceCoordinateEntry.build(output_coordinate, sources),
+            SourceCoordinateEntry.from_empty_branch(empty_output_coordinate, empty_branch),
+        )
+    )
 
     output = ReducedTopologyOutput.build(
         values,
@@ -176,6 +227,7 @@ def test_reduced_output_has_one_aggregate_and_source_shaped_diagnostics() -> Non
     assert output.status is status
     assert output.item_diagnostics is item_diagnostics
     assert output.source_coordinates.sources_for(output_coordinate) == sources
+    assert output.source_coordinates.sources_for(empty_output_coordinate) == ()
     assert output.branch_diagnostics.diagnostic_for(empty_branch) == "empty ordered series"
 
 
