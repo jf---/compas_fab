@@ -32,6 +32,10 @@ class InvalidBranchDecisionStateError(InvalidBranchOutputStateError):
     """Raised when decision entries or current-publication state disagree."""
 
 
+class InvalidBranchReconciliationTransitionError(BranchOutputContractError):
+    """Raised when reconciliation would move to unrelated or older runtime state."""
+
+
 class StaleBranchGenerationError(BranchOutputContractError):
     """Raised when a transition targets an obsolete exact branch identity."""
 
@@ -93,7 +97,7 @@ class _TerminalBranch:
 class BranchOutputState(Generic[T]):
     """Values published only for the exact runtime identity they computed."""
 
-    expected: Tuple[BranchRuntimeIdentity, ...]
+    snapshot: TreeRuntimeSnapshot
     _published: Tuple[_PublishedBranch[T], ...]
     _decisions: Tuple[Tuple[BranchCoordinate, BranchDecision], ...]
     _terminals: Tuple[_TerminalBranch, ...]
@@ -105,22 +109,21 @@ class BranchOutputState(Generic[T]):
         if type(snapshot) is not TreeRuntimeSnapshot:
             raise InvalidBranchOutputStateError("Branch output state requires an exact runtime snapshot.")
         decisions = tuple((branch.coordinate, BranchDecision.ABSENT) for branch in snapshot.branches)
-        return cls(snapshot.branches, (), decisions, (), _OUTPUT_FACTORY_TOKEN)
+        return cls(snapshot, (), decisions, (), _OUTPUT_FACTORY_TOKEN)
 
     @classmethod
     def _from_parts(
         cls,
-        expected: Tuple[BranchRuntimeIdentity, ...],
+        snapshot: TreeRuntimeSnapshot,
         published: Tuple[_PublishedBranch[T], ...],
         decisions: Tuple[Tuple[BranchCoordinate, BranchDecision], ...],
         terminals: Tuple[_TerminalBranch, ...],
     ) -> "BranchOutputState[T]":
-        return cls(expected, published, decisions, terminals, _OUTPUT_FACTORY_TOKEN)
+        return cls(snapshot, published, decisions, terminals, _OUTPUT_FACTORY_TOKEN)
 
     def __attrs_post_init__(self) -> None:
         valid = (
-            type(self.expected) is tuple
-            and all(type(identity) is BranchRuntimeIdentity for identity in self.expected)
+            type(self.snapshot) is TreeRuntimeSnapshot
             and type(self._published) is tuple
             and all(type(entry) is _PublishedBranch for entry in self._published)
             and type(self._decisions) is tuple
@@ -189,6 +192,11 @@ class BranchOutputState(Generic[T]):
             raise InvalidBranchDecisionStateError("CURRENT decisions must correspond exactly to published terminal values.")
 
     @property
+    def expected(self) -> Tuple[BranchRuntimeIdentity, ...]:
+        """Return exact branch identities from the retained runtime snapshot."""
+        return self.snapshot.branches
+
+    @property
     def decisions(self) -> Dict[BranchCoordinate, BranchDecision]:
         """Return current decisions keyed by exact runtime branch coordinate."""
         return dict(self._decisions)
@@ -235,7 +243,7 @@ class BranchOutputState(Generic[T]):
             for item in self.expected
         )
         terminals = self._ordered_terminals(self._terminals + (_TerminalBranch(expected, _BranchTerminal.PUBLISHED),))
-        return self._from_parts(self.expected, ordered, decisions, terminals)
+        return self._from_parts(self.snapshot, ordered, decisions, terminals)
 
     def fail(self, identity: BranchRuntimeIdentity) -> "BranchOutputState[T]":
         """Clear one exact current branch after a failed computation."""
@@ -278,12 +286,50 @@ class BranchOutputState(Generic[T]):
             for item in self.expected
         )
         terminals = self._ordered_terminals(self._terminals + (_TerminalBranch(expected, terminal),))
-        return self._from_parts(self.expected, self._published, decisions, terminals)
+        return self._from_parts(self.snapshot, self._published, decisions, terminals)
+
+    def _validate_reconciliation(self, snapshot: TreeRuntimeSnapshot) -> None:
+        """Reject rollback or forged equal-solve transitions before state construction.
+
+        Equal solve generations retain the same root and branch-set/cardinality
+        topology. Null/order content may change only with an advanced request
+        generation for its branch. A higher solve generation is a new root epoch:
+        it may skip generations, reroute, and remove or re-add paths with reset
+        request generations.
+        """
+        current = self.snapshot
+        target_solve = snapshot.solve_generation.value
+        current_solve = current.solve_generation.value
+        if target_solve < current_solve:
+            raise InvalidBranchReconciliationTransitionError("Reconciliation cannot roll back solve generation.")
+        if target_solve > current_solve:
+            return
+        if snapshot.root_id != current.root_id:
+            raise InvalidBranchReconciliationTransitionError("Equal-solve reconciliation cannot change runtime root.")
+        current_topology = tuple(zip(current.content.topology.paths, current.content.topology.item_counts))
+        target_topology = tuple(zip(snapshot.content.topology.paths, snapshot.content.topology.item_counts))
+        if target_topology != current_topology:
+            raise InvalidBranchReconciliationTransitionError("Equal-solve reconciliation cannot change branch-set or cardinality topology.")
+
+        current_by_path = {identity.coordinate.path: identity for identity in current.branches}
+        any_request_advanced = False
+        for target in snapshot.branches:
+            prior = current_by_path[target.coordinate.path]
+            if target.request_generation.value < prior.request_generation.value:
+                raise InvalidBranchReconciliationTransitionError("Reconciliation cannot roll back branch request generation.")
+            if target.request_generation == prior.request_generation:
+                if target.content_digest != prior.content_digest:
+                    raise InvalidBranchReconciliationTransitionError("Unadvanced branch request cannot change content identity.")
+            else:
+                any_request_advanced = True
+        if not any_request_advanced and snapshot.content.digest != current.content.digest:
+            raise InvalidBranchReconciliationTransitionError("Unadvanced equal-solve snapshot cannot change tree content identity.")
 
     def reconcile(self, snapshot: TreeRuntimeSnapshot) -> "BranchOutputState[T]":
         """Retain exact siblings and clear the changed dependency closure."""
         if type(snapshot) is not TreeRuntimeSnapshot:
             raise InvalidBranchOutputStateError("Output reconciliation requires an exact runtime snapshot.")
+        self._validate_reconciliation(snapshot)
         old_by_path = {identity.coordinate.path: identity for identity in self.expected}
         published_by_identity = {entry.identity: entry for entry in self._published}
         terminal_by_identity = {entry.identity: entry for entry in self._terminals}
@@ -306,7 +352,7 @@ class BranchOutputState(Generic[T]):
                 decision = BranchDecision.ABSENT
             decisions.append((identity.coordinate, decision))
         return self._from_parts(
-            snapshot.branches,
+            snapshot,
             tuple(published),
             tuple(decisions),
             tuple(terminals),

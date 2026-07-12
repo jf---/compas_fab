@@ -11,6 +11,7 @@ from compas_fab.ghpython.branch_current_output import BranchDecision
 from compas_fab.ghpython.branch_current_output import BranchOutputState
 from compas_fab.ghpython.branch_current_output import ConflictingBranchTerminalTransitionError
 from compas_fab.ghpython.branch_current_output import DuplicateBranchTerminalTransitionError
+from compas_fab.ghpython.branch_current_output import InvalidBranchReconciliationTransitionError
 from compas_fab.ghpython.branch_current_output import InvalidBranchDecisionStateError
 from compas_fab.ghpython.branch_current_output import InvalidBranchOutputStateError
 from compas_fab.ghpython.branch_current_output import RetiredBranchRequestError
@@ -87,6 +88,32 @@ def initial(
 
 def path(index: int) -> GhPath:
     return GhPath.build(index)
+
+
+def forged_snapshot(
+    previous: TreeRuntimeSnapshot,
+    content: SourceTreeIdentity,
+    *,
+    solve: int,
+    requests: Tuple[int, ...],
+    root: Optional[str] = None,
+) -> TreeRuntimeSnapshot:
+    root_id = previous.root_id if root is None else TreeRootId.build(root)
+    solve_generation = SolveGeneration.build(solve)
+    branches = tuple(
+        BranchRuntimeIdentity.build(
+            BranchCoordinate.build(root_id, branch_path),
+            digest,
+            solve_generation,
+            BranchRequestGeneration.build(request),
+        )
+        for branch_path, digest, request in zip(
+            content.topology.paths,
+            content.branch_digests,
+            requests,
+        )
+    )
+    return TreeRuntimeSnapshot.build(root_id, content, solve_generation, branches)
 
 
 def reduction_identity(source: SourceTreeIdentity) -> StageTreeIdentity:
@@ -367,6 +394,115 @@ def test_published_success_is_terminal_and_cannot_be_erased() -> None:
     assert published.current(identity) == "success"
 
 
+def test_reconcile_rejects_branch_request_and_solve_rollbacks_without_mutation() -> None:
+    first = initial(content_tree(((0,), ("a",))))
+    retry = advance_branch_request(first, first.branch(path(0)))
+    state = BranchOutputState[str].build(retry).publish(retry.branch(path(0)), "success")
+    before_bytes = repr(state).encode("utf-8")
+
+    with pytest.raises(InvalidBranchReconciliationTransitionError):
+        state.reconcile(first)
+    assert state == BranchOutputState[str].build(retry).publish(
+        retry.branch(path(0)),
+        "success",
+    )
+    assert repr(state).encode("utf-8") == before_bytes
+    assert state.current(retry.branch(path(0))) == "success"
+
+    shared = advance_runtime(
+        retry,
+        retry.content,
+        SharedInputsChanged.build((CanonicalField.text("scene", "next"),)),
+    )
+    advanced = state.reconcile(shared)
+    with pytest.raises(InvalidBranchReconciliationTransitionError):
+        advanced.reconcile(retry)
+
+
+def test_reconcile_rejects_same_solve_digest_root_and_topology_forgery() -> None:
+    first = initial(content_tree(((0,), ("a",))))
+    retired = BranchOutputState[str].build(first).cancel(first.branch(path(0)))
+    before_bytes = repr(retired).encode("utf-8")
+    forged = (
+        forged_snapshot(
+            first,
+            content_tree(((0,), ("changed",))),
+            solve=0,
+            requests=(0,),
+        ),
+        forged_snapshot(
+            first,
+            first.content,
+            solve=0,
+            requests=(0,),
+            root="other-root",
+        ),
+        forged_snapshot(
+            first,
+            content_tree(((0,), ("a",)), ((1,), ())),
+            solve=0,
+            requests=(0, 0),
+        ),
+        forged_snapshot(
+            first,
+            content_tree(((0,), ("a", "extra"))),
+            solve=0,
+            requests=(0,),
+        ),
+        forged_snapshot(
+            first,
+            content_tree(),
+            solve=0,
+            requests=(),
+        ),
+    )
+
+    for target in forged:
+        with pytest.raises(InvalidBranchReconciliationTransitionError):
+            retired.reconcile(target)
+        assert repr(retired).encode("utf-8") == before_bytes
+        with pytest.raises(RetiredBranchRequestError):
+            retired.publish(first.branch(path(0)), "late")
+
+
+def test_reconcile_accepts_skipped_forward_solve_and_remove_readd_generation() -> None:
+    first = initial(content_tree(((0,), ("a",)), ((1,), ("b",))))
+    state = BranchOutputState[str].build(first).publish(first.branch(path(0)), "old")
+    skipped = forged_snapshot(
+        first,
+        content_tree(((0,), ("a",)), ((1,), ("b",))),
+        solve=5,
+        requests=(7, 9),
+        root="rerouted",
+    )
+
+    forward = state.reconcile(skipped)
+
+    assert forward.snapshot == skipped
+    assert set(forward.decisions.values()) == {BranchDecision.CLEARED}
+
+    removed = forged_snapshot(
+        skipped,
+        content_tree(((1,), ("b",))),
+        solve=6,
+        requests=(0,),
+        root="rerouted",
+    )
+    without_zero = forward.reconcile(removed)
+    assert without_zero.snapshot == removed
+
+    readded = forged_snapshot(
+        removed,
+        content_tree(((0,), ("readded",)), ((1,), ("b",))),
+        solve=7,
+        requests=(0, 1),
+        root="rerouted",
+    )
+    accepted = without_zero.reconcile(readded)
+    assert accepted.snapshot == readded
+    assert accepted.current(readded.branch(path(0))) is None
+
+
 def test_output_state_uses_exact_coordinates_and_rejects_unknown_paths() -> None:
     snapshot = initial(content_tree(((0,), ("a",))))
     state = BranchOutputState[str].build(snapshot)
@@ -423,7 +559,7 @@ def test_generation_and_runtime_raw_constructors_fail_loudly() -> None:
             snapshot.branches,
         )
     with pytest.raises(InvalidBranchOutputStateError):
-        BranchOutputState(snapshot.branches, (), (), ())
+        BranchOutputState(snapshot, (), (), ())
 
 
 def test_output_state_factory_rejects_malformed_decision_entries_before_indexing() -> None:
@@ -432,14 +568,14 @@ def test_output_state_factory_rejects_malformed_decision_entries_before_indexing
 
     with pytest.raises(InvalidBranchDecisionStateError):
         state._from_parts(
-            state.expected,
+            state.snapshot,
             (),
             cast(Tuple[Tuple[BranchCoordinate, BranchDecision], ...], ((),)),
             (),
         )
     with pytest.raises(InvalidBranchDecisionStateError):
         state._from_parts(
-            state.expected,
+            state.snapshot,
             (),
             ((state.expected[0].coordinate, BranchDecision.CURRENT),),
             (),
@@ -448,14 +584,14 @@ def test_output_state_factory_rejects_malformed_decision_entries_before_indexing
     published = branch_current_output._PublishedBranch(state.expected[0], "value")
     with pytest.raises(InvalidBranchDecisionStateError):
         state._from_parts(
-            state.expected,
+            state.snapshot,
             (published,),
             ((state.expected[0].coordinate, BranchDecision.ABSENT),),
             (),
         )
     with pytest.raises(InvalidBranchOutputStateError):
         state._from_parts(
-            state.expected,
+            state.snapshot,
             (),
             ((state.expected[0].coordinate, BranchDecision.ABSENT),),
             cast(Tuple[branch_current_output._TerminalBranch, ...], ((),)),
@@ -467,7 +603,7 @@ def test_output_state_factory_rejects_malformed_decision_entries_before_indexing
     )
     with pytest.raises(InvalidBranchDecisionStateError):
         state._from_parts(
-            state.expected,
+            state.snapshot,
             (),
             ((state.expected[0].coordinate, BranchDecision.ABSENT),),
             (failed,),
