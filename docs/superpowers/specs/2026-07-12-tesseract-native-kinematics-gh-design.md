@@ -12,10 +12,12 @@ All inputs use item access; Grasshopper owns iteration and matching.
 |---|---|---|
 | Tesseract Native FK | `forward_kinematics_native` | exact metre `Pose` |
 | Tesseract Native IK | `inverse_kinematics_native` | exact result/input/pose, group, joint names, all solutions |
+| Tesseract Contact Request | `build_contact_request` | exact native `ContactRequest` |
 | Tesseract Native Collision | `check_collision_native` | exact result/map, all contacts, colliding contacts, collision flag |
 
 IK solutions retain native solver order. Collision retains every native contact; convenience
 filtering uses the existing distance predicate. Collision requires an exact native request.
+The request node exposes all released `ContactTestType` values and native calculation flags.
 
 ## Constraints
 
