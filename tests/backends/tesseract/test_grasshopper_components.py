@@ -27,6 +27,7 @@ TESSERACT_USER_OBJECTS = (
     "Cf_TesseractNativeForwardKinematics.ghuser",
     "Cf_TesseractNativeInverseKinematics.ghuser",
     "Cf_TesseractNativeCollision.ghuser",
+    "Cf_TesseractContactRequest.ghuser",
 )
 
 
@@ -361,6 +362,40 @@ def test_native_result_component_retains_exact_objects_and_absence():
     assert _png_size(COMPONENTS / "Cf_TesseractNativeResult" / "icon.png") == (24, 24)
 
 
+def test_contact_request_component_exposes_exact_native_request_factory():
+    code, metadata = _component("Cf_TesseractContactRequest")
+    inputs = metadata["ghpython"]["inputParameters"]
+    outputs = metadata["ghpython"]["outputParameters"]
+
+    assert [item["name"] for item in inputs] == [
+        "test_type",
+        "calculate_distance",
+        "calculate_penetration",
+        "contact_limit",
+    ]
+    assert [item["name"] for item in outputs] == ["request"]
+    assert all(item.get("scriptParamAccess", 0) == 0 for item in inputs + outputs)
+    assert "build_contact_request" in code
+    assert "optional_connected_input" in code
+    for input_name in (
+        "test_type",
+        "calculate_distance",
+        "calculate_penetration",
+        "contact_limit",
+    ):
+        assert '"{}"'.format(input_name) in code
+    for test_type in ("FIRST", "CLOSEST", "ALL", "LIMITED"):
+        assert '"{}"'.format(test_type) in code
+    assert "ensure_value_list" in code
+    assert 'default="ALL"' in code
+    assert "except TesseractBackendError" in code
+    assert "error(ghenv.Component" in code
+    assert "except Exception" not in code
+    assert " or " not in code
+    assert len(code.splitlines()) < 100
+    assert _png_size(COMPONENTS / "Cf_TesseractContactRequest" / "icon.png") == (24, 24)
+
+
 def test_tesseract_components_require_nanobind_distribution_only():
     for name in (
         "Cf_TesseractRobotArtifact",
@@ -378,6 +413,7 @@ def test_tesseract_components_require_nanobind_distribution_only():
         "Cf_TesseractNativeForwardKinematics",
         "Cf_TesseractNativeInverseKinematics",
         "Cf_TesseractNativeCollision",
+        "Cf_TesseractContactRequest",
     ):
         code, _ = _component(name)
         assert "# r: tesseract-robotics-nanobind==0.35.0.7" in code

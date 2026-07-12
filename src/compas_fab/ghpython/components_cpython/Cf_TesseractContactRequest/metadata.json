@@ -1,0 +1,40 @@
+{
+    "name": "Tesseract Contact Request",
+    "nickname": "Tesseract Contact Request",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Build an exact native Tesseract ContactRequest while retaining native defaults for unconnected controls.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "test_type",
+                "description": "Native ContactTestType: FIRST, CLOSEST, ALL, or LIMITED. Defaults to ALL.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "calculate_distance",
+                "description": "Exact native calculate_distance flag. Unconnected retains the native default.",
+                "typeHintID": "bool"
+            },
+            {
+                "name": "calculate_penetration",
+                "description": "Exact native calculate_penetration flag. Unconnected retains the native default.",
+                "typeHintID": "bool"
+            },
+            {
+                "name": "contact_limit",
+                "description": "Non-negative exact native contact limit. Unconnected retains the native default.",
+                "typeHintID": "int"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "request",
+                "description": "Exact native Tesseract ContactRequest."
+            }
+        ]
+    }
+}

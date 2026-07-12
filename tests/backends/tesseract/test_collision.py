@@ -7,6 +7,9 @@ import pytest
 from compas.tolerance import TOL
 from tesseract_robotics.tesseract_collision import ContactRequest
 from tesseract_robotics.tesseract_collision import ContactTestType_ALL
+from tesseract_robotics.tesseract_collision import ContactTestType_CLOSEST
+from tesseract_robotics.tesseract_collision import ContactTestType_FIRST
+from tesseract_robotics.tesseract_collision import ContactTestType_LIMITED
 
 from compas_fab.backends.tesseract.artifact import CollisionMeshPolicy
 from compas_fab.backends.tesseract.artifact import ContinuousContactManager
@@ -15,8 +18,10 @@ from compas_fab.backends.tesseract.artifact import KdlInverseKinematics
 from compas_fab.backends.tesseract.artifact import KdlKinematics
 from compas_fab.backends.tesseract.artifact import RobotArtifact
 from compas_fab.backends.tesseract.client import TesseractClient
+from compas_fab.backends.tesseract.collision import build_contact_request
 from compas_fab.backends.tesseract.collision import is_collision_distance
 from compas_fab.backends.tesseract.errors import TesseractCollisionError
+from compas_fab.backends.tesseract.errors import TesseractContactQueryError
 from compas_fab.backends.tesseract.planner import TesseractPlanner
 from compas_fab.robots import RobotCell
 from compas_fab.robots import RobotCellState
@@ -116,3 +121,63 @@ def test_positive_native_separation_is_not_reclassified_by_compas_tolerance():
     assert not is_collision_distance(positive_separation)
     assert is_collision_distance(0.0)
     assert is_collision_distance(-positive_separation)
+
+
+@pytest.mark.parametrize(
+    ("name", "native_type"),
+    [
+        ("FIRST", ContactTestType_FIRST),
+        ("CLOSEST", ContactTestType_CLOSEST),
+        ("ALL", ContactTestType_ALL),
+        ("LIMITED", ContactTestType_LIMITED),
+    ],
+)
+def test_build_contact_request_exposes_every_released_test_type(name, native_type):
+    request = build_contact_request(name, None, None, None)
+
+    assert isinstance(request, ContactRequest)
+    assert request.type == native_type
+
+
+def test_build_contact_request_preserves_native_defaults_for_absent_inputs():
+    request = build_contact_request(None, None, None, None)
+
+    native_default = ContactRequest()
+    assert request.type == native_default.type
+    assert request.calculate_distance == native_default.calculate_distance
+    assert request.calculate_penetration == native_default.calculate_penetration
+    assert request.contact_limit == native_default.contact_limit
+
+
+def test_build_contact_request_preserves_explicit_false_and_zero():
+    request = build_contact_request("LIMITED", False, False, 0)
+
+    assert request.type == ContactTestType_LIMITED
+    assert request.calculate_distance is False
+    assert request.calculate_penetration is False
+    assert request.contact_limit == 0
+
+
+@pytest.mark.parametrize("value", [0, 1, "false", object()])
+@pytest.mark.parametrize("field", ["calculate_distance", "calculate_penetration"])
+def test_build_contact_request_requires_exact_booleans(field, value):
+    values = {
+        "calculate_distance": None,
+        "calculate_penetration": None,
+    }
+    values[field] = value
+
+    with pytest.raises(TesseractContactQueryError, match=field):
+        build_contact_request("ALL", values["calculate_distance"], values["calculate_penetration"], None)
+
+
+@pytest.mark.parametrize("value", [-1, 1.0, True, "1"])
+def test_build_contact_request_requires_non_negative_exact_integer_limit(value):
+    with pytest.raises(TesseractContactQueryError, match="contact_limit"):
+        build_contact_request("LIMITED", None, None, value)
+
+
+@pytest.mark.parametrize("value", ["UNKNOWN", 1, ContactTestType_ALL])
+def test_build_contact_request_rejects_unknown_or_non_string_test_type(value):
+    with pytest.raises(TesseractContactQueryError, match="test_type"):
+        build_contact_request(value, None, None, None)
