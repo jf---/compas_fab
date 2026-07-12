@@ -2,15 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Dispatch a fresh implementation subagent per task, then fresh specification and quality reviewers. Track every checkbox.
 
-**Goal:** Establish a host-independent ordered-tree contract, exact-native series authoring, branch-planning foundations, and pure native-result expansion without claiming unproven asynchronous Grasshopper lifecycle or viewport behavior.
+**Goal:** Establish a host-independent ordered-tree contract, explicit bounded expansion, exact-native Cartesian/joint/state series authoring, branch-planning foundations, and pure native-result expansion without claiming unproven asynchronous Grasshopper lifecycle or viewport behavior.
 
-**Architecture:** Immutable tree/domain values separate content identity from runtime routing and generations. Exact stage-provenance identities bridge source frames through native programs into branch planning; Tesseract remains authoritative, and the baseline serializes one shared runtime/composer while each sequential call receives its own native robot clone. Four additive pure Grasshopper nodes exercise tree-first authoring and inspection under a host-behavior emulation model; Windows Rhino owns later async-node lifecycle, progressive-port, compilation, and save/reopen proof.
+**Architecture:** Immutable tree/domain values separate content identity from runtime routing and generations. Exact stage-provenance identities bridge source frames and group-typed fixed vectors through native programs into branch planning; Tesseract remains authoritative, and the baseline serializes one shared runtime/composer while each sequential call receives its own native robot clone. Seven additive pure Grasshopper nodes exercise exact tree transport, explicit cross-product, authoring, and inspection under a host-behavior emulation model; Windows Rhino owns later async-node lifecycle, progressive-port, viewport, bake, compilation, and save/reopen proof.
 
 **Tech Stack:** Python 3.9/3.12, attrs, SHA-256, Hypothesis, `tesseract-robotics-nanobind==0.35.0.6`, Grasshopper CPython source contracts, pytest-xdist/testmon, strict mypy, Ruff, Pixi, MkDocs.
 
 ## Global Constraints
 
-- Exact native `Pose`, `CartesianTarget`, `MotionProgram`, `CompositeInstruction`, `ProfileDictionary`, `TesseractPlanningRequest`, `TesseractPlanningResult`, and native trajectory points remain authoritative.
+- Exact native `Pose`, `CartesianTarget`, `JointTarget`, `StateTarget`, `MotionProgram`, `CompositeInstruction`, `ProfileDictionary`, `TesseractPlanningRequest`, `TesseractPlanningResult`, and native trajectory points remain authoritative.
 - Series are primary. A scalar setting is accepted only through `ScalarFromTree`, which requires one canonical branch containing one non-null item. A one-item domain tree is never implicitly broadcast.
 - `TreeRootId` is runtime routing only. It never enters `TreeContentDigest`, `BranchContentDigest`, stage provenance, or `BuildIdentity`.
 - `Tree.build` requires canonical host path order: lexicographic integer-segment order with a shorter equal prefix first. It rejects unsorted or duplicate paths; capture observes rather than repairs host order.
@@ -18,17 +18,23 @@
 - Only a port declared `BROADCASTABLE_SCALAR` broadcasts. Trees use equal branch-local zip. Cross-product is explicit, pure, deterministic, and bounded.
 - Content identity uses verified codecs or typed stage provenance. Never pickle, reflect, hash object addresses, or pretend arbitrary nanobind objects serialize canonically.
 - Every topology-bearing output has parallel status; source-shaped item diagnostics remain source-shaped; branch-only failures use `BranchDiagnosticMap`.
+- Host capture retains exact ordered paths, integer segments, branch order, item indices, and explicit null positions. Host emission uses `EnsurePath` for every branch followed by indexed `Insert` for every slot including `None`, then self-audits the built structure before publication.
+- Coordinate-derived labels are display-only. They never simplify paths, mutate exact native names, or enter content identity.
 - All values are frozen/slotted attrs classes. Public `build` factories and `__attrs_post_init__` enforce the same invariants. Every failure mode is named.
 - One responsibility per file. Package `__init__.py` files stay minimal and add no `__all__`.
 - Python 3.9 syntax only. Imports are unconditional. No fallback, optional import, `HAS_*`, broad swallowed exception, skip, skip-if, or xfail.
-- Existing scalar nodes remain untouched. New series nodes normalize only one-item input trees; they do not alter old component layouts or behavior.
+- Existing scalar nodes remain untouched. New series nodes normalize one-item trees only on ports declared as scalar settings; series ports retain every branch, item, empty branch, and null slot unchanged. They do not alter old component layouts or behavior.
 - Use `apply_patch` and Pixi. Every pytest invocation includes `-n auto`. Every task runs affected `pytest --testmon -n auto` before review.
 - Never commit automatically. After both task reviewers approve, stop and obtain explicit user authorization for that commit. If authorized, set author and committer to `Jelle Feringa <jelleferinga@gmail.com>` and do not push.
 - Run each listed command separately. Do not chain commands.
 
 ## Deliberate Boundary
 
-This tranche ships tree/domain foundations, pure series authoring nodes, a host-independent planning owner with explicit close, and a pure result-inspection node. It does not expose an asynchronous planning Grasshopper node or document owner registry. Windows Rhino must first prove lifecycle binding, scheduled solves, document close, compilation, progressive ports/menu, undo, arity, save/reopen, and multi-iteration behavior. No viewport, packaged-GHX, controller, scene, mobile/VKC, concurrent TrajOpt, or hardware claim is made.
+This tranche ships tree/domain foundations, a Grasshopper-visible bounded pure cross-product, pure Cartesian/joint/state series authoring nodes, a host-independent planning owner with explicit close, and a pure result-inspection node. It does not expose an asynchronous planning Grasshopper node or document owner registry. The next host-runtime tranche has exactly seven planned nodes: `Tesseract Planning Job`, `Tesseract Cancel Planning`, `Tesseract Planning Result`, `Tesseract Trajectory Scrub`, `Tesseract Scene Preview`, `Tesseract Path Preview`, and the separate edge-triggered `Tesseract Bake Prepared Geometry`. Windows Rhino must first prove lifecycle binding, scheduled solves, document close, compilation, progressive ports/menu, undo, arity, save/reopen, current-sample/full-series source identity, preview sibling retention, bake idempotency/stale rejection, and multi-iteration behavior. No viewport, bake, packaged-GHX, controller, scene, mobile/VKC, concurrent TrajOpt, or hardware claim is made by this foundation tranche.
+
+The follow-on tranche receives Task 7's branch planning owner and Task 8's identified result/sample expansion without changing either contract. Planning Job publishes one handle/snapshot per exact program coordinate; Cancel and Result retain the same coordinates/status/diagnostic surfaces. Trajectory Scrub emits both the selected current sample and the complete sample series with one composed `SourceCoordinateMap`; Scene Preview consumes only the immutable selected current sample, while Path Preview consumes the immutable complete series/trajectory. Changed preview branches disappear without touching unchanged sibling display. Bake consumes only immutable prepared geometry and a fresh edge token, records source/build identity in a deterministic object map, rejects stale generations, and returns the same receipt without duplicating objects when the token repeats.
+
+That tranche must add compiled-user-object acceptance plus actual-Rhino tests for exact nonzero/prefix paths, branch order, empty branches, explicit null positions, matching-mode immunity, group-typed fixed-vector atomicity, optional absence versus connected null, bounded cross-product, branch reorder/insert/remove stability, current/full-series identity, sibling preview retention, progressive-port undo/wire/value/save-reopen behavior, and bake duplicate/stale/partial-failure reconciliation. These tests are mandatory release gates, not evidence claimed by Tasks 1–9.
 
 ## File Map
 
@@ -39,16 +45,22 @@ This tranche ships tree/domain foundations, pure series authoring nodes, a host-
 | `src/compas_fab/ghpython/tree_values.py` | immutable null-aware ordered trees |
 | `src/compas_fab/ghpython/port_semantics.py` | orthogonal port and policy declarations |
 | `src/compas_fab/ghpython/tree_diagnostics.py` | statuses, source maps, branch diagnostics, reduced outputs |
+| `src/compas_fab/ghpython/coordinate_labels.py` | deterministic display-only labels from exact coordinates |
+| `src/compas_fab/ghpython/optional_tree_input.py` | explicit absent-versus-present optional tree input |
+| `src/compas_fab/ghpython/group_shape.py` | planning-group identity, ordered joint IDs, and DOF |
 | `src/compas_fab/ghpython/tree_identity.py` | source content and stage-provenance identity |
 | `src/compas_fab/ghpython/tree_matching.py` | scalar broadcast and branch-local zip |
 | `src/compas_fab/ghpython/tree_expansion.py` | explicit bounded cross-product |
+| `src/compas_fab/ghpython/cross_product_projection.py` | aligned Grasshopper trees projected from exact product pairs |
 | `src/compas_fab/ghpython/tree_expansion_codec.py` | one reversible coordinate/path codec |
 | `src/compas_fab/ghpython/tree_codec.py` | canonical host-neutral tree wire codec |
 | `src/compas_fab/ghpython/branch_runtime_identity.py` | runtime generations and dependency closure |
 | `src/compas_fab/ghpython/branch_current_output.py` | branch current-or-absent publication |
 | `src/compas_fab/backends/tesseract/scene_identity.py` | exact artifact/scene content digest |
 | `src/compas_fab/ghpython/tesseract_pose_series.py` | exact pose-series construction |
-| `src/compas_fab/ghpython/tesseract_target_series.py` | exact target-series construction |
+| `src/compas_fab/ghpython/tesseract_cartesian_target_series.py` | exact Cartesian-target series construction |
+| `src/compas_fab/ghpython/tesseract_joint_target_series.py` | exact group-typed joint-target series construction |
+| `src/compas_fab/ghpython/tesseract_state_target_series.py` | exact group-typed state-target series construction and optional-field absence |
 | `src/compas_fab/ghpython/tesseract_program_series.py` | one exact program per ordered branch |
 | `src/compas_fab/ghpython/planning_content_identity.py` | program/planner/scene/profile request identity |
 | `src/compas_fab/ghpython/branch_planning_state.py` | truthful pure planning reducer |
@@ -413,17 +425,30 @@ Expected: all pass. Dispatch both reviewers. Stop and request explicit commit au
 - Modify: `src/compas_fab/backends/tesseract/errors.py`
 - Modify: `src/compas_fab/backends/tesseract/native_plan.py`
 - Modify: `src/compas_fab/backends/tesseract/planner.py`
+- Create: `src/compas_fab/ghpython/optional_tree_input.py`
+- Create: `src/compas_fab/ghpython/group_shape.py`
 - Create: `src/compas_fab/ghpython/tesseract_pose_series.py`
-- Create: `src/compas_fab/ghpython/tesseract_target_series.py`
+- Create: `src/compas_fab/ghpython/tesseract_cartesian_target_series.py`
+- Create: `src/compas_fab/ghpython/tesseract_joint_target_series.py`
+- Create: `src/compas_fab/ghpython/tesseract_state_target_series.py`
 - Create: `src/compas_fab/ghpython/tesseract_program_series.py`
 - Create: `src/compas_fab/ghpython/planning_content_identity.py`
-- Create: `tests/ghpython/test_tesseract_series.py`
+- Create: `tests/ghpython/test_optional_tree_input.py`
+- Create: `tests/ghpython/test_group_shape.py`
+- Create: `tests/ghpython/test_tesseract_pose_series.py`
+- Create: `tests/ghpython/test_tesseract_cartesian_target_series.py`
+- Create: `tests/ghpython/test_tesseract_joint_target_series.py`
+- Create: `tests/ghpython/test_tesseract_state_target_series.py`
+- Create: `tests/ghpython/test_tesseract_program_series.py`
 - Create: `tests/ghpython/test_planning_content_identity.py`
 - Modify: `tests/backends/tesseract/test_native_plan_component.py`
 
 **Interfaces:**
 - `NativeSceneContentIdentity`, `DirectSceneGeneration.build`, public `TesseractPlanner.native_artifact_digest`, and public `TesseractPlanner.native_scene_content_identity`.
-- `PoseSeriesBuild`, `TargetSeriesBuild`, `ProgramSeriesBuild`; each contains exact values/output surfaces plus `StageTreeIdentity`.
+- `OptionalTreeInput.absent()` and `OptionalTreeInput.present(tree)` form an immutable tagged union introduced here; absence has no topology, while every present tree retains its empty branches and null slots.
+- `PlanningGroupId.build`, `JointId.build`, `DegreesOfFreedom.build`, `GroupShape.build(group_id, ordered_joint_ids)`, and `GroupShapeFactory.from_native_robot(native_robot, group_id)`; `GroupShape` owns the group ID, exact ordered joint IDs, and derived DOF.
+- `PoseSeriesBuild`, `CartesianTargetSeriesBuild`, `JointTargetSeriesBuild`, `StateTargetSeriesBuild`, `ProgramSeriesBuild`; each contains exact values/output surfaces plus `StageTreeIdentity`.
+- `build_pose_series`, `build_cartesian_target_series`, `build_joint_target_series`, `build_state_target_series`, and `build_motion_program_series` are the only public native-series factories. Joint/state factories accept a `GroupShape`, group-compatible position vectors, optional joint-name vectors, and state optional dynamics/time through `OptionalTreeInput`; omitted names remain exact native `None`.
 - `ProfileGeneration.build`, `ComputeToken.build`, `UnverifiableProfileIdentity.build`, `PlanningSharedInputs.build`, `PlanningTreeIdentity.build`, `BranchPlanAttemptId`, `BranchPlanAttempt.build`, `BranchPlanRequest.build`, and `build_branch_plan_requests`.
 
 - [ ] **Step 1: Write RED native-series behavior tests**
@@ -448,7 +473,7 @@ def test_full_native_authoring_identity_ignores_routing_root(native_robot) -> No
     assert left.output.source_coordinates.root_free_identity_bytes() == right.output.source_coordinates.root_free_identity_bytes()
 ```
 
-Test typed scalar broadcast, equal move/profile zip, unequal mismatch, ragged branches, null item invalidating only its program branch, empty ordered branch diagnostics, one-item convenience, exact native types/object retention, source-map completeness, raw bypass, and externally supplied native values becoming `UNVERIFIABLE`. `ReducedTopologyOutput` behavior is tested directly, never its absence.
+Test typed scalar broadcast, equal move/profile zip, unequal mismatch, ragged branches, null item invalidating only its program branch, empty ordered branch diagnostics, one-item convenience, exact native types/object retention, source-map completeness, raw bypass, and externally supplied native values becoming `UNVERIFIABLE`. `GroupShape.build` rejects empty/duplicate/invalid joint IDs; `GroupShapeFactory.from_native_robot` retains the exact native group order and derives `DegreesOfFreedom == len(ordered_joint_ids)`. Build joint targets from group-tagged fixed position vectors plus optional group-compatible name vectors, and state targets from positions plus optional names/velocity/acceleration/time. Prove a fixed vector is one atomic tree item, wrong group tags/lengths fail before native work, absent JointTarget names produce exact native `names=None`, and absent StateTarget optional fields remain exact native absence. A present optional tree containing a null slot remains topology-bearing invalid input at that exact coordinate rather than becoming absence. `ReducedTopologyOutput` behavior is tested directly, never its absence.
 
 - [ ] **Step 2: Write RED exact bridge tests**
 
@@ -491,13 +516,13 @@ Add native-call forced-interleaving tests in `test_native_plan_component.py`: mu
 
 - [ ] **Step 3: Verify RED**
 
-Run: `pixi run pytest tests/ghpython/test_tesseract_series.py tests/ghpython/test_planning_content_identity.py tests/backends/tesseract/test_native_plan_component.py -n auto -q`
+Run: `pixi run pytest tests/ghpython/test_optional_tree_input.py tests/ghpython/test_group_shape.py tests/ghpython/test_tesseract_pose_series.py tests/ghpython/test_tesseract_cartesian_target_series.py tests/ghpython/test_tesseract_joint_target_series.py tests/ghpython/test_tesseract_state_target_series.py tests/ghpython/test_tesseract_program_series.py tests/ghpython/test_planning_content_identity.py tests/backends/tesseract/test_native_plan_component.py -n auto -q`
 
 Expected: collection fails because new modules/properties are absent.
 
 - [ ] **Step 4: Implement exact provenance chain**
 
-`NativeSceneContentIdentity` hashes artifact `BuildIdentity.digest` plus the existing canonical robot-cell/state projection bytes. Projection-derived identities are `VERIFIED`. `_mark_native_scene_changed` cannot derive direct command content from the current revision, so it increments `DirectSceneGeneration`, publishes an `UNVERIFIABLE` scene identity, and never claims revision alone is content. Expose the complete identity read-only through client/planner. Pose identity derives frame-source digest plus pose builder schema/version, scale, working frame, and root-free output topology. Target identity derives pose identity plus move/profile source identities and exact match/item policies. Program identity derives target identity plus group/TCP/working/profile parameters, root-free source map, and every exact `native_program_digest`; mismatch between provenance and native digest fails.
+`NativeSceneContentIdentity` hashes artifact `BuildIdentity.digest` plus the existing canonical robot-cell/state projection bytes. Projection-derived identities are `VERIFIED`. `_mark_native_scene_changed` cannot derive direct command content from the current revision, so it increments `DirectSceneGeneration`, publishes an `UNVERIFIABLE` scene identity, and never claims revision alone is content. Expose the complete identity read-only through client/planner. Pose identity derives frame-source digest plus pose builder schema/version, scale, working frame, and root-free output topology. Cartesian-target identity derives pose identity plus move/profile source identities and exact match/item policies. Joint/state-target identities derive the exact `GroupShape` group ID, ordered joint IDs, DOF, complete ordered fixed-vector values, optional-name/dynamics/time presence tags, move/profile sources, output topology, and source maps; absent and present-null optional inputs cannot share identity. Program identity derives target identity plus group/TCP/working/profile parameters, root-free source map, and every exact `native_program_digest`; mismatch between provenance and native digest fails.
 
 `PlanningTreeIdentity` derives program identity plus artifact digest, complete scene identity including verification/direct generation, pipeline, unverifiable profile generation, auto-seed, and planning schema/version. Because `ProfileDictionary` has no sealed canonical binding in 0.35.0.6, every baseline planning identity is `UNVERIFIABLE`; a verified profile path is deferred. Unverified scene/profile inputs require a fresh compute token and are never reusable. The identity exposes `branch(path)` while retaining exact shared planner/profile objects outside the digest. `ComputeToken` is runtime edge evidence and never enters content identity. `BranchPlanAttempt.build(runtime_identity, compute_token)` derives `BranchPlanAttemptId` from the complete runtime identity plus token; same inputs are idempotent, while a new token creates a distinct attempt without changing content identity. Task 6 owns frozen `BranchPlanRequest(attempt, content_identity, call)` and exposes its runtime identity/token through the attempt. `build_branch_plan_requests` is its only batch factory: it verifies matching tree/branch content identities and runtime snapshot before building exact `NativePlanCall`s. A result record retains its request content identity; no arbitrary `PlanningResult` serialization is attempted.
 
@@ -505,13 +530,13 @@ Expected: collection fails because new modules/properties are absent.
 
 - [ ] **Step 5: Verify and review**
 
-Run: `pixi run pytest tests/ghpython/test_tesseract_series.py tests/ghpython/test_planning_content_identity.py tests/backends/tesseract/test_native_plan_component.py -n auto -q`
+Run: `pixi run pytest tests/ghpython/test_optional_tree_input.py tests/ghpython/test_group_shape.py tests/ghpython/test_tesseract_pose_series.py tests/ghpython/test_tesseract_cartesian_target_series.py tests/ghpython/test_tesseract_joint_target_series.py tests/ghpython/test_tesseract_state_target_series.py tests/ghpython/test_tesseract_program_series.py tests/ghpython/test_planning_content_identity.py tests/backends/tesseract/test_native_plan_component.py -n auto -q`
 
 Run: `pixi run pytest --testmon -n auto -q`
 
-Run: `pixi run mypy --strict src/compas_fab/backends/tesseract/scene_identity.py src/compas_fab/backends/tesseract/client.py src/compas_fab/backends/tesseract/native_plan.py src/compas_fab/backends/tesseract/planner.py src/compas_fab/ghpython/tesseract_pose_series.py src/compas_fab/ghpython/tesseract_target_series.py src/compas_fab/ghpython/tesseract_program_series.py src/compas_fab/ghpython/planning_content_identity.py`
+Run: `pixi run mypy --strict src/compas_fab/backends/tesseract/scene_identity.py src/compas_fab/backends/tesseract/client.py src/compas_fab/backends/tesseract/native_plan.py src/compas_fab/backends/tesseract/planner.py src/compas_fab/ghpython/optional_tree_input.py src/compas_fab/ghpython/group_shape.py src/compas_fab/ghpython/tesseract_pose_series.py src/compas_fab/ghpython/tesseract_cartesian_target_series.py src/compas_fab/ghpython/tesseract_joint_target_series.py src/compas_fab/ghpython/tesseract_state_target_series.py src/compas_fab/ghpython/tesseract_program_series.py src/compas_fab/ghpython/planning_content_identity.py`
 
-Run: `pixi run ruff check src/compas_fab/backends/tesseract/scene_identity.py src/compas_fab/backends/tesseract/client.py src/compas_fab/backends/tesseract/errors.py src/compas_fab/backends/tesseract/native_plan.py src/compas_fab/backends/tesseract/planner.py src/compas_fab/ghpython/tesseract_pose_series.py src/compas_fab/ghpython/tesseract_target_series.py src/compas_fab/ghpython/tesseract_program_series.py src/compas_fab/ghpython/planning_content_identity.py tests/ghpython/test_tesseract_series.py tests/ghpython/test_planning_content_identity.py tests/backends/tesseract/test_native_plan_component.py`
+Run: `pixi run ruff check src/compas_fab/backends/tesseract/scene_identity.py src/compas_fab/backends/tesseract/client.py src/compas_fab/backends/tesseract/errors.py src/compas_fab/backends/tesseract/native_plan.py src/compas_fab/backends/tesseract/planner.py src/compas_fab/ghpython/optional_tree_input.py src/compas_fab/ghpython/group_shape.py src/compas_fab/ghpython/tesseract_pose_series.py src/compas_fab/ghpython/tesseract_cartesian_target_series.py src/compas_fab/ghpython/tesseract_joint_target_series.py src/compas_fab/ghpython/tesseract_state_target_series.py src/compas_fab/ghpython/tesseract_program_series.py src/compas_fab/ghpython/planning_content_identity.py tests/ghpython/test_optional_tree_input.py tests/ghpython/test_group_shape.py tests/ghpython/test_tesseract_pose_series.py tests/ghpython/test_tesseract_cartesian_target_series.py tests/ghpython/test_tesseract_joint_target_series.py tests/ghpython/test_tesseract_state_target_series.py tests/ghpython/test_tesseract_program_series.py tests/ghpython/test_planning_content_identity.py tests/backends/tesseract/test_native_plan_component.py`
 
 Expected: all pass. Dispatch both reviewers. Stop and request explicit commit authorization.
 
@@ -639,16 +664,23 @@ Run: `pixi run ruff check src/compas_fab/ghpython/tesseract_result_series.py tes
 
 Expected: all pass. Dispatch both reviewers. Stop and request explicit commit authorization.
 
-### Task 9: Four Additive Pure Tree Nodes and Truthful Documentation
+### Task 9: Seven Additive Pure Tree Nodes and Truthful Documentation
 
 **Files:**
 - Create: `src/compas_fab/ghpython/grasshopper_tree_adapter.py`
+- Create: `src/compas_fab/ghpython/coordinate_labels.py`
+- Create: `src/compas_fab/ghpython/cross_product_projection.py`
 - Modify: `src/compas_fab/ghpython/tree_errors.py`
 - Create: `src/compas_fab/ghpython/components_cpython/Cf_TesseractPoseSeries/{code.py,metadata.json,icon.svg,icon.png}`
+- Create: `src/compas_fab/ghpython/components_cpython/Cf_TesseractPoseProfileCrossProduct/{code.py,metadata.json,icon.svg,icon.png}`
 - Create: `src/compas_fab/ghpython/components_cpython/Cf_TesseractCartesianTargetSeries/{code.py,metadata.json,icon.svg,icon.png}`
+- Create: `src/compas_fab/ghpython/components_cpython/Cf_TesseractJointTargetSeries/{code.py,metadata.json,icon.svg,icon.png}`
+- Create: `src/compas_fab/ghpython/components_cpython/Cf_TesseractStateTargetSeries/{code.py,metadata.json,icon.svg,icon.png}`
 - Create: `src/compas_fab/ghpython/components_cpython/Cf_TesseractMotionProgramSeries/{code.py,metadata.json,icon.svg,icon.png}`
 - Create: `src/compas_fab/ghpython/components_cpython/Cf_TesseractResultInspectSeries/{code.py,metadata.json,icon.svg,icon.png}`
 - Create: `tests/ghpython/test_tesseract_series_components.py`
+- Create: `tests/ghpython/test_coordinate_labels.py`
+- Create: `tests/ghpython/test_cross_product_projection.py`
 - Create: `docs/frontends/ghpython-tesseract-series.md`
 - Create: `docs/frontends/examples/tesseract-series-tree.json`
 - Modify: `docs/frontends/ghpython.md`
@@ -656,14 +688,21 @@ Expected: all pass. Dispatch both reviewers. Stop and request explicit commit au
 - Modify: `pyproject.toml`
 - Test: `tests/backends/tesseract/test_documented_examples.py`
 
-**Exact node count:** four. No `PlanningJobSeries`, owner registry, async component, cancel component, or preview node.
+**Exact node count:** seven. No planning-job owner registry, async component, cancel component, scrub, preview, or bake node belongs to this foundation tranche.
+
+**Adapter interfaces:** `HostInputPresence.build(source_count, persistent_data_count)`, `capture_tree(host_tree, root_id, input_name) -> Tree[object]`, `capture_optional_tree(host_tree, root_id, input_name, presence) -> OptionalTreeInput[object]`, `capture_fixed_vector_branches(host_tree, root_id, input_name, group_shape, quantity_shape) -> FixedVectorBranchCapture[object]`, `capture_scalar_branches(host_tree, root_id, input_name, quantity_shape) -> ScalarBranchCapture[object]`, `emit_tree(tree, output_name) -> Grasshopper.DataTree[object]`, and `audit_emitted_tree(expected, emitted, output_name) -> None`. `HostInputPresence` accepts exact non-negative integer counts and is absent only when both counts are zero; any source or persistent data makes the input present. `FixedVectorBranchCapture` carries one group-tagged atomic vector item per ordinary ordered scalar branch; `ScalarBranchCapture` carries one scalar item from each exact one-item branch. Both carry parallel status, source-shaped diagnostics, branch diagnostics, and source-coordinate maps. `HostInvocationId.build(component_instance, iteration)` guards invocation identity. Only `emit_tree` constructs host trees; only `audit_emitted_tree` reads emitted trees for post-build verification.
+
+**Additive projection interfaces:** `PoseProfileCrossProductProjection.build(result, policy, pose_identity, profile_identity, pose_root, profile_root)`, `CoordinateLabelSubject` (`BRANCH`, `ITEM`), `CoordinateLabelState` (`EMPTY`, `VALUE`, `NULL`), `CoordinateLabelContext.build(subject, state, coordinate)`, and `CoordinateLabelPolicy.format(context)`. Projection consumes the committed `CrossProductResult.pairs` and `source_coordinates` unchanged; it does not add fields, change ordering, or replace Task 3 factories. The existing left-pose/right-profile pair order and output names are authoritative; projection identity contains the two input identities, exact existing pair coordinate order, aligned output topology, source map, and `CrossProductPolicy.maximum_expanded_items`.
 
 **Exact port contract:** every input uses `scriptParamAccess: 2` (tree access), including settings. The current componentizer does not apply output `scriptParamAccess`; output metadata therefore asserts names/order only. Each script constructs and returns explicit Grasshopper `DataTree`/tree structures through the adapter, with emitted-structure tests kept pending real-Rhino confirmation. Every component rejects `ghenv.Iteration != 0` with `UnexpectedHostIterationError` before domain work.
 
 | Node | Inputs in exact order | Defaults and decoding | Outputs in exact order |
 |---|---|---|---|
 | `Tesseract Pose Series` | `frames`, `metres_per_user_unit`, `working_frame` | frames required tree; scale required `ScalarFromTree[float]`; working frame one-item tree default `base_link` | `poses`, `status`, `item_diagnostics`, `branch_diagnostics`, `identity` |
+| `Tesseract Pose Profile Cross Product` | `poses`, `profiles`, `maximum_results` | exact left-pose and right-profile trees required; maximum required positive `ScalarFromTree[int]`; pair order is canonical left pose/right profile | `poses_expanded`, `profiles_expanded`, `status`, `item_diagnostics`, `branch_diagnostics`, `source_coordinates`, `identity` |
 | `Tesseract Cartesian Target Series` | `poses`, `move_types`, `move_type_match`, `profiles`, `profile_match` | poses required tree; move types default one-item `FREESPACE`; profiles default one-item `DEFAULT`; match tokens default `BROADCASTABLE_SCALAR`, accept exact `BROADCASTABLE_SCALAR` or `EXACT_TREE` | `targets`, `status`, `item_diagnostics`, `branch_diagnostics`, `source_coordinates`, `identity` |
+| `Tesseract Joint Target Series` | `native_robot`, `group_name`, `positions`, `joint_names`, `move_types`, `move_type_match`, `profiles`, `profile_match` | robot/group resolve exact `GroupShape`; each ordinary numeric positions branch becomes one atomic group-tagged vector item; joint-name branches are optional and reduce identically when present; absent names remain native `None`; move/profile defaults and match tokens equal Cartesian Target Series | `targets`, `status`, `item_diagnostics`, `branch_diagnostics`, `source_coordinates`, `identity` |
+| `Tesseract State Target Series` | `native_robot`, `group_name`, `positions`, `joint_names`, `velocities`, `accelerations`, `times`, `move_types`, `move_type_match`, `profiles`, `profile_match` | robot/group resolve exact `GroupShape`; each ordinary numeric/name branch reduces to one atomic group-tagged vector item; disconnected names/dynamics/time are absent; any source or persistent data makes the tree present, including null slots; move/profile defaults and match tokens equal Cartesian Target Series | `targets`, `status`, `item_diagnostics`, `branch_diagnostics`, `source_coordinates`, `identity` |
 | `Tesseract Motion Program Series` | `native_robot`, `targets`, `group_name`, `tcp_selection`, `working_frame`, `profile` | robot/group are required one-item trees; targets ordered tree; TCP selection defaults to exact token `AUTO` or accepts exact link text and records the choice in provenance; working/profile default `base_link`/`DEFAULT` | `motion_programs`, `programs`, `joint_names`, `tcp_frames`, `status`, `item_diagnostics`, `branch_diagnostics`, `source_coordinates`, `identity` |
 | `Tesseract Result Inspect Series` | `identified_results` | exact `IdentifiedPlanningResult` tree from the Python planning foundation; no defaults or compute token | `requests`, `native_results`, `raw_programs`, `messages`, `trajectory_points`, `joint_names`, `positions`, `velocities`, `accelerations`, `times`, `status`, `item_diagnostics`, `branch_diagnostics`, `source_coordinates` |
 
@@ -674,11 +713,25 @@ Host tree access is only transport. Each input independently declares domain mea
 | Pose `frames` | `TREE` | `ELEMENTWISE` | `DOMAIN_ATOMIC[CompasFrame]` | `EXACT_TREE` |
 | Pose `metres_per_user_unit` | `ATOMIC` | `ELEMENTWISE` | `SCALAR[MetersPerUserUnit]` | `BROADCASTABLE_SCALAR` |
 | Pose `working_frame` | `ATOMIC` | `ELEMENTWISE` | `SCALAR[WorkingFrameName]` | `BROADCASTABLE_SCALAR` |
+| Cross Product `poses` | `TREE` | `ELEMENTWISE` | `DOMAIN_ATOMIC[WorkingFramePose]` | explicit product left operand |
+| Cross Product `profiles` | `TREE` | `ELEMENTWISE` | `SCALAR[ProfileName]` | explicit product right operand |
+| Cross Product `maximum_results` | `ATOMIC` | `ELEMENTWISE` | `SCALAR[MaximumExpandedItems]` | `GLOBAL_ATOMIC` |
 | Cartesian `poses` | `TREE` | `ELEMENTWISE` | `DOMAIN_ATOMIC[WorkingFramePose]` | `EXACT_TREE` |
 | Cartesian `move_types` | token-selected `ATOMIC` or `TREE` | `ELEMENTWISE` | `SCALAR[MoveType]` | token-selected `BROADCASTABLE_SCALAR` or `EXACT_TREE` |
 | Cartesian `move_type_match` | `ATOMIC` | `ELEMENTWISE` | `SCALAR[MatchRole]` | `GLOBAL_ATOMIC` |
 | Cartesian `profiles` | token-selected `ATOMIC` or `TREE` | `ELEMENTWISE` | `SCALAR[ProfileName]` | token-selected `BROADCASTABLE_SCALAR` or `EXACT_TREE` |
 | Cartesian `profile_match` | `ATOMIC` | `ELEMENTWISE` | `SCALAR[MatchRole]` | `GLOBAL_ATOMIC` |
+| Joint/State `native_robot` | `ATOMIC` | `ELEMENTWISE` | `DOMAIN_ATOMIC[NativeRobot]` | `GLOBAL_ATOMIC` via `AtomicFromTree` |
+| Joint/State `group_name` | `ATOMIC` | `ELEMENTWISE` | `SCALAR[PlanningGroupId]` | `GLOBAL_ATOMIC` |
+| Joint raw `positions` | `TREE` | `ORDERED_SEQUENCE` | `SCALAR[NativeJointPosition]` | branch-reduction anchor |
+| Joint connected raw `joint_names` | `TREE` | `ORDERED_SEQUENCE` | `SCALAR[JointId]` | exact branch set before reduction |
+| Joint move/profile values and match tokens | token-selected `ATOMIC` or `TREE` | `ELEMENTWISE` | typed scalars | token-selected broadcast/exact or `GLOBAL_ATOMIC` |
+| State raw `positions` | `TREE` | `ORDERED_SEQUENCE` | `SCALAR[NativeJointPosition]` | branch-reduction anchor |
+| State connected raw `joint_names` | `TREE` | `ORDERED_SEQUENCE` | `SCALAR[JointId]` | exact branch set before reduction |
+| State connected raw `velocities` | `TREE` | `ORDERED_SEQUENCE` | `SCALAR[NativeJointVelocity]` | exact branch set before reduction |
+| State connected raw `accelerations` | `TREE` | `ORDERED_SEQUENCE` | `SCALAR[NativeJointAcceleration]` | exact branch set before reduction |
+| State connected raw `times` | `TREE` | `ORDERED_SEQUENCE` | `SCALAR[NativeTime]` | exact one-item branch before reduction |
+| State move/profile values and match tokens | token-selected `ATOMIC` or `TREE` | `ELEMENTWISE` | typed scalars | token-selected broadcast/exact or `GLOBAL_ATOMIC` |
 | Program `native_robot` | `ATOMIC` | `ELEMENTWISE` | `DOMAIN_ATOMIC[NativeRobot]` | `GLOBAL_ATOMIC` via `AtomicFromTree` |
 | Program `targets` | `TREE` | `ORDERED_SEQUENCE` | `DOMAIN_ATOMIC[NativeTarget]` | `EXACT_TREE` |
 | Program `group_name` | `ATOMIC` | `ELEMENTWISE` | `SCALAR[GroupName]` | `GLOBAL_ATOMIC` |
@@ -687,39 +740,64 @@ Host tree access is only transport. Each input independently declares domain mea
 | Program `profile` | `ATOMIC` | `ELEMENTWISE` | `SCALAR[ProfileName]` | `GLOBAL_ATOMIC` |
 | Inspect `identified_results` | `TREE` | `ELEMENTWISE` | `DOMAIN_ATOMIC[IdentifiedPlanningResult]` | `EXACT_TREE` |
 
-There is no compute token on pure nodes. Planner, pipeline, profiles, auto-seed, compute token, and publication policy route only through the Task 6/7 Python planning foundation, not these four components. A future async Grasshopper node must expose them only after Windows lifecycle proof.
+Adapter reduction is a separate typed transformation, not a reinterpretation of the raw ports:
+
+| Normalized value | `TopologyRole` | `BranchSemantics` | `ItemShape` | Cardinality |
+|---|---|---|---|---|
+| Joint/State positions | `TREE` | `ELEMENTWISE` | `FIXED_VECTOR[JointPositions, GroupShape]` | one item per nonempty source branch |
+| Present Joint/State names | `TREE` | `ELEMENTWISE` | `FIXED_VECTOR[JointNames, GroupShape]` | one item per nonempty source branch |
+| Present State velocities | `TREE` | `ELEMENTWISE` | `FIXED_VECTOR[JointVelocities, GroupShape]` | one item per nonempty source branch |
+| Present State accelerations | `TREE` | `ELEMENTWISE` | `FIXED_VECTOR[JointAccelerations, GroupShape]` | one item per nonempty source branch |
+| Present State time | `TREE` | `ELEMENTWISE` | `SCALAR[NativeTime]` | one item per exact one-item source branch |
+
+There is no compute token on pure nodes. Planner, pipeline, profiles, auto-seed, compute token, and publication policy route only through the Task 6/7 Python planning foundation, not these seven components. A future async Grasshopper node must expose them only after Windows lifecycle proof.
 
 - [ ] **Step 1: Write RED adapter/metadata/component tests**
 
-Test exact node count, directory names, input port order and tree access, every input's exact topology/branch/item/match declaration from both tables, output name order without output-access metadata assertions, defaults, exact nanobind directive, category `COMPAS FAB`, subcategories `Tesseract · Author` for the three authoring nodes and `Tesseract · Inspect` for result inspection, no hidden planner/profile routing, and no async registry import. Execute each component once with `ghenv.Iteration == 0`; assert nonzero iteration raises/reports `UnexpectedHostIterationError` and emits absent outputs. Prove new nodes accept one-item scalar settings through `ScalarFromTree`, retain `native_robot` through `AtomicFromTree`, reject host item/list assumptions, and emit the expected branch/path/item structure through a fake `DataTree` sink. Existing scalar component files and reference tests remain byte-unchanged.
+Test exact node count, directory names, input port order and tree access, every input's exact topology/branch/item/match declaration from both tables, output name order without output-access metadata assertions, defaults, exact nanobind directive, category `COMPAS FAB`, subcategories `Tesseract · Author` for the six authoring/expansion nodes and `Tesseract · Inspect` for result inspection, no hidden planner/profile routing, and no async registry import. Execute each component once with `ghenv.Iteration == 0`; assert nonzero iteration raises/reports `UnexpectedHostIterationError` and emits absent outputs. Prove only scalar-setting ports accept one-item trees through `ScalarFromTree`; series ports retain full topology. Assert every raw Joint/State vector-valued numeric/name port is `TREE + ORDERED_SEQUENCE + SCALAR[quantity]`, then prove adapter reduction yields `TREE + ELEMENTWISE + FIXED_VECTOR[GroupShape]` with exactly one vector item per nonempty source branch, the same path, exact branch-local DOF, and a many-source-to-one coordinate map. State time reduces separately from an exact one-item raw scalar branch to one normalized scalar item. Retain `native_robot` through `AtomicFromTree`. Test `HostInputPresence` for `(0, 0)`, sources only, persistent data only, and both; only `(0, 0)` yields absence, while a present tree containing null remains present. JointTarget names absent must reach the exact native target as `None`. The compiled cross-product node must expose two aligned expanded trees from canonical left-pose/right-profile pairs, require an explicit finite bound, and reject over-limit input before allocation. Existing scalar component files and reference tests remain byte-unchanged.
+
+The fake host uses exact paths `{1}`, `{1;2}`, and `{7;0}`, an empty branch, and explicit nulls at nonzero item indices. Assert capture retains host path order/segments and item indices; emission calls `EnsurePath` once per branch before any branch insert and indexed `Insert` once per slot including `None`; independent readback matches exact paths/counts/null positions. Inject path, count, and null-position corruption and require `GrasshopperTreeSelfAuditError` with no output. Inject capture/emission faults and require their distinct named errors. Static compiled-node inspection asserts every input is tree access and no host data-matching API is called; actual matching-mode immunity remains a mandatory follow-on Rhino acceptance test.
+
+Build the existing `CrossProductResult`, snapshot its `pairs` and `source_coordinates`, then project it. Assert the projection leaves both snapshots equal, creates pose/profile trees with identical one-item branches in exact `pair.path` order, retains each canonical left-pose/right-profile value/null slot, reuses the exact source-coordinate entries, and emits one parallel status item plus source-shaped item diagnostics for every pair. Valid zero-pair products emit aligned empty trees and empty diagnostic maps. Identity contains input identities, policy bound, pair-coordinate order, aligned topology, and source map; changing runtime roots does not change it. Feed both projected trees directly to Cartesian Target Series under `EXACT_TREE`; no implicit product exists and no axis-name port/type exists.
+
+Test `CoordinateLabelContext` exhaustively: `BRANCH+EMPTY+BranchCoordinate`, `ITEM+VALUE+TreeCoordinate`, and `ITEM+NULL+TreeCoordinate` are the only valid combinations. Every other subject/state/coordinate combination raises a named label-context error. Labels retain unsimplified coordinates, never mutate native values, and cannot enter codecs, stage parameters, or content identity.
 
 - [ ] **Step 2: Verify RED**
 
-Run: `pixi run pytest tests/ghpython/test_tesseract_series_components.py tests/backends/tesseract/test_documented_examples.py -n auto -q`
+Run: `pixi run pytest tests/ghpython/test_coordinate_labels.py tests/ghpython/test_cross_product_projection.py tests/ghpython/test_tesseract_series_components.py tests/backends/tesseract/test_documented_examples.py -n auto -q`
 
-Expected: fail because adapter, four nodes, and documented fixture are absent.
+Expected: fail because adapter, seven nodes, and documented fixture are absent.
 
 - [ ] **Step 3: Implement thin pure adapters**
 
-`HostInvocationId.build(component_instance, iteration)` validates exact IDs and iteration. Add `UnexpectedHostIterationError` to `tree_errors.py`. Each `RunScript` first requires iteration zero, captures canonical host tree order without sorting, decodes settings through `ScalarFromTree`, invokes exactly one Task 6 or Task 8 pure function, and constructs explicit `Grasshopper.DataTree[object]` outputs. The adapter preserves empty branches/nulls and never invokes host item/list matching. The fake sink proves emitted structure only; the product claim remains pending self-hosted Rhino.
+`HostInvocationId.build(component_instance, iteration)` validates exact IDs and iteration. Add `UnexpectedHostIterationError`, `GrasshopperTreeCaptureError`, `GrasshopperTreeEmissionError`, `GrasshopperTreeSelfAuditError`, `InvalidFixedVectorBranchError`, and `InvalidCoordinateLabelContextError` to `tree_errors.py`. Each `RunScript` first requires iteration zero, captures `tree.Paths` in exact host order without sorting, copies every exact integer `GH_Path.Indices` segment, walks every branch by exact item index, and records every `None` as `TreeItem.null`. `HostInputPresence.build(SourceCount, PersistentDataCount)` is the sole optional-presence authority: absence requires both exact counts to be zero; any source or persistent datum calls `OptionalTreeInput.present(capture_tree(...))`, even for a null/empty tree. Capture rejects duplicate/noncanonical paths or an unobservable host slot with `GrasshopperTreeCaptureError` before domain work.
 
-Create four independent SVGs using the existing branch motif. Add these exact private Pixi tasks and ordered no-command wrapper to `pyproject.toml`; do not add CairoSVG or change `pixi.lock`:
+Raw Joint/State vector-valued ports enter `capture_fixed_vector_branches` as `TREE + ORDERED_SEQUENCE + SCALAR[quantity]`. The adapter treats each ordinary Grasshopper branch as one vector coordinate at the same path, validates every scalar/name slot, requires exact `GroupShape.dof`, and emits normalized `TREE + ELEMENTWISE + FIXED_VECTOR[GroupShape]` with one vector item per nonempty source branch. It maps that vector coordinate to every original scalar coordinate in order and retains source-shaped diagnostics. An empty branch or null component cannot become a shorter vector; it emits exact branch/item diagnostics and no native target. `capture_scalar_branches` separately requires exactly one valid time item and emits one normalized scalar item at the same path. Joint/State nodes build their `GroupShape` from exact `native_robot` plus `group_name` before converting positions and any present names/dynamics branches. Optional names absent pass `None` unchanged to `joint_target_from_native`/`state_target_from_native`.
+
+Emission constructs one `Grasshopper.DataTree[object]`, calls `EnsurePath(exact_path)` for every branch including empty branches, then calls indexed `Insert(value_or_None, exact_path, item_index)` for every slot including explicit nulls. It catches only named expected host failures and raises `GrasshopperTreeEmissionError` with output name and coordinate. Before returning, it reads the built structure back through an independent audit path and requires exact ordered path segments, branch count, item counts, and null positions; mismatch raises `GrasshopperTreeSelfAuditError` and publishes no partial tree. The adapter never invokes host item/list matching, path simplification, generic nested-list conversion, or append-only emission. The fake sink proves the algorithm only; identical actual-Rhino capture/emission proof remains mandatory.
+
+`PoseProfileCrossProductProjection.build` is a one-way projection over the committed `CrossProductResult`: iterate `result.pairs` once in existing canonical left-pose/right-profile order, create one `poses_expanded` branch and one `profiles_expanded` branch at each exact `pair.path`, retain left/right value or null state, build parallel status and diagnostics, and require the projected source map to equal `result.source_coordinates`. It never reconstructs pairs or calls a second product implementation. `CoordinateLabelContext` factories enforce the subject/state/coordinate matrix before `CoordinateLabelPolicy` formats exact unsimplified coordinates; neither type is admitted to identity codecs or native values.
+
+Create seven independent SVGs using the existing branch motif. Add these exact private Pixi tasks and ordered no-command wrapper to `pyproject.toml`; do not add CairoSVG or change `pixi.lock`:
 
 ```toml
 _render-gh-pose-series-icon = { cmd = "rsvg-convert -w 24 -h 24 src/compas_fab/ghpython/components_cpython/Cf_TesseractPoseSeries/icon.svg -o src/compas_fab/ghpython/components_cpython/Cf_TesseractPoseSeries/icon.png" }
+_render-gh-pose-profile-cross-product-icon = { cmd = "rsvg-convert -w 24 -h 24 src/compas_fab/ghpython/components_cpython/Cf_TesseractPoseProfileCrossProduct/icon.svg -o src/compas_fab/ghpython/components_cpython/Cf_TesseractPoseProfileCrossProduct/icon.png" }
 _render-gh-target-series-icon = { cmd = "rsvg-convert -w 24 -h 24 src/compas_fab/ghpython/components_cpython/Cf_TesseractCartesianTargetSeries/icon.svg -o src/compas_fab/ghpython/components_cpython/Cf_TesseractCartesianTargetSeries/icon.png" }
+_render-gh-joint-target-series-icon = { cmd = "rsvg-convert -w 24 -h 24 src/compas_fab/ghpython/components_cpython/Cf_TesseractJointTargetSeries/icon.svg -o src/compas_fab/ghpython/components_cpython/Cf_TesseractJointTargetSeries/icon.png" }
+_render-gh-state-target-series-icon = { cmd = "rsvg-convert -w 24 -h 24 src/compas_fab/ghpython/components_cpython/Cf_TesseractStateTargetSeries/icon.svg -o src/compas_fab/ghpython/components_cpython/Cf_TesseractStateTargetSeries/icon.png" }
 _render-gh-program-series-icon = { cmd = "rsvg-convert -w 24 -h 24 src/compas_fab/ghpython/components_cpython/Cf_TesseractMotionProgramSeries/icon.svg -o src/compas_fab/ghpython/components_cpython/Cf_TesseractMotionProgramSeries/icon.png" }
 _render-gh-result-series-icon = { cmd = "rsvg-convert -w 24 -h 24 src/compas_fab/ghpython/components_cpython/Cf_TesseractResultInspectSeries/icon.svg -o src/compas_fab/ghpython/components_cpython/Cf_TesseractResultInspectSeries/icon.png" }
-render-gh-series-icons = { depends-on = ["_render-gh-pose-series-icon", "_render-gh-target-series-icon", "_render-gh-program-series-icon", "_render-gh-result-series-icon"], description = "Render series component icons" }
+render-gh-series-icons = { depends-on = ["_render-gh-pose-series-icon", "_render-gh-pose-profile-cross-product-icon", "_render-gh-target-series-icon", "_render-gh-joint-target-series-icon", "_render-gh-state-target-series-icon", "_render-gh-program-series-icon", "_render-gh-result-series-icon"], description = "Render series component icons" }
 ```
 
 Run: `pixi run render-gh-series-icons`
 
-Expected: exactly four 24×24 PNGs.
+Expected: exactly seven 24×24 PNGs.
 
 - [ ] **Step 4: Document only proven scope**
 
-The page documents exact tree semantics, scalar-from-tree settings, matching, provenance verification, pure-node ports, errors, and the host-emulation limitation. The JSON fixture covers canonical prefix/nonzero paths, an empty branch, null slot, equal zip, unequal mismatch evidence, explicit bounded cross-product coordinates, and pure result expansion. It does not claim compiled `.ghuser`, packaged GHX behavior, observed Rhino equivalence, async planning node, lifecycle cleanup, viewport behavior, progressive ports/menu, undo, or save/reopen.
+The page documents exact tree semantics, scalar-from-tree settings, matching, display-only coordinate labels, provenance verification, pure-node ports, errors, and the host-emulation limitation. The JSON fixture covers canonical prefix/nonzero paths, an empty branch, null slot, equal zip, unequal mismatch evidence, explicit bounded cross-product coordinates, group-typed joint/state fixed vectors, optional dynamics absence versus a present null slot, and pure result expansion. It schedules the exact seven-node host-runtime tranche and its acceptance gates but does not claim compiled `.ghuser`, packaged GHX behavior, observed Rhino equivalence, async planning node, lifecycle cleanup, viewport or bake behavior, progressive ports/menu, undo, or save/reopen.
 
 - [ ] **Step 5: Run release gates**
 
@@ -727,7 +805,7 @@ Run: `pixi run pytest tests/ghpython tests/backends/tesseract -n auto -q`
 
 Run: `pixi run pytest --testmon -n auto -q`
 
-Run: `pixi run mypy --strict src/compas_fab/ghpython/tree_errors.py src/compas_fab/ghpython/tree_coordinates.py src/compas_fab/ghpython/tree_values.py src/compas_fab/ghpython/port_semantics.py src/compas_fab/ghpython/tree_diagnostics.py src/compas_fab/ghpython/tree_identity.py src/compas_fab/ghpython/tree_matching.py src/compas_fab/ghpython/tree_expansion.py src/compas_fab/ghpython/tree_expansion_codec.py src/compas_fab/ghpython/tree_codec.py src/compas_fab/ghpython/branch_runtime_identity.py src/compas_fab/ghpython/branch_current_output.py src/compas_fab/ghpython/tesseract_pose_series.py src/compas_fab/ghpython/tesseract_target_series.py src/compas_fab/ghpython/tesseract_program_series.py src/compas_fab/ghpython/planning_content_identity.py src/compas_fab/ghpython/branch_planning_state.py src/compas_fab/ghpython/branch_planning.py src/compas_fab/ghpython/tesseract_result_series.py src/compas_fab/ghpython/grasshopper_tree_adapter.py src/compas_fab/backends/tesseract/scene_identity.py src/compas_fab/backends/tesseract/client.py src/compas_fab/backends/tesseract/native_plan.py src/compas_fab/backends/tesseract/planner.py`
+Run: `pixi run mypy --strict src/compas_fab/ghpython/tree_errors.py src/compas_fab/ghpython/tree_coordinates.py src/compas_fab/ghpython/tree_values.py src/compas_fab/ghpython/port_semantics.py src/compas_fab/ghpython/tree_diagnostics.py src/compas_fab/ghpython/coordinate_labels.py src/compas_fab/ghpython/optional_tree_input.py src/compas_fab/ghpython/group_shape.py src/compas_fab/ghpython/tree_identity.py src/compas_fab/ghpython/tree_matching.py src/compas_fab/ghpython/tree_expansion.py src/compas_fab/ghpython/tree_expansion_codec.py src/compas_fab/ghpython/cross_product_projection.py src/compas_fab/ghpython/tree_codec.py src/compas_fab/ghpython/branch_runtime_identity.py src/compas_fab/ghpython/branch_current_output.py src/compas_fab/ghpython/tesseract_pose_series.py src/compas_fab/ghpython/tesseract_cartesian_target_series.py src/compas_fab/ghpython/tesseract_joint_target_series.py src/compas_fab/ghpython/tesseract_state_target_series.py src/compas_fab/ghpython/tesseract_program_series.py src/compas_fab/ghpython/planning_content_identity.py src/compas_fab/ghpython/branch_planning_state.py src/compas_fab/ghpython/branch_planning.py src/compas_fab/ghpython/tesseract_result_series.py src/compas_fab/ghpython/grasshopper_tree_adapter.py src/compas_fab/backends/tesseract/scene_identity.py src/compas_fab/backends/tesseract/client.py src/compas_fab/backends/tesseract/native_plan.py src/compas_fab/backends/tesseract/planner.py`
 
 Run: `pixi run ruff check src/compas_fab/ghpython src/compas_fab/backends/tesseract/scene_identity.py tests/ghpython`
 
@@ -747,14 +825,18 @@ Fresh specification review checks every exact port and all audit invariants. Fre
 
 - Task 2 alone owns `ReducedTopologyOutput`; Task 6 tests behavior.
 - `CrossProductCoordinate` and result-only `ExpandedBranchCoordinate` share one tagged codec.
+- Task 9 projects the existing immutable canonical left-pose/right-profile `CrossProductResult.pairs` into explicitly named aligned output trees without modifying Task 3; no axis-name input/type exists, and coordinate labels remain excluded from identity/codecs.
 - Shared planners are valid; baseline execution capacity is exactly one, calls are serialized deterministically, and each sequential `plan_native` call clones internally.
 - `FAIL_BATCH` withholds publication without falsifying branch status/result.
 - Identity is executable source codec plus typed stage provenance; program digest is native; results bind requests.
 - `NativePlanCall` rejects observable pre-execution drift before native work and discards results after during-execution drift; opaque profile contents stay explicitly unobservable.
 - The bridge is explicit: program tree and shared planner/scene/pipeline/profile/auto-seed identity → `TreeIdentity` → runtime snapshot → `BranchPlanRequest`.
 - Attempt identity binds runtime identity plus compute token: repeated tokens are idempotent, fresh tokens distinguish intentional executions without changing content identity, and runtime result identity carries the attempt downstream.
-- Four pure tree-access nodes have exact ports; nonzero host iteration fails named; existing scalar nodes stay untouched.
-- Async Grasshopper exposure, lifecycle cleanup, preview, progressive ports/menu, componentizer, and real-Rhino proof are deferred without product claims.
+- Seven pure tree-access nodes have exact ports; nonzero host iteration fails named; existing scalar nodes stay untouched.
+- The exact seven-node host-runtime tranche owns async Grasshopper exposure, current/full-series scrub, preview, separate bake, lifecycle cleanup, progressive ports/menu, componentizer, and real-Rhino proof; all remain deferred without product claims here.
+- Host emission uses `EnsurePath` then indexed `Insert` for every slot and self-audits exact paths/counts/null positions before publication; fake-host success never substitutes for Rhino evidence.
+- Task 6 owns `GroupShape` and optional tree presence; Task 9 alone owns host presence derivation, ordinary-branch fixed-vector reduction, coordinate-label subject/state, and aligned product projection.
+- Optional names preserve exact native `None`; any host source or persistent data makes an optional tree present, including present-null.
 - `TreeRootId` is routing-only; canonical host order is validated; source-map direction/cardinality is explicit.
 - Hypothesis properties cover topology, matching, codec, and identity. Every task runs testmon.
 - Hypothesis and the existing `rsvg-convert` provider are direct locked Pixi dependencies; icon rendering adds tasks but no second renderer.
