@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+from enum import Enum
+from hashlib import sha256
+from math import isfinite
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
 from attrs import define
 from attrs import field
 from tesseract_robotics.planning import Robot
+
+from compas_fab.ghpython.item_values import FixedVector
+from compas_fab.ghpython.item_values import ItemShape
+from compas_fab.ghpython.item_values import ShapeTag
 
 _GROUP_SHAPE_FACTORY_TOKEN = object()
 
@@ -42,6 +50,10 @@ class InvalidGroupShapeError(GroupShapeError):
 
 class NativeGroupShapeQueryError(GroupShapeError):
     """Raised when the native robot cannot resolve a group."""
+
+
+class InvalidGroupFixedVectorError(GroupShapeError):
+    """Raised when a quantity vector disagrees with its complete group shape."""
 
 
 @define(frozen=True, slots=True)
@@ -124,6 +136,97 @@ class GroupShape:
         )
         if not valid:
             raise InvalidGroupShapeError("Group shape must retain exact group, unique joint order, and derived DOF.")
+
+    def canonical_bytes(self) -> bytes:
+        """Encode complete group and joint order without runtime objects."""
+        values = (self.group_id.value,) + tuple(joint.value for joint in self.ordered_joint_ids)
+        return b"".join(len(value.encode("utf-8")).to_bytes(8, "big") + value.encode("utf-8") for value in values)
+
+
+class GroupVectorQuantity(Enum):
+    POSITION = "position"
+    NAME = "name"
+    VELOCITY = "velocity"
+    ACCELERATION = "acceleration"
+
+
+GroupVectorValue = Union[float, str]
+
+
+@define(frozen=True, slots=True)
+class GroupFixedVector:
+    """One atomic quantity vector tagged by complete native group shape."""
+
+    group_shape: GroupShape
+    quantity: GroupVectorQuantity
+    vector: FixedVector[GroupVectorValue]
+
+    @classmethod
+    def positions(cls, group_shape: GroupShape, values: Tuple[float, ...]) -> "GroupFixedVector":
+        return cls._numeric(group_shape, GroupVectorQuantity.POSITION, values)
+
+    @classmethod
+    def velocities(cls, group_shape: GroupShape, values: Tuple[float, ...]) -> "GroupFixedVector":
+        return cls._numeric(group_shape, GroupVectorQuantity.VELOCITY, values)
+
+    @classmethod
+    def accelerations(cls, group_shape: GroupShape, values: Tuple[float, ...]) -> "GroupFixedVector":
+        return cls._numeric(group_shape, GroupVectorQuantity.ACCELERATION, values)
+
+    @classmethod
+    def names(cls, group_shape: GroupShape, values: Tuple[str, ...]) -> "GroupFixedVector":
+        if type(group_shape) is not GroupShape or type(values) is not tuple:
+            raise InvalidGroupFixedVectorError("Group name vector requires an exact GroupShape and tuple.")
+        expected = tuple(value.value for value in group_shape.ordered_joint_ids)
+        if values != expected:
+            raise InvalidGroupFixedVectorError("Group name vector must equal exact native joint order.")
+        return cls(group_shape, GroupVectorQuantity.NAME, FixedVector.build(_vector_shape(group_shape, GroupVectorQuantity.NAME), values))
+
+    @classmethod
+    def _numeric(
+        cls,
+        group_shape: GroupShape,
+        quantity: GroupVectorQuantity,
+        values: Tuple[float, ...],
+    ) -> "GroupFixedVector":
+        if (
+            type(group_shape) is not GroupShape
+            or type(values) is not tuple
+            or any(type(value) is not float or not isfinite(value) for value in values)
+        ):
+            raise InvalidGroupFixedVectorError("Group numeric vector requires exact finite float values.")
+        if len(values) != group_shape.dof.value:
+            raise InvalidGroupFixedVectorError("Group numeric vector length must equal exact group DOF.")
+        return cls(group_shape, quantity, FixedVector.build(_vector_shape(group_shape, quantity), values))
+
+    def __attrs_post_init__(self) -> None:
+        valid = (
+            type(self.group_shape) is GroupShape
+            and type(self.quantity) is GroupVectorQuantity
+            and type(self.vector) is FixedVector
+            and self.vector.shape == _vector_shape(self.group_shape, self.quantity)
+            and len(self.vector.values) == self.group_shape.dof.value
+        )
+        if self.quantity is GroupVectorQuantity.NAME:
+            valid = valid and self.vector.values == tuple(value.value for value in self.group_shape.ordered_joint_ids)
+        else:
+            valid = valid and all(type(value) is float and isfinite(value) for value in self.vector.values)
+        if not valid:
+            raise InvalidGroupFixedVectorError("Group fixed vector must retain exact shape, quantity, and values.")
+
+    def canonical_bytes(self) -> bytes:
+        """Encode group, quantity, and complete ordered values."""
+        values = b"".join(
+            len(repr(value).encode("utf-8")).to_bytes(8, "big") + repr(value).encode("utf-8")
+            for value in self.vector.values
+        )
+        return self.group_shape.canonical_bytes() + self.quantity.value.encode("ascii") + values
+
+
+def _vector_shape(group_shape: GroupShape, quantity: GroupVectorQuantity) -> ItemShape:
+    digest = sha256(group_shape.canonical_bytes()).hexdigest()
+    tag = ShapeTag.build("compas_fab.tesseract.{}.{}".format(quantity.value, digest))
+    return ItemShape.fixed_vector(tag, group_shape.dof.value)
 
 
 class GroupShapeFactory:

@@ -36,6 +36,7 @@ T = TypeVar("T")
 SHA256_HEX_LENGTH = sha256().digest_size * 2
 SOURCE_TREE_SCHEMA = "compas_fab.ghpython.source_tree/v1"
 STAGE_TREE_SCHEMA = "compas_fab.ghpython.stage_tree/v1"
+BOUND_STAGE_TREE_SCHEMA = "compas_fab.ghpython.stage_tree_bound/v1"
 _IDENTITY_FACTORY_TOKEN = object()
 _AUDITED_REGISTRATION_TOKEN = object()
 
@@ -104,8 +105,8 @@ class DuplicateAuditedStageSchemaError(InvalidAuditedStageSchemaError):
     """Raised when a schema is registered more than once."""
 
 
-class UnregisteredStageImplementationError(InvalidStageTreeIdentityError):
-    """Raised when verified construction lacks its exact registered builder."""
+class InvalidStageBuilderAuthorityError(InvalidStageTreeIdentityError):
+    """Raised when verified construction lacks its exact sealed authority."""
 
 
 class InvalidStagePriorBindingError(InvalidStageTreeIdentityError):
@@ -169,16 +170,18 @@ def _register_audited_stage_schema(
     schema: str,
     implementation: Callable[..., object],
     source_requirement: SourceCoordinateRequirement,
-) -> None:
+) -> _AuditedStageSchema:
     """Register one package-owned deterministic builder exactly once."""
-    if schema in _AUDITED_STAGE_SCHEMAS:
-        raise DuplicateAuditedStageSchemaError("Audited stage schema is already registered.")
-    _AUDITED_STAGE_SCHEMAS[schema] = _AuditedStageSchema(
+    authority = _AuditedStageSchema(
         schema,
         implementation,
         source_requirement,
         _AUDITED_REGISTRATION_TOKEN,
     )
+    if authority.schema in _AUDITED_STAGE_SCHEMAS:
+        raise DuplicateAuditedStageSchemaError("Audited stage schema is already registered.")
+    _AUDITED_STAGE_SCHEMAS[schema] = authority
+    return authority
 
 
 def _valid_digest(value: object) -> bool:
@@ -726,7 +729,7 @@ class StageTreeIdentity:
     _factory_token: Optional[object] = field(default=None, eq=False, repr=False)
     prior_bindings: Tuple[StagePriorBinding, ...] = ()
     branch_evidence: Tuple[StageBranchEvidence, ...] = ()
-    _builder_implementation: Optional[Callable[..., object]] = field(default=None, eq=False, repr=False)
+    _builder_authority: Optional[_AuditedStageSchema] = field(default=None, eq=False, repr=False)
     _bound_prior_mode: bool = field(default=False, eq=False, repr=False)
 
     @classmethod
@@ -739,7 +742,7 @@ class StageTreeIdentity:
         source_coordinates: Optional[SourceCoordinateMap] = None,
         verification: Optional[IdentityVerification] = None,
         *,
-        implementation: Optional[Callable[..., object]] = None,
+        authority: Optional[_AuditedStageSchema] = None,
         prior_binding: Optional[StagePriorBinding] = None,
         additional_priors: Tuple[StagePriorBinding, ...] = (),
         branch_evidence: Tuple[StageBranchEvidence, ...] = (),
@@ -758,6 +761,8 @@ class StageTreeIdentity:
         mapping = SourceCoordinateMap.build(()) if source_coordinates is None else source_coordinates
         if type(mapping) is not SourceCoordinateMap:
             raise InvalidStageTreeIdentityError("Stage identity requires an exact source-coordinate map.")
+        if type(additional_priors) is not tuple or any(type(value) is not StagePriorBinding for value in additional_priors):
+            raise InvalidStagePriorBindingError("Additional stage priors must be an exact binding tuple.")
         if prior_binding is None:
             if additional_priors:
                 raise InvalidStagePriorBindingError("Additional stage priors require an explicit primary prior binding.")
@@ -766,6 +771,8 @@ class StageTreeIdentity:
             bindings = (prior_binding,) + additional_priors
         _validate_prior_bindings(prior, bindings)
         _validate_branch_evidence(branch_evidence, topology)
+        if branch_evidence and not bindings:
+            raise InvalidStageBranchEvidenceError("Branch-local evidence requires semantic prior bindings and the bound stage schema.")
         if verification is not None and verification is not IdentityVerification.UNVERIFIABLE:
             raise InvalidStageTreeIdentityError("Caller-supplied stage verification may only downgrade to UNVERIFIABLE.")
         audited_schema = _AUDITED_STAGE_SCHEMAS.get(builder_schema)
@@ -773,13 +780,20 @@ class StageTreeIdentity:
             raise UnknownStageBuilderSchemaError("Unknown builder schemas require explicit UNVERIFIABLE identity.")
         if audited_schema is not None and audited_schema.schema != builder_schema:
             raise InvalidStageTreeIdentityError("Audited builder schema registry key and descriptor disagree.")
+        bound_verifications = tuple(binding.identity.verification for binding in bindings)
+        inherited_verification = (
+            IdentityVerification.UNVERIFIABLE
+            if IdentityVerification.UNVERIFIABLE in bound_verifications
+            else prior.verification
+        )
+        resolved_verification = inherited_verification if verification is None else verification
         if (
-            audited_schema is not None
+            resolved_verification is IdentityVerification.VERIFIED
+            and audited_schema is not None
             and audited_schema._registration_token is _AUDITED_REGISTRATION_TOKEN
-            and implementation is not audited_schema.implementation
+            and authority is not audited_schema
         ):
-            raise UnregisteredStageImplementationError("Verified stage construction requires its exact registered implementation.")
-        resolved_verification = prior.verification if verification is None else verification
+            raise InvalidStageBuilderAuthorityError("Verified stage construction requires its exact sealed builder authority.")
         source_coverage = (
             _validate_bound_source_coordinates(mapping, topology, bindings)
             if bindings
@@ -795,17 +809,21 @@ class StageTreeIdentity:
         parameter_payload = b"".join(_part(parameter.identity_bytes()) for parameter in parameters)
         bindings_payload = b"".join(_part(binding.declaration_bytes()) for binding in bindings)
         evidence_payload = b"".join(_part(value.identity_bytes()) for value in branch_evidence)
-        common = b"".join(
+        common_parts = [
+            _part(_text(BOUND_STAGE_TREE_SCHEMA if bindings else STAGE_TREE_SCHEMA)),
+            _part(_text(builder_schema)),
+            _part(_text(prior.digest.value)),
+        ]
+        if bindings:
+            common_parts.append(_part(bindings_payload))
+        common_parts.extend(
             (
-                _part(_text(STAGE_TREE_SCHEMA)),
-                _part(_text(builder_schema)),
-                _part(_text(prior.digest.value)),
-                _part(bindings_payload),
                 _part(parameter_payload),
                 _part(_text(source_coverage.value)),
                 _part(_text(resolved_verification.value)),
             )
         )
+        common = b"".join(common_parts)
         mapping_payload = _role_aware_mapping_bytes(mapping, bindings) if bindings else mapping.root_free_identity_bytes()
         branch_canonical = tuple(
             (
@@ -833,7 +851,9 @@ class StageTreeIdentity:
             for index in range(len(topology.paths))
         )
         branch_digests = tuple(BranchContentDigest.build(_digest(payload)) for payload in branch_canonical)
-        canonical = common + _part(_topology_bytes(topology)) + _part(mapping_payload) + _part(evidence_payload)
+        canonical = common + _part(_topology_bytes(topology)) + _part(mapping_payload)
+        if bindings:
+            canonical += _part(evidence_payload)
         return cls(
             TreeContentDigest.build(_digest(canonical)),
             branch_digests,
@@ -849,7 +869,7 @@ class StageTreeIdentity:
             _IDENTITY_FACTORY_TOKEN,
             bindings,
             branch_evidence,
-            implementation,
+            authority,
             bool(bindings),
         )
 
@@ -861,6 +881,8 @@ class StageTreeIdentity:
             raise InvalidStagePriorBindingError("Stored stage prior bindings must be an exact tuple.")
         if type(self._bound_prior_mode) is not bool or self._bound_prior_mode != bool(self.prior_bindings):
             raise InvalidStagePriorBindingError("Stored stage prior mode must match retained semantic bindings.")
+        if self.branch_evidence and not self.prior_bindings:
+            raise InvalidStageBranchEvidenceError("Stored branch evidence requires semantic prior bindings.")
         if self.prior_bindings:
             roles = tuple(value.role for value in self.prior_bindings)
             roots = tuple(value.root_id for value in self.prior_bindings)
@@ -873,9 +895,9 @@ class StageTreeIdentity:
             descriptor is not None
             and descriptor._registration_token is _AUDITED_REGISTRATION_TOKEN
             and self.verification is IdentityVerification.VERIFIED
-            and self._builder_implementation is not descriptor.implementation
+            and self._builder_authority is not descriptor
         ):
-            raise UnregisteredStageImplementationError("Stored verified stage lacks its exact registered implementation.")
+            raise InvalidStageBuilderAuthorityError("Stored verified stage lacks its exact sealed builder authority.")
         bound_payloads_valid = True
         if self.prior_bindings:
             coverage = _validate_bound_source_coordinates(self.source_coordinates, self.topology, self.prior_bindings)
@@ -884,7 +906,7 @@ class StageTreeIdentity:
             evidence_payload = b"".join(_part(value.identity_bytes()) for value in self.branch_evidence)
             common = b"".join(
                 (
-                    _part(_text(STAGE_TREE_SCHEMA)),
+                    _part(_text(BOUND_STAGE_TREE_SCHEMA)),
                     _part(_text(self.builder_schema)),
                     _part(_text(self.prior_digest.value)),
                     _part(bindings_payload),
@@ -936,6 +958,7 @@ class StageTreeIdentity:
             and self._factory_token is _IDENTITY_FACTORY_TOKEN
             and type(self.branch_evidence) is tuple
             and type(self._bound_prior_mode) is bool
+            and (self._builder_authority is None or type(self._builder_authority) is _AuditedStageSchema)
             and bound_payloads_valid
         )
         if not valid:
@@ -1055,7 +1078,7 @@ def _bound_stage_branch_bytes(
     mapping_payload = _role_aware_mapping_bytes(branch_mapping, bindings)
     return b"".join(
         (
-            _part(_text(STAGE_TREE_SCHEMA)),
+            _part(_text(BOUND_STAGE_TREE_SCHEMA)),
             _part(_text(builder_schema)),
             _part(b"".join(_part(value) for value in prior_payloads)),
             _part(parameter_payload),
