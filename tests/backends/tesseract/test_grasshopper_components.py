@@ -4,6 +4,10 @@ import struct
 
 import pytest
 import yaml
+from tesseract_robotics.tesseract_collision import ContactTestType_ALL
+from tesseract_robotics.tesseract_collision import ContactTestType_LIMITED
+
+from tests.ghpython.component_harness import load_component
 
 
 COMPONENTS = Path(__file__).parents[3] / "src" / "compas_fab" / "ghpython" / "components_cpython"
@@ -40,6 +44,26 @@ def _png_size(path: Path) -> tuple[int, int]:
     content = path.read_bytes()
     assert content[:8] == b"\x89PNG\r\n\x1a\n"
     return struct.unpack(">II", content[16:24])
+
+
+def _contact_request_component(monkeypatch, **connections):
+    errors = []
+    defaults = {
+        "test_type": False,
+        "calculate_distance": False,
+        "calculate_penetration": False,
+        "contact_limit": False,
+    }
+    defaults.update(connections)
+    monkeypatch.setattr("compas_fab.ghpython.ensure_value_list", lambda *args, **kwargs: None, raising=False)
+    monkeypatch.setattr("compas_ghpython.error", lambda component, message: errors.append(message))
+    component, _ = load_component(
+        monkeypatch,
+        "Cf_TesseractContactRequest",
+        "TesseractContactRequestComponent",
+        defaults,
+    )
+    return component, errors
 
 
 def test_artifact_component_exposes_explicit_native_selections():
@@ -394,6 +418,45 @@ def test_contact_request_component_exposes_exact_native_request_factory():
     assert " or " not in code
     assert len(code.splitlines()) < 100
     assert _png_size(COMPONENTS / "Cf_TesseractContactRequest" / "icon.png") == (24, 24)
+
+
+def test_contact_request_component_unwired_ports_retain_native_defaults(monkeypatch):
+    component, errors = _contact_request_component(monkeypatch)
+
+    request = component.RunScript("", False, False, 0)
+
+    assert request.type == ContactTestType_ALL
+    assert request.calculate_distance is True
+    assert request.calculate_penetration is True
+    assert request.contact_limit == 0
+    assert errors == []
+
+
+def test_contact_request_component_preserves_connected_false_and_zero(monkeypatch):
+    component, errors = _contact_request_component(
+        monkeypatch,
+        test_type=True,
+        calculate_distance=True,
+        calculate_penetration=True,
+        contact_limit=True,
+    )
+
+    request = component.RunScript("LIMITED", False, False, 0)
+
+    assert request.type == ContactTestType_LIMITED
+    assert request.calculate_distance is False
+    assert request.calculate_penetration is False
+    assert request.contact_limit == 0
+    assert errors == []
+
+
+def test_contact_request_component_reports_invalid_connected_value(monkeypatch):
+    component, errors = _contact_request_component(monkeypatch, calculate_distance=True)
+
+    request = component.RunScript("", 0, False, 0)
+
+    assert request is None
+    assert errors == ["calculate_distance must be an exact bool or None."]
 
 
 def test_tesseract_components_require_nanobind_distribution_only():
