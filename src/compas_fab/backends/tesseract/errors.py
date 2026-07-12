@@ -178,6 +178,18 @@ class NativePlanInputsChangedDuringExecutionError(TesseractBackendError):
     """Native planning inputs changed while its uncontrolled call was active."""
 
 
+class NativeSceneIdentityError(TesseractBackendError):
+    """Base failure for native scene content identity."""
+
+
+class InvalidDirectSceneGenerationError(NativeSceneIdentityError):
+    """A direct-scene mutation generation is invalid."""
+
+
+class InvalidNativeSceneContentIdentityError(NativeSceneIdentityError):
+    """Retained native scene identity fields disagree."""
+
+
 class TesseractKinematicsPluginError(TesseractBackendError):
     """A requested native kinematics group or solver cannot be loaded."""
 

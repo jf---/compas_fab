@@ -16,6 +16,7 @@ from compas_fab.backends.tesseract.errors import RobotArtifactMismatchError
 from compas_fab.backends.tesseract.errors import TesseractCellStateMismatchError
 from compas_fab.backends.tesseract.errors import TesseractRuntimeInitializationError
 from compas_fab.backends.tesseract.planner import TesseractPlanner
+from compas_fab.identity_verification import IdentityVerification
 from compas_fab.robots import RobotCell
 from compas_fab.robots import RobotSemantics
 
@@ -94,6 +95,34 @@ def test_native_scene_revision_changes_only_with_exact_projection_content(
         moved.robot_base_frame.point.x = 1.0
         planner.set_robot_cell(one_joint_cell, moved)
         assert planner.native_scene_revision == 3
+
+
+def test_planner_exposes_artifact_projection_and_direct_scene_identity(
+    tesseract_artifact,
+    one_joint_cell,
+    tmp_path,
+):
+    client = TesseractClient(tesseract_artifact, cache_root=tmp_path)
+    planner = TesseractPlanner(client)
+
+    assert planner.native_artifact_digest == tesseract_artifact.identity.digest
+    assert planner.native_scene_content_identity.projection is None
+    assert planner.native_scene_content_identity.verification is IdentityVerification.VERIFIED
+
+    with client:
+        planner.set_robot_cell(one_joint_cell)
+        projected = planner.native_scene_content_identity
+        assert projected.projection is not None
+        assert projected.verification is IdentityVerification.VERIFIED
+        assert projected.direct_generation.value == 0
+        revision = planner.native_scene_revision
+
+        client._mark_native_scene_changed()
+
+    direct = planner.native_scene_content_identity
+    assert planner.native_scene_revision == revision + 1
+    assert direct.direct_generation.value == 1
+    assert direct.verification is IdentityVerification.UNVERIFIABLE
 
 
 def test_public_cell_state_mutation_cannot_bypass_scene_revision(

@@ -11,22 +11,12 @@ from attrs import field
 
 from compas_fab.identity_verification import IdentityVerification
 
+from .errors import InvalidDirectSceneGenerationError
+from .errors import InvalidNativeSceneContentIdentityError
 from .identity import BuildIdentity
 
 SCENE_IDENTITY_SCHEMA = "compas_fab.tesseract.native_scene/v1"
 _SCENE_IDENTITY_FACTORY_TOKEN = object()
-
-
-class NativeSceneIdentityError(ValueError):
-    """Base failure for native scene content identity."""
-
-
-class InvalidDirectSceneGenerationError(NativeSceneIdentityError):
-    """Raised when direct-scene mutation generation is invalid."""
-
-
-class InvalidNativeSceneContentIdentityError(NativeSceneIdentityError):
-    """Raised when retained scene identity fields disagree."""
 
 
 def _part(value: bytes) -> bytes:

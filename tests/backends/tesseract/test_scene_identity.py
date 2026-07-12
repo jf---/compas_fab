@@ -2,8 +2,8 @@ from attrs import evolve
 import pytest
 
 from compas_fab.backends.tesseract.identity import BuildIdentity
+from compas_fab.backends.tesseract.errors import InvalidNativeSceneContentIdentityError
 from compas_fab.backends.tesseract.scene_identity import DirectSceneGeneration
-from compas_fab.backends.tesseract.scene_identity import InvalidNativeSceneContentIdentityError
 from compas_fab.backends.tesseract.scene_identity import NativeSceneContentIdentity
 from compas_fab.ghpython.tree_identity import IdentityVerification
 from compas_fab.identity_verification import IdentityVerification as NeutralIdentityVerification
@@ -40,6 +40,19 @@ def test_raw_scene_identity_cannot_forge_verification() -> None:
     identity = NativeSceneContentIdentity.build(_artifact_identity(), ("cell", None), DirectSceneGeneration.build(1))
     with pytest.raises(InvalidNativeSceneContentIdentityError):
         evolve(identity, verification=IdentityVerification.VERIFIED)
+
+
+def test_raw_scene_identity_constructor_requires_factory_evidence() -> None:
+    identity = NativeSceneContentIdentity.build(_artifact_identity(), None, DirectSceneGeneration.build(0))
+    with pytest.raises(InvalidNativeSceneContentIdentityError):
+        NativeSceneContentIdentity(
+            identity.digest,
+            identity.artifact_digest,
+            identity.projection,
+            identity.direct_generation,
+            identity.verification,
+            identity._canonical,
+        )
 
 
 @pytest.mark.parametrize(

@@ -9,6 +9,8 @@ from tesseract_robotics.planning.composer import PlanningResult
 from tesseract_robotics.tesseract_command_language import CompositeInstruction
 from tesseract_robotics.tesseract_command_language import ProfileDictionary
 from tesseract_robotics.tesseract_command_language import SetDigitalInstruction
+from tesseract_robotics.tesseract_motion_planners_descartes import DescartesDefaultPlanProfileD
+from tesseract_robotics.tesseract_motion_planners_descartes import cast_DescartesPlanProfileD
 
 from compas_fab.backends.tesseract.errors import InvalidTesseractNativePlanError
 from compas_fab.backends.tesseract.errors import NativePlanInputsChangedBeforeExecutionError
@@ -124,11 +126,17 @@ def test_native_plan_call_executes_only_plan_native():
 def test_same_profile_dictionary_internal_content_is_intentionally_opaque():
     planner = CapturingPlanner()
     profiles = ProfileDictionary()
+    profile = cast_DescartesPlanProfileD(DescartesDefaultPlanProfileD())
+    namespace = "DescartesMotionPlannerTask"
+    profile_name = "DEFAULT"
+    profiles.addProfile(namespace, profile_name, profile)
+    assert profiles.hasProfile(profile.getKey(), namespace, profile_name)
     call = NativePlanCall.build(planner, _program(), "DescartesFPipeline", profiles, False)
     signature = call.signature
 
     # 0.35.0.6 has no enumeration or canonical ProfileDictionary serializer.
     profiles.clear()
+    assert not profiles.hasProfile(profile.getKey(), namespace, profile_name)
 
     result = call.execute()
     assert call.signature == signature
