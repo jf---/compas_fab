@@ -1,6 +1,6 @@
 # Grasshopper, Tesseract, and ABB Product Design
 
-**Status:** master product contract for implementation tranches
+**Status:** SUPERSEDED 2026-07-23 by `2026-07-23-succinct-product-design.md` — retained as reference only
 **Date:** 2026-07-11
 
 ## 1. Product contract and provenance
