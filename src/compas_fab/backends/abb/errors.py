@@ -27,3 +27,19 @@ class CommandAlreadyConsumedError(AbbControllerError):
 
 class ReadbackMismatchError(AbbControllerError):
     """A post-mutation controller readback disagrees with the commanded intent."""
+
+
+class ControllerConnectionError(AbbControllerError):
+    """A controller session could not be established by its session factory.
+
+    Raised when the owner's lazy connect (or an explicit reconnect) invokes the
+    session factory and it fails, so callers never receive a half-built session.
+    """
+
+
+class ControllerClosedError(AbbControllerError):
+    """An operation was submitted to a controller owner that is already closed.
+
+    Raised by the owner's submit gate once ``close`` has run, so a mutation can
+    never reach a torn-down worker thread or an already-logged-out session.
+    """
