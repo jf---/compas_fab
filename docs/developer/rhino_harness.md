@@ -90,6 +90,69 @@ Probed via `scripts/rhino_harness/probe_env.py`:
     tesseract — prefer those for W1's lifting proof; defer real-backend runs
     until the env is reconciled.
 
+## Getting source into Rhino — `~/.rhinocode/python-3.pth`
+
+Rhino's **official** persistent Python 3 module-path config. One filesystem path
+per line; each is inserted into `sys.path` at interpreter startup (the file
+accepts paths only, never executable `.pth` code). This is the robust "editable
+install" without Rhino's package machinery — imports point straight at the Git
+working tree, so edits are visible immediately. Restart Rhino once after editing.
+
+```bash
+mkdir -p ~/.rhinocode
+target="$HOME/Code/CADCAM/compas_fab_2/src"
+grep -qxF "$target" ~/.rhinocode/python-3.pth 2>/dev/null || echo "$target" >> ~/.rhinocode/python-3.pth
+```
+
+Equivalent UI: *ScriptEditor → Tools → Options → Python 3 → Module Search Paths*
+(stored in the same file). Do **not** `pip install -e` into Rhino's generated
+env — the path file is simpler and less fragile.
+
+!!! warning "A PEP 660 editable install outranks `python-3.pth`"
+    This machine already carries
+    `~/.rhinocode/py39-rh8/lib/python3.9/site-packages/__editable__.compas_fab-1.0.2.pth`
+    — an editable pointing at the **old** `~/Code/CADCAM/compas_fab` (v1.0.2).
+    Its import-hook finder is consulted **before** `sys.path`, so a
+    `python-3.pth` entry (or a runtime `sys.path.insert`) for `compas_fab_2/src`
+    **loses** to it. Making branch code win means first removing that editable
+    finder from the rh8 env. Which is precisely why you don't want to depend on
+    running branch code inside Rhino — see below.
+
+## Dependency strategy — keep the heavy stuff out of Rhino
+
+Rhino's `# venv:` / `# r:` header directives are shared-interpreter package
+folders, **not** real virtual environments: every script in one Rhino process
+shares interpreter state and memory, so conflicting versions poison the process.
+Worse, native/binary wheels (numpy, and critically **`tesseract_robotics`**) must
+match Rhino's exact embedded CPython + Apple-Silicon/Intel + macOS target +
+already-loaded native libs. That is the nightmare — and why Rhino ships
+`tesseract_robotics 0.34.1.6` while this repo pins `0.35.0.6`.
+
+The robust architecture, and ours: a **thin Rhino adapter over a pixi-tested
+core.** Rhino-specific imports never enter the computational core; heavy/native
+computation runs in the pixi env *outside* Rhino; the two communicate over an
+explicit boundary (subprocess/socket/HTTP) only if they must.
+
+!!! tip "This makes the version skew moot"
+    The GH access-lifting test uses a **minimal, dependency-free** Script
+    component — it exercises GH's solver slicing, not our backend — so it needs
+    neither `compas_fab_2` nor `tesseract 0.35` inside Rhino. We never fight the
+    editable-finder conflict or native-wheel matching. The `python-3.pth` route
+    above is documented for when branch code genuinely must run in Rhino; our
+    test strategy is built specifically so it doesn't have to.
+
+## Reloading (interactive dev only)
+
+Rhino's interpreter is long-lived and caches modules — editing source does not
+reload it. The CLI harness sidesteps this entirely: each `rhinocode script` run
+is a fresh engine (`ResetEngine` → fresh `sys.modules`). For interactive
+ScriptEditor work, prefer unload-and-reimport (delete the package's `sys.modules`
+entries, then `importlib.invalidate_caches()`) over `importlib.reload`, which
+mishandles `from x import y`, live class instances, and registered handlers.
+Anything that registers with Rhino (Eto windows, document handlers, timers)
+needs explicit `start()`/`stop()` teardown; restarting Rhino is the only truthful
+reset for those.
+
 ## Test boundary — keep backend logic out of Rhino
 
 Maintaining a Rhino dev env is genuinely hard: the interpreter's package layout
