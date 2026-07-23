@@ -51,3 +51,15 @@ class RwsCommandError(AbbControllerError):
     The concrete RWS adapter raises this in place of the client's bare
     ``ABBException`` so the owner and components only ever see a named failure.
     """
+
+
+class CredentialResolutionError(AbbControllerError):
+    """A credential handle could not be resolved to a username and password.
+
+    Raised when a non-default handle names environment credentials that are not
+    set, so a connection never proceeds with missing or empty credentials.
+    """
+
+
+class UnknownRobotWareVersionError(AbbControllerError):
+    """A RobotWare version name is neither ``RW6`` nor ``RW7``."""
