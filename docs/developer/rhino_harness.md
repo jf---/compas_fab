@@ -90,6 +90,25 @@ Probed via `scripts/rhino_harness/probe_env.py`:
     tesseract — prefer those for W1's lifting proof; defer real-backend runs
     until the env is reconciled.
 
+## Test boundary — keep backend logic out of Rhino
+
+Maintaining a Rhino dev env is genuinely hard: the interpreter's package layout
+is unconventional, editable-install finders outrank `sys.path`, checkouts split
+across directories, and versions skew from the repo pins (see the warning
+above). **Do not port backend logic into Rhino to test it.** Draw the line by
+*what owns the behaviour*:
+
+| Behaviour under test | Where it runs | Why |
+|---|---|---|
+| Native target/program construction, planning, RAPID emit, profiles, length guards, `optional_connected_input` | **pixi env** (our branch, tesseract 0.35, the existing suite) | Plain Python. Rhino adds nothing but fragility. |
+| Component metadata: `scriptParamAccess`, port names, icons | **pixi env** static tests | It is JSON + source; assert it directly. |
+| Grasshopper access-*lifting* (does `scriptParamAccess=1` feed one vector per branch → one target per branch?) | **Rhino** | This is GH's solver slicing a `DataTree` before `RunScript`. Only a real GH solve shows it. |
+
+The Rhino test needs a **minimal, dependency-free Script component** — it proves
+GH's lifting semantics and does not import our backend or tesseract at all. That
+keeps a broken Rhino env from ever blocking backend work, and keeps the one
+Rhino-only test small enough to survive the env's nightmare.
+
 ## Script listener (warm loop, future)
 
 Per-call `script` submission pays submit latency plus the async wait every time.
