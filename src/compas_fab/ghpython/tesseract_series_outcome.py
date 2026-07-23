@@ -73,12 +73,7 @@ class SeriesTopologyOutput(Generic[T]):
         return cls(values, status, item_diagnostics, source_coordinates)
 
     def __attrs_post_init__(self) -> None:
-        if (
-            type(self.values) is not Tree
-            or type(self.status) is not Tree
-            or type(self.item_diagnostics) is not Tree
-            or type(self.source_coordinates) is not SourceCoordinateMap
-        ):
+        if type(self.values) is not Tree or type(self.status) is not Tree or type(self.item_diagnostics) is not Tree or type(self.source_coordinates) is not SourceCoordinateMap:
             raise InvalidSeriesTopologyOutputError("Series output requires exact typed tree surfaces.")
         expected = tuple((branch.path, len(branch.items)) for branch in self.values.branches)
         status = tuple((branch.path, len(branch.items)) for branch in self.status.branches)
@@ -88,14 +83,9 @@ class SeriesTopologyOutput(Generic[T]):
         if self.values.root_id != self.status.root_id or self.values.root_id != self.item_diagnostics.root_id:
             raise InvalidSeriesTopologyOutputError("Series value, status, and diagnostic runtime roots must match exactly.")
         expected_coordinates: Tuple[Tuple[Tuple[int, ...], int], ...] = tuple(
-            (branch.path.canonical_key(), index)
-            for branch in self.values.branches
-            for index in range(len(branch.items))
+            (branch.path.canonical_key(), index) for branch in self.values.branches for index in range(len(branch.items))
         )
-        mapped = tuple(
-            (entry.output.branch.path.canonical_key(), entry.output.item_index.value)
-            for entry in self.source_coordinates.entries
-        )
+        mapped = tuple((entry.output.branch.path.canonical_key(), entry.output.item_index.value) for entry in self.source_coordinates.entries)
         if mapped != expected_coordinates:
             raise InvalidSeriesTopologyOutputError("Series source coordinates must cover every output slot exactly once.")
         if any(entry.output.branch.root_id != self.values.root_id for entry in self.source_coordinates.entries):

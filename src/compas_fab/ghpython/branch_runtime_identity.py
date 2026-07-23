@@ -300,11 +300,7 @@ def advance_runtime(
     if type(resolved_root) is not TreeRootId:
         raise InvalidTreeRuntimeSnapshotError("Runtime advancement requires an exact root routing identity.")
 
-    full_invalidation = (
-        type(shared_inputs) is SharedInputsChanged
-        or resolved_root != previous.root_id
-        or _root_topology(content) != _root_topology(previous.content)
-    )
+    full_invalidation = type(shared_inputs) is SharedInputsChanged or resolved_root != previous.root_id or _root_topology(content) != _root_topology(previous.content)
     solve = previous.solve_generation.next() if full_invalidation else previous.solve_generation
     prior_by_path = {branch.coordinate.path: branch for branch in previous.branches}
     branches = []

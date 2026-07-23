@@ -106,16 +106,8 @@ class CartesianTargetSeriesBuild:
     _factory_token: Optional[object] = field(default=None, eq=False, repr=False)
 
     def __attrs_post_init__(self) -> None:
-        expected_move = (
-            SourceTreeIdentity.build(self.parameters.move_types, _MOVE_TYPE_CODEC, _SCALAR_SEMANTICS)
-            if type(self.parameters.move_types) is Tree
-            else None
-        )
-        expected_profile = (
-            SourceTreeIdentity.build(self.parameters.profiles, TEXT_CODEC, _SCALAR_SEMANTICS)
-            if type(self.parameters.profiles) is Tree
-            else None
-        )
+        expected_move = SourceTreeIdentity.build(self.parameters.move_types, _MOVE_TYPE_CODEC, _SCALAR_SEMANTICS) if type(self.parameters.move_types) is Tree else None
+        expected_profile = SourceTreeIdentity.build(self.parameters.profiles, TEXT_CODEC, _SCALAR_SEMANTICS) if type(self.parameters.profiles) is Tree else None
         expected_bindings: list[Union[SourceTreeIdentity, StageTreeIdentity]] = [self.poses.identity]
         if expected_move is not None:
             expected_bindings.append(expected_move)
@@ -211,16 +203,8 @@ def build_cartesian_target_series(
         poses.require_current()
     except PoseSeriesSourceChangedError as error:
         raise NativeSeriesValueChangedError(str(error)) from error
-    move_identity = (
-        SourceTreeIdentity.build(parameters.move_types, _MOVE_TYPE_CODEC, _SCALAR_SEMANTICS)
-        if type(parameters.move_types) is Tree
-        else None
-    )
-    profile_identity = (
-        SourceTreeIdentity.build(parameters.profiles, TEXT_CODEC, _SCALAR_SEMANTICS)
-        if type(parameters.profiles) is Tree
-        else None
-    )
+    move_identity = SourceTreeIdentity.build(parameters.move_types, _MOVE_TYPE_CODEC, _SCALAR_SEMANTICS) if type(parameters.move_types) is Tree else None
+    profile_identity = SourceTreeIdentity.build(parameters.profiles, TEXT_CODEC, _SCALAR_SEMANTICS) if type(parameters.profiles) is Tree else None
     matched = _match(cast(Tree[object], poses.output.values), parameters)
     value_branches = []
     status_branches = []
@@ -235,9 +219,7 @@ def build_cartesian_target_series(
                 BranchCoordinate.build(poses.output.values.root_id, branch.path),
                 ItemIndex.build(index),
             )
-            sources = [
-                TreeCoordinate.build(BranchCoordinate.build(poses.output.values.root_id, branch.path), ItemIndex.build(index))
-            ]
+            sources = [TreeCoordinate.build(BranchCoordinate.build(poses.output.values.root_id, branch.path), ItemIndex.build(index))]
             if type(parameters.move_types) is Tree:
                 sources.append(TreeCoordinate.build(BranchCoordinate.build(parameters.move_types.root_id, branch.path), ItemIndex.build(index)))
             if type(parameters.profiles) is Tree:

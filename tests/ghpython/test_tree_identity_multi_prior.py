@@ -151,9 +151,7 @@ def test_registered_schema_requires_exact_implementation() -> None:
 def _identity_with_authority(authority: object) -> StageTreeIdentity:
     tree = _tree("pose", "a", "b")
     identity = SourceTreeIdentity.build(tree, TEXT_CODEC, SEMANTICS)
-    mapping = SourceCoordinateMap.build(
-        tuple(SourceCoordinateEntry.build(_coordinate("output", path), (_coordinate("pose", path),)) for path in tree.topology.paths)
-    )
+    mapping = SourceCoordinateMap.build(tuple(SourceCoordinateEntry.build(_coordinate("output", path), (_coordinate("pose", path),)) for path in tree.topology.paths))
     return StageTreeIdentity.build(
         identity,
         SCHEMA,
@@ -191,9 +189,7 @@ def test_raw_prior_and_evidence_bypass_is_rejected() -> None:
 def test_additional_prior_container_fails_with_named_error(invalid: object) -> None:
     tree = _tree("pose", "a", "b")
     identity = SourceTreeIdentity.build(tree, TEXT_CODEC, SEMANTICS)
-    mapping = SourceCoordinateMap.build(
-        tuple(SourceCoordinateEntry.build(_coordinate("output", path), (_coordinate("pose", path),)) for path in tree.topology.paths)
-    )
+    mapping = SourceCoordinateMap.build(tuple(SourceCoordinateEntry.build(_coordinate("output", path), (_coordinate("pose", path),)) for path in tree.topology.paths))
     with pytest.raises(InvalidStagePriorBindingError):
         StageTreeIdentity.build(
             identity,
@@ -243,10 +239,7 @@ def test_raw_legacy_identity_cannot_gain_unhashed_branch_evidence() -> None:
         tree.topology,
         verification=IdentityVerification.UNVERIFIABLE,
     )
-    evidence = tuple(
-        StageBranchEvidence.build(path, (CanonicalField.bytes("external", b"value"),))
-        for path in tree.topology.paths
-    )
+    evidence = tuple(StageBranchEvidence.build(path, (CanonicalField.bytes("external", b"value"),)) for path in tree.topology.paths)
 
     with pytest.raises(InvalidStageBranchEvidenceError):
         evolve(legacy, branch_evidence=evidence)

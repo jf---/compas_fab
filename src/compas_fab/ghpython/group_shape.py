@@ -189,11 +189,7 @@ class GroupFixedVector:
         quantity: GroupVectorQuantity,
         values: Tuple[float, ...],
     ) -> "GroupFixedVector":
-        if (
-            type(group_shape) is not GroupShape
-            or type(values) is not tuple
-            or any(type(value) is not float or not isfinite(value) for value in values)
-        ):
+        if type(group_shape) is not GroupShape or type(values) is not tuple or any(type(value) is not float or not isfinite(value) for value in values):
             raise InvalidGroupFixedVectorError("Group numeric vector requires exact finite float values.")
         if len(values) != group_shape.dof.value:
             raise InvalidGroupFixedVectorError("Group numeric vector length must equal exact group DOF.")
@@ -216,10 +212,7 @@ class GroupFixedVector:
 
     def canonical_bytes(self) -> bytes:
         """Encode group, quantity, and complete ordered values."""
-        values = b"".join(
-            len(repr(value).encode("utf-8")).to_bytes(8, "big") + repr(value).encode("utf-8")
-            for value in self.vector.values
-        )
+        values = b"".join(len(repr(value).encode("utf-8")).to_bytes(8, "big") + repr(value).encode("utf-8") for value in self.vector.values)
         return self.group_shape.canonical_bytes() + self.quantity.value.encode("ascii") + values
 
 

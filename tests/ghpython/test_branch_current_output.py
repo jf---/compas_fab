@@ -119,12 +119,7 @@ def forged_snapshot(
 def reduction_identity(source: SourceTreeIdentity) -> StageTreeIdentity:
     output_root = TreeRootId.build("aggregate-output")
     source_root = TreeRootId.build("aggregate-source")
-    output_topology = TreeTopology.build(
-        tuple(
-            TreeBranch.build(source_path, (TreeItem.value("aggregate"),))
-            for source_path in source.topology.paths
-        )
-    )
+    output_topology = TreeTopology.build(tuple(TreeBranch.build(source_path, (TreeItem.value("aggregate"),)) for source_path in source.topology.paths))
     entries = []
     for source_path, item_count in zip(source.topology.paths, source.topology.item_counts):
         output = TreeCoordinate.build(
@@ -179,11 +174,7 @@ def test_branch_edit_preserves_unchanged_sibling_but_shared_edit_clears_all() ->
     cleared = reconciled.reconcile(shared)
 
     assert shared.solve_generation == SolveGeneration.build(1)
-    assert all(
-        branch.request_generation.value
-        == local.branch(branch.coordinate.path).request_generation.value + 1
-        for branch in shared.branches
-    )
+    assert all(branch.request_generation.value == local.branch(branch.coordinate.path).request_generation.value + 1 for branch in shared.branches)
     assert set(cleared.decisions.values()) == {BranchDecision.CLEARED}
 
 
@@ -266,12 +257,8 @@ def test_branch_cardinality_change_closes_the_root_dependency() -> None:
 
 
 def test_sequence_reduction_provenance_keeps_element_edit_branch_local() -> None:
-    first_content = reduction_identity(
-        content_tree(((0,), ("a", "b")), ((1,), ("sibling",)))
-    )
-    changed_content = reduction_identity(
-        content_tree(((0,), ("changed", "b")), ((1,), ("sibling",)))
-    )
+    first_content = reduction_identity(content_tree(((0,), ("a", "b")), ((1,), ("sibling",))))
+    changed_content = reduction_identity(content_tree(((0,), ("changed", "b")), ((1,), ("sibling",))))
     first = TreeRuntimeSnapshot.initial(first_content, TreeRootId.build("runtime"))
 
     changed = advance_runtime(first, changed_content, SharedInputsUnchanged.build())

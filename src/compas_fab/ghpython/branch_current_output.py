@@ -133,13 +133,7 @@ class BranchOutputState(Generic[T]):
         )
         if not valid:
             raise InvalidBranchOutputStateError("Branch output state must exactly match unique expected identities and decisions.")
-        if any(
-            type(entry) is not tuple
-            or len(entry) != 2
-            or type(entry[0]) is not BranchCoordinate
-            or type(entry[1]) is not BranchDecision
-            for entry in self._decisions
-        ):
+        if any(type(entry) is not tuple or len(entry) != 2 or type(entry[0]) is not BranchCoordinate or type(entry[1]) is not BranchDecision for entry in self._decisions):
             raise InvalidBranchDecisionStateError("Branch decisions require exact coordinate-decision pairs.")
 
         expected_coordinates = tuple(identity.coordinate for identity in self.expected)
@@ -155,39 +149,21 @@ class BranchOutputState(Generic[T]):
             or len(set(terminal_identities)) != len(terminal_identities)
             or any(entry.identity not in self.expected for entry in self._published)
             or any(entry.identity not in self.expected for entry in self._terminals)
-            or published_identities_in_order
-            != tuple(identity for identity in self.expected if identity in published_identity_set)
-            or terminal_identities
-            != tuple(identity for identity in self.expected if identity in terminal_identity_set)
+            or published_identities_in_order != tuple(identity for identity in self.expected if identity in published_identity_set)
+            or terminal_identities != tuple(identity for identity in self.expected if identity in terminal_identity_set)
             or decision_coordinates != expected_coordinates
         ):
             raise InvalidBranchOutputStateError("Branch output state identities must be unique, current, and canonically ordered.")
 
         published_identities = {entry.identity for entry in self._published}
-        published_terminals = {
-            entry.identity
-            for entry in self._terminals
-            if entry.terminal is _BranchTerminal.PUBLISHED
-        }
-        current_decisions = {
-            coordinate
-            for coordinate, decision in self._decisions
-            if decision is BranchDecision.CURRENT
-        }
+        published_terminals = {entry.identity for entry in self._terminals if entry.terminal is _BranchTerminal.PUBLISHED}
+        current_decisions = {coordinate for coordinate, decision in self._decisions if decision is BranchDecision.CURRENT}
         decision_by_coordinate = dict(self._decisions)
-        retired_terminal_coordinates = {
-            entry.identity.coordinate
-            for entry in self._terminals
-            if entry.terminal is not _BranchTerminal.PUBLISHED
-        }
+        retired_terminal_coordinates = {entry.identity.coordinate for entry in self._terminals if entry.terminal is not _BranchTerminal.PUBLISHED}
         if (
             published_identities != published_terminals
-            or current_decisions
-            != {identity.coordinate for identity in published_identities}
-            or any(
-                decision_by_coordinate[coordinate] is not BranchDecision.CLEARED
-                for coordinate in retired_terminal_coordinates
-            )
+            or current_decisions != {identity.coordinate for identity in published_identities}
+            or any(decision_by_coordinate[coordinate] is not BranchDecision.CLEARED for coordinate in retired_terminal_coordinates)
         ):
             raise InvalidBranchDecisionStateError("CURRENT decisions must correspond exactly to published terminal values.")
 
@@ -238,10 +214,7 @@ class BranchOutputState(Generic[T]):
         published = self._published + (_PublishedBranch(expected, value),)
         published_by_coordinate = {entry.identity.coordinate: entry for entry in published}
         ordered = tuple(published_by_coordinate[item.coordinate] for item in self.expected if item.coordinate in published_by_coordinate)
-        decisions = tuple(
-            (item.coordinate, BranchDecision.CURRENT if item == expected else self[item.coordinate])
-            for item in self.expected
-        )
+        decisions = tuple((item.coordinate, BranchDecision.CURRENT if item == expected else self[item.coordinate]) for item in self.expected)
         terminals = self._ordered_terminals(self._terminals + (_TerminalBranch(expected, _BranchTerminal.PUBLISHED),))
         return self._from_parts(self.snapshot, ordered, decisions, terminals)
 
@@ -281,10 +254,7 @@ class BranchOutputState(Generic[T]):
     ) -> "BranchOutputState[T]":
         expected = self._expected_identity(identity)
         self._require_open_terminal(expected, terminal)
-        decisions = tuple(
-            (item.coordinate, BranchDecision.CLEARED if item == expected else self[item.coordinate])
-            for item in self.expected
-        )
+        decisions = tuple((item.coordinate, BranchDecision.CLEARED if item == expected else self[item.coordinate]) for item in self.expected)
         terminals = self._ordered_terminals(self._terminals + (_TerminalBranch(expected, terminal),))
         return self._from_parts(self.snapshot, self._published, decisions, terminals)
 

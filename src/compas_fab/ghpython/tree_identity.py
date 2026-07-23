@@ -524,13 +524,7 @@ class StagePriorBinding:
         return cls(role, root_id, identity)
 
     def __attrs_post_init__(self) -> None:
-        if (
-            type(self.role) is not str
-            or not self.role
-            or self.role != self.role.strip()
-            or type(self.root_id) is not TreeRootId
-            or not _is_tree_identity_value(self.identity)
-        ):
+        if type(self.role) is not str or not self.role or self.role != self.role.strip() or type(self.root_id) is not TreeRootId or not _is_tree_identity_value(self.identity):
             raise InvalidStagePriorBindingError("Stage prior binding requires a unique semantic role, runtime root, and exact identity.")
 
     def declaration_bytes(self) -> bytes:
@@ -651,10 +645,7 @@ def _validate_bound_source_coordinates(
             binding = binding_by_root.get(empty.root_id)
             if binding is None:
                 raise InvalidStagePriorBindingError("Stage empty-source root has no semantic prior binding.")
-            counts = {
-                path.canonical_key(): count
-                for path, count in zip(binding.identity.topology.paths, binding.identity.topology.item_counts)
-            }
+            counts = {path.canonical_key(): count for path, count in zip(binding.identity.topology.paths, binding.identity.topology.item_counts)}
             key = empty.path.canonical_key()
             if key not in counts:
                 raise UnknownStageSourceBranchError("Stage empty-branch attribution must name a branch in its bound prior.")
@@ -682,11 +673,7 @@ def _role_aware_mapping_bytes(
         sources = []
         for source_coordinate in entry.sources:
             binding = binding_by_root[source_coordinate.branch.root_id]
-            sources.append(
-                _part(_text(binding.role))
-                + _part(_path_bytes(source_coordinate.branch.path))
-                + _part(_integer(source_coordinate.item_index.value))
-            )
+            sources.append(_part(_text(binding.role)) + _part(_path_bytes(source_coordinate.branch.path)) + _part(_integer(source_coordinate.item_index.value)))
         payloads.append(_part(b"items") + _part(output) + _part(b"".join(_part(value) for value in sources)))
     return b"".join(_part(value) for value in payloads)
 
@@ -781,11 +768,7 @@ class StageTreeIdentity:
         if audited_schema is not None and audited_schema.schema != builder_schema:
             raise InvalidStageTreeIdentityError("Audited builder schema registry key and descriptor disagree.")
         bound_verifications = tuple(binding.identity.verification for binding in bindings)
-        inherited_verification = (
-            IdentityVerification.UNVERIFIABLE
-            if IdentityVerification.UNVERIFIABLE in bound_verifications
-            else prior.verification
-        )
+        inherited_verification = IdentityVerification.UNVERIFIABLE if IdentityVerification.UNVERIFIABLE in bound_verifications else prior.verification
         resolved_verification = inherited_verification if verification is None else verification
         if (
             resolved_verification is IdentityVerification.VERIFIED
@@ -794,11 +777,7 @@ class StageTreeIdentity:
             and authority is not audited_schema
         ):
             raise InvalidStageBuilderAuthorityError("Verified stage construction requires its exact sealed builder authority.")
-        source_coverage = (
-            _validate_bound_source_coordinates(mapping, topology, bindings)
-            if bindings
-            else _validate_source_coordinates(mapping, topology, prior.topology)
-        )
+        source_coverage = _validate_bound_source_coordinates(mapping, topology, bindings) if bindings else _validate_source_coordinates(mapping, topology, prior.topology)
         if (
             resolved_verification is IdentityVerification.VERIFIED
             and audited_schema is not None
@@ -930,11 +909,7 @@ class StageTreeIdentity:
             )
             mapping_payload = _role_aware_mapping_bytes(self.source_coordinates, self.prior_bindings)
             expected_canonical = common + _part(_topology_bytes(self.topology)) + _part(mapping_payload) + _part(evidence_payload)
-            bound_payloads_valid = (
-                coverage is self.source_coverage
-                and expected_branches == self._branch_canonical
-                and expected_canonical == self._canonical
-            )
+            bound_payloads_valid = coverage is self.source_coverage and expected_branches == self._branch_canonical and expected_canonical == self._canonical
         valid = (
             type(self.digest) is TreeContentDigest
             and type(self.branch_digests) is tuple
@@ -1069,11 +1044,7 @@ def _bound_stage_branch_bytes(
     prior_payloads = []
     for role, path in source_keys:
         binding = next(value for value in bindings if value.role == role)
-        prior_payloads.append(
-            _part(_text(role))
-            + _part(_path_bytes(path))
-            + _part(_text(binding.identity.branch(path).value))
-        )
+        prior_payloads.append(_part(_text(role)) + _part(_path_bytes(path)) + _part(_text(binding.identity.branch(path).value)))
     branch_mapping = SourceCoordinateMap.build(relevant_entries)
     mapping_payload = _role_aware_mapping_bytes(branch_mapping, bindings)
     return b"".join(

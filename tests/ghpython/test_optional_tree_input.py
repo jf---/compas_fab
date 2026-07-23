@@ -37,4 +37,3 @@ def test_raw_constructor_cannot_forge_presence() -> None:
 
     with pytest.raises(InvalidOptionalTreeInputError):
         evolve(present, tree=None)
-
