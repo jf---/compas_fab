@@ -1,0 +1,33 @@
+{
+    "name": "ABB IO Read",
+    "nickname": "ABB IO Read",
+    "category": "COMPAS FAB",
+    "subcategory": "ABB",
+    "description": "Read a digital or analog I/O signal from an ABB controller through the owner's serialized worker thread. Pure observe: never sets a signal. The analog toggle selects float (analog) versus int (digital); defaults to digital.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "controller",
+                "description": "ControllerOwner from the ABB Controller component. Unconnected yields no output and no error."
+            },
+            {
+                "name": "signal",
+                "description": "I/O signal name to read. Blank yields no output and no error."
+            },
+            {
+                "name": "analog",
+                "description": "Read an analog signal (float) instead of a digital one (int). Auto-creates a boolean toggle; defaults to false (digital).",
+                "typeHintID": "bool"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "value",
+                "description": "The signal's current value: an int for a digital read, a float for an analog read."
+            }
+        ]
+    }
+}
