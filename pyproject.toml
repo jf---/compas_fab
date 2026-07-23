@@ -209,4 +209,7 @@ format-tesseract = { cmd = "ruff format src/compas_fab/backends/tesseract tests/
 _typecheck-tesseract-source = { cmd = "mypy --strict src/compas_fab/backends/tesseract" }
 _typecheck-backend-contracts = { cmd = "mypy --strict tests/backends/contracts" }
 typecheck-tesseract = { depends-on = ["_typecheck-tesseract-source", "_typecheck-backend-contracts"], description = "Strict type gate for the Tesseract backend and shared contracts" }
+lint-abb = { cmd = "ruff check src/compas_fab/backends/abb tests/backends/abb", description = "Lint the ABB controller backend" }
+format-abb = { cmd = "ruff format src/compas_fab/backends/abb tests/backends/abb", description = "Format the ABB controller backend" }
+typecheck-abb = { cmd = "mypy --strict src/compas_fab/backends/abb", description = "Strict type gate for the ABB controller safety core" }
 build-gh-components = { cmd = "invoke build-cpython-ghuser-components", description = "Compile CPython Grasshopper components on Windows" }
