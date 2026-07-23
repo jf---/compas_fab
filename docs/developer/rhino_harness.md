@@ -144,14 +144,26 @@ explicit boundary (subprocess/socket/HTTP) only if they must.
 ## Reloading (interactive dev only)
 
 Rhino's interpreter is long-lived and caches modules — editing source does not
-reload it. The CLI harness sidesteps this entirely: each `rhinocode script` run
-is a fresh engine (`ResetEngine` → fresh `sys.modules`). For interactive
-ScriptEditor work, prefer unload-and-reimport (delete the package's `sys.modules`
-entries, then `importlib.invalidate_caches()`) over `importlib.reload`, which
+reload it. The CLI harness sidesteps this: each `rhinocode script` run is a fresh
+engine (`ResetEngine` → fresh `sys.modules`). For interactive ScriptEditor work,
+**use compas's own devtools — do not hand-roll a reloader.** `compas_rhino` ships
+them:
+
+```python
+from compas_rhino import unload_modules
+
+unload_modules("compas_fab")  # drops every compas_fab.* module; next import reads the working tree
+```
+
+For edit-and-save hot reload, `compas_rhino.devtools.DevTools.enable_reloader()`
+installs a `FileSystemWatcher` that unloads changed modules on save
+(`disable_reloader()` stops it). Prefer these over `importlib.reload`, which
 mishandles `from x import y`, live class instances, and registered handlers.
-Anything that registers with Rhino (Eto windows, document handlers, timers)
-needs explicit `start()`/`stop()` teardown; restarting Rhino is the only truthful
-reset for those.
+Anything that registers with Rhino (Eto windows, document handlers, timers) still
+needs explicit `start()`/`stop()` teardown, and to defer a canvas mutation to the
+next solve use `compas_ghpython.timer.update_component(ghenv, delay)` rather than
+calling `ScheduleSolution` by hand. Restarting Rhino is the only truthful reset
+for registered handlers.
 
 ## Test boundary — keep backend logic out of Rhino
 
