@@ -22,6 +22,7 @@ from compas_fab.ghpython.tree_coordinates import GhPath
 from compas_fab.ghpython.tree_coordinates import ItemIndex
 from compas_fab.ghpython.tree_coordinates import TreeCoordinate
 from compas_fab.ghpython.tree_coordinates import TreeRootId
+from compas_fab.ghpython.tesseract_program_series import PROGRAM_SERIES_SCHEMA
 from compas_fab.ghpython.tree_diagnostics import SourceCoordinateEntry
 from compas_fab.ghpython.tree_diagnostics import SourceCoordinateMap
 from compas_fab.ghpython.tree_identity import BOOL_CODEC
@@ -33,6 +34,7 @@ from compas_fab.ghpython.tree_identity import IncompleteStageSourceCoordinatesEr
 from compas_fab.ghpython.tree_identity import InvalidExactItemCodecError
 from compas_fab.ghpython.tree_identity import InvalidItemPayloadError
 from compas_fab.ghpython.tree_identity import InvalidSourceTreeIdentityError
+from compas_fab.ghpython.tree_identity import InvalidStageBuilderAuthorityError
 from compas_fab.ghpython.tree_identity import InvalidStageParameterError
 from compas_fab.ghpython.tree_identity import InvalidStageTreeIdentityError
 from compas_fab.ghpython.tree_identity import NonEmptyStageSourceBranchError
@@ -240,7 +242,6 @@ def test_stage_hashes_root_free_topology_source_map_and_ordered_parameters(audit
         "compas_fab.tesseract.pose_series/v1",
         "compas_fab.tesseract.cartesian_target_series/v1",
         "compas_fab.tesseract.target_series/v1",
-        "compas_fab.tesseract.motion_program_series/v1",
         "compas_fab.tesseract.program_series/v1",
         "compas_fab.tesseract.planning/v1",
     ),
@@ -250,6 +251,13 @@ def test_unimplemented_builder_schema_cannot_claim_verified(builder_schema: str)
 
     with pytest.raises(UnknownStageBuilderSchemaError):
         StageTreeIdentity.build(source, builder_schema, (), source.topology)
+
+
+def test_registered_builder_schema_cannot_claim_verified_without_sealed_authority() -> None:
+    source = SourceTreeIdentity.build(text_tree(TreeRootId.build("source"), (((0,), ("a",)),)), TEXT_CODEC, TEXT_TREE_SEMANTICS)
+
+    with pytest.raises(InvalidStageBuilderAuthorityError):
+        StageTreeIdentity.build(source, PROGRAM_SERIES_SCHEMA, (), source.topology)
 
 
 def test_invalid_stage_parameter_and_raw_source_identity_fail() -> None:
