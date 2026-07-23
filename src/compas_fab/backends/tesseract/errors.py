@@ -166,6 +166,30 @@ class InvalidTesseractDescartesProfileError(TesseractBackendError):
     """A Descartes profile factory argument violates its native contract."""
 
 
+class InvalidTesseractCartesianProfileError(TesseractBackendError):
+    """A Cartesian pipeline profile factory argument violates its native contract."""
+
+
+class InvalidTesseractFreespaceProfileError(TesseractBackendError):
+    """A Freespace pipeline profile factory argument violates its native contract."""
+
+
+class InvalidTesseractFreespaceIfoptProfileError(TesseractBackendError):
+    """A Freespace TrajOptIfopt pipeline profile factory argument violates its native contract."""
+
+
+class InvalidTesseractOmplProfileError(TesseractBackendError):
+    """An OMPL profile factory argument violates its native contract."""
+
+
+class InvalidTesseractTrajOptProfileError(TesseractBackendError):
+    """A TrajOpt profile factory argument violates its native contract."""
+
+
+class InvalidTesseractTrajOptIfoptProfileError(TesseractBackendError):
+    """A TrajOptIfopt profile factory argument violates its native contract."""
+
+
 class InvalidTesseractNativePlanError(TesseractBackendError):
     """A native planning call or cache signature is invalid."""
 
