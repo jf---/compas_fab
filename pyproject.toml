@@ -156,6 +156,12 @@ replace = "COMPAS FAB v{new_version}"
 # Pixi development environment
 # ============================================================================
 
+[[tool.mypy.overrides]]
+# The abb_robot_client fork ships no py.typed marker; treat it as untyped so the
+# strict gate checks our adapter's own annotations without erroring on the import.
+module = "abb_robot_client.*"
+ignore_missing_imports = true
+
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "win-64"]
@@ -196,6 +202,7 @@ rhino39 = ["rhino"]
 [tool.pixi.pypi-dependencies]
 build = "*"
 compas_fab = { path = ".", editable = true }
+abb_robot_client = { git = "https://github.com/jf---/abb_robot_client.git", branch = "rws2" }
 compas_invocations2 = { version = ">=1.1.2,<2", extras = ["mkdocs"] }
 mkdocs-print-site-plugin = "*"
 pytest-testmon = ">=2"

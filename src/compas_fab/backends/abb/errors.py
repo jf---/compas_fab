@@ -43,3 +43,11 @@ class ControllerClosedError(AbbControllerError):
     Raised by the owner's submit gate once ``close`` has run, so a mutation can
     never reach a torn-down worker thread or an already-logged-out session.
     """
+
+
+class RwsCommandError(AbbControllerError):
+    """A Robot Web Services operation failed on the controller.
+
+    The concrete RWS adapter raises this in place of the client's bare
+    ``ABBException`` so the owner and components only ever see a named failure.
+    """
