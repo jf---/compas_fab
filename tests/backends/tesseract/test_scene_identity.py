@@ -5,7 +5,7 @@ from compas_fab.backends.tesseract.identity import BuildIdentity
 from compas_fab.backends.tesseract.errors import InvalidNativeSceneContentIdentityError
 from compas_fab.backends.tesseract.scene_identity import DirectSceneGeneration
 from compas_fab.backends.tesseract.scene_identity import NativeSceneContentIdentity
-from compas_fab.ghpython.tree_identity import IdentityVerification
+from compas_fab.identity_verification import IdentityVerification
 from compas_fab.identity_verification import IdentityVerification as NeutralIdentityVerification
 
 
