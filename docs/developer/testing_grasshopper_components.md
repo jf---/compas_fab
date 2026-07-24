@@ -47,8 +47,10 @@ Every claim traces to a file, a count, or a commit.
     fork's `abb_robot_client`, unused native backends stubbed). What is **not**
     covered: (1) our **compiled** `Cf_*` `.ghuser` components solved by the kernel
     end-to-end — CI (`build.yml`) *componentizes* them on Windows and gates on
-    their existence, but componentizing is not kernel-solving; that would need a
-    self-hosted Rhino runner, which does not exist yet; (2) the **Tesseract**
+    their existence, but componentizing is not kernel-solving. Solving under a live
+    kernel in CI would need a **licensed** Rhino, which is not viable on
+    GitHub-hosted runners — so this stays **local-only by design**, and CI's job is
+    deliberately to *compile* the nodes, not solve them; (2) the **Tesseract**
     backend in Rhino — it needs native `tesseract_robotics 0.35` (Rhino ships 0.34),
     and by design the heavy native deps stay in pixi, not Rhino (see
     [Rhino harness](rhino_harness.md)). ABB (pure deps) runs in Rhino; Tesseract
@@ -276,13 +278,14 @@ behaviour that exists nowhere but inside a real Grasshopper solution.
 its `test_dotnet_exception_proves_real_rhino_execution` forces a real .NET fault to
 prove the interpreter itself. These are **local-only**: they run against an open
 Rhino instance and are **not** in CI — a headless GitHub runner has no Rhino app to
-solve a `GH_Document`. What CI *does* verify on Windows (`build.yml`
-`build-cpython-components`) is that the components **componentize**: the `rhino39`
-CPython builds every `Cf_*.ghuser` and the job fails if a required one is missing.
-Two gaps remain, both stated at the top: componentizing is not kernel-solving (so
-running our *compiled* `Cf_*` under a live kernel would need a self-hosted Rhino
-runner, which does not exist yet), and the Tesseract env skew is a dependency fact,
-not a harness limit.
+solve a `GH_Document`, and putting a **licensed** Rhino in GitHub CI is too far to
+reach. That boundary is deliberate, not a TODO. What CI *does* verify on Windows
+(`build.yml` `build-cpython-components`) is the right half of the split: the `rhino39`
+CPython **componentizes** every `Cf_*.ghuser` and the job fails if a required one is
+missing. CI compiles the nodes; a local Rhino solves them. The two remaining gaps
+are both stated at the top and both by design — kernel-solving compiled components
+stays local (licensed Rhino), and the Tesseract env skew is a dependency fact, not a
+harness limit.
 
 ## Do not reinvent compas tooling
 

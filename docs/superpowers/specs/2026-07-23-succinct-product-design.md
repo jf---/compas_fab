@@ -9,13 +9,15 @@ Grasshopper in, Tesseract out, robot on the wire.
 
 1. A component is a thin marshal: GH inputs → one backend call → native outputs. Grasshopper owns iteration and matching (item access lifts over trees; list access runs once per branch — "one program per branch" is native behavior). A component adds only the checks that prevent a wrong toolpath — lengths, DOF, finite numbers — reported via `AddRuntimeMessage`.
 2. The backend stays a thin typed layer over a heavily-tested lib (`tesseract-robotics-nanobind`): load cell, author targets/programs, plan, emit RAPID. Typed quantities guard the native boundary, one named exception per failure mode, strict mypy. The `NativePlanCall` content cache is the plan cache; nothing more.
-3. Controller mutations are armed, fire exactly once (edge-triggered token — Grasshopper recompute must never re-fire a start), and are believed only after readback. Stop is instant and unconditional. One small safety module, one thin RWS client. RWS client dependency: chosen by Jelle before W2 starts.
+3. Controller mutations fire exactly once — a button **rising-edge** is the only re-fire guard (Grasshopper recompute must never re-fire a start) — and are believed only after readback. Stop is instant and unconditional. One small safety module, one thin **sync** RWS client (the `jf---` `abb_robot_client` fork, `rws2`). The armed/nonce/ledger/owner machinery first sketched here was **weeded 2026-07-23** as overengineered (see below): a rising edge on a recompute-stable button is all the fire-once a thin marshal needs.
 4. Grasshopper's nastiness — state across solves, canvas mutation timing — is answered with the small idiomatic helpers that already exist (`sticky_cache`, `ScheduleSolution`, `ensure_*` value lists), never with frameworks.
 5. Good gardeners weed: anything not consumed by a shipped component or the backend gets cut.
 
 ## Weeded 2026-07-23
 
 The unwired tree/identity/series framework (26 `ghpython` modules + 20 test files): it re-implemented Grasshopper's own tree handling in Python, plus a provenance/currentness model sized for a problem the product does not have. Deleted, not deferred. The neutral `IdentityVerification` enum and the backend plan cache stay.
+
+The controller **arming stack** (arm/nonce/ledger/owner — ~1.7k lines): a state-machine ceremony for "mutations must be armed before they fire." A button rising-edge on a recompute-stable input is all the fire-once guard a thin marshal needs; the RWS sync path is called directly. Deleted, not deferred. Readback verification (believe only after the controller confirms) stays — that is safety, not ceremony.
 
 ## Map
 
