@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from enum import Enum
 from typing import Mapping
 from xml.etree import ElementTree
@@ -55,6 +56,21 @@ class ContinuousContactManager(Enum):
     BULLET_CAST_SIMPLE = "BulletCastSimpleManager"
 
 
+class CoupledTopology(Enum):
+    """Which body an external axis carries in a coordinated kinematic group.
+
+    The value is the native factory that resolves the coupled inverse kinematics.
+    """
+
+    #: Track/rail carries the robot: the manipulator base rides the positioner
+    #: (moving base). Positioner forward kinematics place the robot base, then the
+    #: manipulator solves to the target.
+    ROBOT_ON_POSITIONER = "ROPInvKinFactory"
+    #: Positioner carries the workpiece: the work object rides the positioner and
+    #: the TCP tracks it. The robot base is fixed; the positioner reorients the part.
+    ROBOT_WITH_EXTERNAL_POSITIONER = "REPInvKinFactory"
+
+
 @define(frozen=True, slots=True)
 class KdlKinematics:
     """Explicit KDL plugin configuration for one semantic group."""
@@ -91,6 +107,160 @@ class KdlKinematics:
         if empty:
             raise InvalidKinematicsConfigError("KDL kinematics fields are empty: {}.".format(", ".join(empty)))
         return cls(group, base_link, tip_link, inverse)
+
+
+@define(frozen=True, slots=True)
+class OpwParameters:
+    """Closed-form OPW solver parameters for a spherical-wrist 6-DOF manipulator.
+
+    These are the ABB/OPW kinematic constants (`a1, a2, b, c1..c4`) plus the
+    per-joint `offsets` (radians) and `sign_corrections` (+/-1) that map the OPW
+    convention onto the URDF joints.
+    """
+
+    a1: float
+    a2: float
+    b: float
+    c1: float
+    c2: float
+    c3: float
+    c4: float
+    offsets: tuple[float, float, float, float, float, float]
+    sign_corrections: tuple[int, int, int, int, int, int]
+
+    @classmethod
+    def build(
+        cls,
+        a1: float,
+        a2: float,
+        b: float,
+        c1: float,
+        c2: float,
+        c3: float,
+        c4: float,
+        offsets: "tuple[float, ...] | list[float]",
+        sign_corrections: "tuple[int, ...] | list[int]",
+    ) -> OpwParameters:
+        """Validate one set of OPW manipulator parameters.
+
+        Args:
+            a1, a2, b, c1, c2, c3, c4: OPW link constants (metres).
+            offsets: Six joint offsets in radians.
+            sign_corrections: Six values, each +1 or -1.
+
+        Returns:
+            Validated immutable OPW parameters.
+
+        Raises:
+            InvalidKinematicsConfigError: A constant is not finite, a sequence is
+                not length six, or a sign correction is not +/-1.
+        """
+        constants = {"a1": a1, "a2": a2, "b": b, "c1": c1, "c2": c2, "c3": c3, "c4": c4}
+        nonfinite = sorted(name for name, value in constants.items() if not math.isfinite(value))
+        if nonfinite:
+            raise InvalidKinematicsConfigError("OPW constants are not finite: {}.".format(", ".join(nonfinite)))
+        offsets_tuple = tuple(float(value) for value in offsets)
+        signs_tuple = tuple(int(value) for value in sign_corrections)
+        if len(offsets_tuple) != 6:
+            raise InvalidKinematicsConfigError("OPW offsets must have six values, got {}.".format(len(offsets_tuple)))
+        if any(not math.isfinite(value) for value in offsets_tuple):
+            raise InvalidKinematicsConfigError("OPW offsets must be finite.")
+        if len(signs_tuple) != 6:
+            raise InvalidKinematicsConfigError("OPW sign corrections must have six values, got {}.".format(len(signs_tuple)))
+        if any(value not in (-1, 1) for value in signs_tuple):
+            raise InvalidKinematicsConfigError("OPW sign corrections must each be +1 or -1.")
+        return cls(a1, a2, b, c1, c2, c3, c4, offsets_tuple, signs_tuple)
+
+
+@define(frozen=True, slots=True)
+class CoupledKinematics:
+    """Coordinated robot + external-axis (ROP/REP) kinematics for one group.
+
+    A coupled group spans the manipulator and its external axes as one chain. The
+    native solver named by `topology` composes a positioner forward-kinematics
+    chain (`positioner_base_link` -> `positioner_tip_link`) with the manipulator
+    inverse-kinematics chain (`manipulator_base_link` -> `manipulator_tip_link`),
+    sampling each external joint at `positioner_sample_resolution`.
+    """
+
+    group: str
+    topology: CoupledTopology
+    positioner_base_link: str
+    positioner_tip_link: str
+    manipulator_base_link: str
+    manipulator_tip_link: str
+    manipulator: OpwParameters
+    manipulator_reach: float
+    positioner_sample_resolution: tuple[tuple[str, float], ...]
+
+    @classmethod
+    def build(
+        cls,
+        group: str,
+        topology: CoupledTopology,
+        positioner_base_link: str,
+        positioner_tip_link: str,
+        manipulator_base_link: str,
+        manipulator_tip_link: str,
+        manipulator: OpwParameters,
+        manipulator_reach: float,
+        positioner_sample_resolution: "tuple[tuple[str, float], ...] | list[tuple[str, float]]",
+    ) -> CoupledKinematics:
+        """Validate one coordinated coupled-kinematics configuration.
+
+        Args:
+            group: Exact SRDF group spanning the manipulator and its external axes.
+            topology: Which body the external axis carries (ROP/REP).
+            positioner_base_link: Base link of the positioner forward chain.
+            positioner_tip_link: Tip link of the positioner forward chain.
+            manipulator_base_link: Base link of the manipulator inverse chain.
+            manipulator_tip_link: Tip link of the manipulator inverse chain.
+            manipulator: OPW parameters for the manipulator inverse solver.
+            manipulator_reach: Positive manipulator reach (metres).
+            positioner_sample_resolution: One `(joint_name, resolution)` per external
+                joint; resolution is the positive sampling step (metres or radians).
+
+        Returns:
+            Validated immutable coupled configuration.
+
+        Raises:
+            InvalidKinematicsConfigError: A name is empty, a type is wrong, the reach
+                is not positive-finite, or the sample resolution is empty/invalid.
+        """
+        names = {
+            "group": group,
+            "positioner_base_link": positioner_base_link,
+            "positioner_tip_link": positioner_tip_link,
+            "manipulator_base_link": manipulator_base_link,
+            "manipulator_tip_link": manipulator_tip_link,
+        }
+        empty = sorted(name for name, value in names.items() if not value)
+        if empty:
+            raise InvalidKinematicsConfigError("Coupled kinematics fields are empty: {}.".format(", ".join(empty)))
+        if not math.isfinite(manipulator_reach) or manipulator_reach <= 0.0:
+            raise InvalidKinematicsConfigError("Coupled manipulator reach must be positive, got {!r}.".format(manipulator_reach))
+        samples = tuple((str(name), float(value)) for name, value in positioner_sample_resolution)
+        if not samples:
+            raise InvalidKinematicsConfigError("Coupled kinematics require at least one positioner sample resolution.")
+        for name, value in samples:
+            if not name:
+                raise InvalidKinematicsConfigError("Positioner sample resolution joint name is empty.")
+            if not math.isfinite(value) or value <= 0.0:
+                raise InvalidKinematicsConfigError("Positioner sample resolution for {!r} must be positive, got {!r}.".format(name, value))
+        sample_names = [name for name, _ in samples]
+        if len(sample_names) != len(set(sample_names)):
+            raise InvalidKinematicsConfigError("Positioner sample resolution joints must be unique.")
+        return cls(
+            group,
+            topology,
+            positioner_base_link,
+            positioner_tip_link,
+            manipulator_base_link,
+            manipulator_tip_link,
+            manipulator,
+            manipulator_reach,
+            samples,
+        )
 
 
 @define(frozen=True, slots=True)
@@ -267,6 +437,50 @@ class RobotArtifact:
         resources[KINEMATICS_PLUGIN_URL] = plugin_yaml
         return RobotArtifact.build(self.urdf, compiled_srdf, resources)
 
+    def with_coupled_kinematics(
+        self,
+        configuration: CoupledKinematics,
+    ) -> RobotArtifact:
+        """Return an artifact with a coordinated ROP/REP kinematics plugin.
+
+        A coupled group resolves the manipulator and its external axes together;
+        the emitted plugin names the native `ROPInvKin`/`REPInvKin` solver for the
+        group. A cell selects either KDL or coupled kinematics, never both.
+
+        Args:
+            configuration: Typed coupled configuration for one combined group.
+
+        Returns:
+            New content-addressed artifact with derived SRDF and plugin YAML.
+
+        Raises:
+            InvalidSrdfError: SRDF XML is malformed or its root is not `robot`.
+            InvalidKinematicsConfigError: The group is not defined in the SRDF.
+            KinematicsPluginConflictError: Exact SRDF/resource already selects plugins.
+        """
+        try:
+            root = ElementTree.fromstring(self.srdf)
+        except ElementTree.ParseError as error:
+            raise InvalidSrdfError("SRDF XML cannot be parsed: {}".format(error)) from error
+        if root.tag.rsplit("}", 1)[-1] != "robot":
+            raise InvalidSrdfError("SRDF root element must be 'robot', got {!r}.".format(root.tag))
+        if root.find("kinematics_plugin_config") is not None:
+            raise KinematicsPluginConflictError("Exact SRDF already contains kinematics_plugin_config.")
+        if any(resource.url == KINEMATICS_PLUGIN_URL for resource in self.resources):
+            raise KinematicsPluginConflictError("Artifact already contains {!r}.".format(KINEMATICS_PLUGIN_URL))
+
+        group_names = {element.attrib["name"] for element in root.findall("group")}
+        if configuration.group not in group_names:
+            raise InvalidKinematicsConfigError("Coupled configuration references unknown SRDF group: {}.".format(configuration.group))
+
+        plugin_element = ElementTree.Element("kinematics_plugin_config", {"filename": KINEMATICS_PLUGIN_URL})
+        root.append(plugin_element)
+        compiled_srdf = ElementTree.tostring(root, encoding="unicode")
+        plugin_yaml = _coupled_plugin_yaml(configuration).encode("utf-8")
+        resources = {resource.url: resource.content for resource in self.resources}
+        resources[KINEMATICS_PLUGIN_URL] = plugin_yaml
+        return RobotArtifact.build(self.urdf, compiled_srdf, resources)
+
     def with_contact_managers(
         self,
         discrete: DiscreteContactManager,
@@ -375,6 +589,55 @@ def _kdl_plugin_yaml(configurations: list[KdlKinematics]) -> str:
             "search_libraries": ["tesseract_kinematics_kdl_factories"],
             "fwd_kin_plugins": fwd_plugins,
             "inv_kin_plugins": inv_plugins,
+        }
+    }
+    return yaml.safe_dump(document, sort_keys=False)
+
+
+def _coupled_plugin_yaml(configuration: CoupledKinematics) -> str:
+    opw = configuration.manipulator
+    solver_name = "ROPInvKin" if configuration.topology is CoupledTopology.ROBOT_ON_POSITIONER else "REPInvKin"
+    plugin_config = {
+        "manipulator_reach": configuration.manipulator_reach,
+        "positioner_sample_resolution": [{"name": name, "value": value} for name, value in configuration.positioner_sample_resolution],
+        "positioner": {
+            "class": "KDLFwdKinChainFactory",
+            "config": {
+                "base_link": configuration.positioner_base_link,
+                "tip_link": configuration.positioner_tip_link,
+            },
+        },
+        "manipulator": {
+            "class": "OPWInvKinFactory",
+            "config": {
+                "base_link": configuration.manipulator_base_link,
+                "tip_link": configuration.manipulator_tip_link,
+                "params": {
+                    "a1": opw.a1,
+                    "a2": opw.a2,
+                    "b": opw.b,
+                    "c1": opw.c1,
+                    "c2": opw.c2,
+                    "c3": opw.c3,
+                    "c4": opw.c4,
+                    "offsets": list(opw.offsets),
+                    "sign_corrections": list(opw.sign_corrections),
+                },
+            },
+        },
+    }
+    document = {
+        "kinematic_plugins": {
+            "search_libraries": [
+                "tesseract_kinematics_kdl_factories",
+                "tesseract_kinematics_opw_factories",
+            ],
+            "inv_kin_plugins": {
+                configuration.group: {
+                    "default": solver_name,
+                    "plugins": {solver_name: {"class": configuration.topology.value, "config": plugin_config}},
+                }
+            },
         }
     }
     return yaml.safe_dump(document, sort_keys=False)
