@@ -62,7 +62,14 @@ jobs:
           "Cf_TesseractMotionProgram.ghuser",
           "Cf_TesseractDescartesProfile.ghuser",
           "Cf_TesseractNativePlan.ghuser",
-          "Cf_TesseractNativeResult.ghuser"
+          "Cf_TesseractNativeResult.ghuser",
+          "Cf_AbbController.ghuser",
+          "Cf_AbbControllerState.ghuser",
+          "Cf_AbbIoRead.ghuser",
+          "Cf_AbbIoWrite.ghuser",
+          "Cf_AbbStart.ghuser",
+          "Cf_AbbReset.ghuser",
+          "Cf_AbbStop.ghuser"
         )
         foreach ($name in $required) {
           $path = Join-Path $target $name
