@@ -74,6 +74,14 @@ Probed via `scripts/rhino_harness/probe_env.py`:
 | `numpy` | 2.0.2 |
 | RhinoCommon / Grasshopper / System (.NET) | import cleanly |
 
+Validated live (Rhino `17707`, via `scripts/rhino_harness/probe_datatree.py`):
+the harness builds and reads a 3-branch `GH_Structure[GH_Integer]` — paths
+`{0}{1}{2}`, branch lengths `[1,2,3]` — so Grasshopper's DataTree model is
+reachable from the CLI. The remaining real-Rhino step is a full component solve
+(a Script component with `scriptParamAccess=1`, fed that tree, solved, output
+read) to confirm list access yields one call per branch; the data model is
+proven, the component-solve wiring is the next piece.
+
 !!! warning "Two version mismatches block running *our* backend as-is"
     - **compas_fab**: Rhino resolves `compas_fab 1.0.2` from a *different*
       checkout (`~/Code/CADCAM/compas_fab`) via an **editable-install metapath
