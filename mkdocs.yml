@@ -183,7 +183,7 @@ nav:
           - ActionChain design notes: developer/action.md
           - Grasshopper components: developer/grasshopper.md
           - Rhino harness (rhinocode): developer/rhino_harness.md
-          - Testing Grasshopper components: developer/testing_grasshopper_components.md
+          - Testing Grasshopper (no GUI): developer/testing_grasshopper_components.md
           - Icon system: developer/icons/index.md
   - Changelog: changelog.md
   - Citing: citing.md
