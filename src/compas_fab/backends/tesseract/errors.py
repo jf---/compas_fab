@@ -277,6 +277,22 @@ class UnsupportedTesseractCellStateError(TesseractBackendError):
     """A COMPAS cell-state feature is not yet applied to the native environment."""
 
 
+class DegenerateSceneMeshError(TesseractBackendError):
+    """A COMPAS scene mesh has no vertices or a face with fewer than three."""
+
+
+class UnregisteredSceneModelError(TesseractBackendError):
+    """A cell state references a tool or rigid body absent from the cell models."""
+
+
+class UnknownAttachmentParentError(TesseractBackendError):
+    """An attachment names a parent link, tool, or group that is not resolvable."""
+
+
+class NativeSceneCommandRejectedError(TesseractBackendError):
+    """The native environment rejected an applied scene command."""
+
+
 class MissingTesseractStartStateError(TesseractBackendError):
     """Motion planning lacks a complete named start configuration."""
 

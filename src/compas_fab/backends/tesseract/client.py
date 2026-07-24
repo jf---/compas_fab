@@ -21,8 +21,11 @@ from .errors import MissingContactManagerPluginError
 from .errors import MissingTesseractStartStateError
 from .errors import TesseractClientNotConnectedError
 from .errors import TesseractRuntimeInitializationError
-from .errors import UnsupportedTesseractCellStateError
+from .frames import meters_per_user_unit
+from .frames import world_meters_frame
 from .joint_state import apply_active_joint_state
+from .native_scene import apply_scene
+from .native_scene import scene_commands
 from .runtime import TesseractRuntime
 from .scene_identity import DirectSceneGeneration
 from .scene_identity import NativeSceneContentIdentity
@@ -150,8 +153,10 @@ class TesseractClient(ClientInterface):
         if cell is None:
             raise MissingTesseractStartStateError("Stored robot_cell_state has no installed RobotCell.")
         require_matching_cell_state(cell, state, "native clone")
-        if state.tool_states or state.rigid_body_states:
-            raise UnsupportedTesseractCellStateError("Stored tools and rigid bodies must be applied to the native environment before cloning.")
+        apply_scene(
+            robot,
+            scene_commands(cell, state, world_meters_frame(state.robot_base_frame), meters_per_user_unit(1.0)),
+        )
         configuration = state.robot_configuration
         if configuration is None:
             raise MissingTesseractStartStateError("Stored robot_cell_state.robot_configuration is required for a stateful native clone.")

@@ -12,6 +12,7 @@ from compas_fab.backends.tesseract.artifact import KdlKinematics
 from compas_fab.backends.tesseract.artifact import RobotArtifact
 from compas_fab.backends.tesseract.client import TesseractClient
 from compas_fab.backends.tesseract.errors import InvalidTesseractRuntimeConfigurationError
+from compas_fab.backends.tesseract.native_scene import ATTACH_JOINT_SUFFIX
 from compas_fab.backends.tesseract.errors import RobotArtifactMismatchError
 from compas_fab.backends.tesseract.errors import TesseractCellStateMismatchError
 from compas_fab.backends.tesseract.errors import TesseractRuntimeInitializationError
@@ -20,7 +21,9 @@ from compas_fab.identity_verification import IdentityVerification
 from compas_fab.robots import RobotCell
 from compas_fab.robots import RobotSemantics
 
+from .conftest import BODY_ID
 from .conftest import SRDF
+from .conftest import TOOL_ID
 from .conftest import URDF
 
 
@@ -195,6 +198,29 @@ def test_client_clone_applies_complete_stored_robot_state(
         native_robot = client.clone_robot()
 
     assert native_robot.env.getCurrentJointValuesByNames(["joint1"]).tolist() == pytest.approx([0.75])
+
+
+def test_client_clone_applies_stored_tool_and_rigid_body_scene(
+    tesseract_artifact,
+    one_joint_cell_with_tool,
+    one_joint_state_with_tool,
+    tmp_path,
+):
+    with TesseractClient(tesseract_artifact, cache_root=tmp_path) as client:
+        planner = TesseractPlanner(client)
+        planner.set_robot_cell(one_joint_cell_with_tool, one_joint_state_with_tool)
+
+        native_robot = client.clone_robot()
+
+    # The stored tool and rigid body reach the isolated clone as real links,
+    # attach joints, and allowed-collision pairs, not a rejected state.
+    link_names = set(native_robot.env.getLinkNames())
+    assert {TOOL_ID, BODY_ID} <= link_names
+    joint_names = set(native_robot.env.getJointNames())
+    assert {TOOL_ID + ATTACH_JOINT_SUFFIX, BODY_ID + ATTACH_JOINT_SUFFIX} <= joint_names
+    acm = native_robot.env.getAllowedCollisionMatrix()
+    assert acm.isCollisionAllowed(TOOL_ID, "tip")
+    assert acm.isCollisionAllowed(BODY_ID, TOOL_ID)
 
 
 def test_set_robot_cell_rejects_state_omitting_registered_tools(

@@ -1,6 +1,10 @@
 import pytest
+from compas.datastructures import Mesh
+from compas.geometry import Box
+from compas.geometry import Frame
 from compas_robots import Configuration
 from compas_robots import RobotModel
+from compas_robots import ToolModel
 from compas_robots.model import Joint
 
 from compas_fab.backends.tesseract.artifact import CollisionMeshPolicy
@@ -10,6 +14,7 @@ from compas_fab.backends.tesseract.artifact import KdlInverseKinematics
 from compas_fab.backends.tesseract.artifact import KdlKinematics
 from compas_fab.backends.tesseract.artifact import RobotArtifact
 from compas_fab.backends.tesseract.client import TesseractClient
+from compas_fab.robots import RigidBody
 from compas_fab.robots import RobotCell
 from compas_fab.robots import RobotCellState
 from compas_fab.robots import RobotSemantics
@@ -88,3 +93,39 @@ def one_joint_cell():
 def one_joint_state():
     configuration = Configuration([0.0], [Joint.REVOLUTE], ["joint1"])
     return RobotCellState(robot_configuration=configuration)
+
+
+# Scene fixture geometry (metres). Named so scene tests can assert placement.
+TOOL_ID = "gripper"
+BODY_ID = "block"
+TOOL_TCF_Z = 0.1  # Tool coordinate frame offset above the tool base link.
+BODY_GRASP_Z = 0.02  # Rigid body grasp offset above the tool coordinate frame.
+BOX_SIZE = 0.2
+
+
+@pytest.fixture
+def one_joint_cell_with_tool():
+    """A one-joint cell carrying a box tool and a box rigid body."""
+    model = RobotModel.from_urdf_string(URDF)
+    semantics = RobotSemantics.from_srdf_string(SRDF, model)
+    tool = ToolModel(
+        Mesh.from_shape(Box(BOX_SIZE, BOX_SIZE, BOX_SIZE)),
+        Frame([0.0, 0.0, TOOL_TCF_Z], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
+        name=TOOL_ID,
+    )
+    body = RigidBody.from_mesh(Mesh.from_shape(Box(BOX_SIZE, BOX_SIZE, BOX_SIZE)), name=BODY_ID)
+    return RobotCell(model, semantics, tool_models={TOOL_ID: tool}, rigid_body_models={BODY_ID: body})
+
+
+@pytest.fixture
+def one_joint_state_with_tool(one_joint_cell_with_tool):
+    """State attaching the tool to the group tip and the body to the tool tip."""
+    state = RobotCellState.from_robot_cell(one_joint_cell_with_tool)
+    state.set_tool_attached_to_group(TOOL_ID, "manipulator", touch_links=["tip"])
+    state.set_rigid_body_attached_to_tool(
+        BODY_ID,
+        TOOL_ID,
+        attachment_frame=Frame([0.0, 0.0, BODY_GRASP_Z], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
+    )
+    state.rigid_body_states[BODY_ID].touch_bodies = [TOOL_ID]
+    return state
