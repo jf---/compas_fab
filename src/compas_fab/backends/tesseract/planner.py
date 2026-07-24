@@ -11,6 +11,7 @@ from compas_fab.backends.interfaces.planner_operation import PlannerOperation
 from .backend_features.check_collision import TesseractCheckCollision
 from .backend_features.forward_kinematics import TesseractForwardKinematics
 from .backend_features.inverse_kinematics import TesseractInverseKinematics
+from .backend_features.plan_cartesian_motion import TesseractPlanCartesianMotion
 from .backend_features.plan_motion import TesseractPlanMotion
 from .backend_features.set_robot_cell import TesseractSetRobotCell
 from .client import TesseractClient
@@ -24,6 +25,7 @@ class TesseractPlanner(
     TesseractCheckCollision,
     TesseractForwardKinematics,
     TesseractInverseKinematics,
+    TesseractPlanCartesianMotion,
     TesseractPlanMotion,
     TesseractSetRobotCell,
     PlannerInterface,
@@ -36,6 +38,7 @@ class TesseractPlanner(
         (
             PlannerOperation.INVERSE_KINEMATICS,
             PlannerOperation.PLAN_MOTION,
+            PlannerOperation.PLAN_CARTESIAN_MOTION,
             PlannerOperation.CHECK_COLLISION,
         ),
         ConfigurationTolerancePolicy.PRESERVE_ABSENT,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from enum import Enum
 from typing import Mapping
+from typing import Optional
 from xml.etree import ElementTree
 
 import yaml
@@ -69,6 +70,24 @@ class CoupledTopology(Enum):
     #: Positioner carries the workpiece: the work object rides the positioner and
     #: the TCP tracks it. The robot base is fixed; the positioner reorients the part.
     ROBOT_WITH_EXTERNAL_POSITIONER = "REPInvKinFactory"
+
+
+def native_coupled_ik_solver_name(topology: CoupledTopology) -> str:
+    """Return the native coupled inverse-kinematics solver name for one topology.
+
+    The single source of the coordinated solver name shared by the plugin-YAML
+    emitter (which registers it as the group default) and any consumer that must
+    name the same solver. The enum value is the native factory class, so the
+    solver name is that class without its ``Factory`` suffix
+    (``ROPInvKinFactory`` -> ``ROPInvKin``).
+
+    Args:
+        topology: Which body the external axis carries.
+
+    Returns:
+        The native inverse-kinematics solver name, e.g. ``"ROPInvKin"``.
+    """
+    return topology.value.removesuffix("Factory")
 
 
 @define(frozen=True, slots=True)
@@ -535,6 +554,34 @@ class RobotArtifact:
                 return resource
         raise InvalidRobotResourceError("Robot artifact {} does not contain resource {!r}.".format(self.identity.digest, url))
 
+    def default_inv_kin_solver(self, group: str) -> Optional[str]:
+        """Return the group's configured default inverse-kinematics solver name.
+
+        Reads the emitted kinematics plugin config (the exact bytes the native
+        environment loads) rather than a discarded build-time configuration, so
+        the name cannot drift from the solver that actually runs. For a coupled
+        group this is the coordinated ROP/REP solver named by
+        `native_coupled_ik_solver_name`.
+
+        Args:
+            group: Exact SRDF planning-group name.
+
+        Returns:
+            The default solver name, or None when the artifact declares no
+            kinematics plugin config or the group has no inverse-kinematics
+            plugin entry (an uncoordinated group whose planner uses the library
+            default solver).
+        """
+        if not any(resource.url == KINEMATICS_PLUGIN_URL for resource in self.resources):
+            return None
+        document = yaml.safe_load(self.resource(KINEMATICS_PLUGIN_URL).content.decode("utf-8"))
+        inv_kin_plugins = document.get("kinematic_plugins", {}).get("inv_kin_plugins", {})
+        group_plugins = inv_kin_plugins.get(group)
+        if not group_plugins:
+            return None
+        default_solver = group_plugins.get("default")
+        return default_solver if isinstance(default_solver, str) else None
+
 
 def _validate_resource(url: object, content: object) -> tuple[str, bytes]:
     normalized_url = PackageResourceUrl.build(url)
@@ -596,7 +643,7 @@ def _kdl_plugin_yaml(configurations: list[KdlKinematics]) -> str:
 
 def _coupled_plugin_yaml(configuration: CoupledKinematics) -> str:
     opw = configuration.manipulator
-    solver_name = "ROPInvKin" if configuration.topology is CoupledTopology.ROBOT_ON_POSITIONER else "REPInvKin"
+    solver_name = native_coupled_ik_solver_name(configuration.topology)
     plugin_config = {
         "manipulator_reach": configuration.manipulator_reach,
         "positioner_sample_resolution": [{"name": name, "value": value} for name, value in configuration.positioner_sample_resolution],
