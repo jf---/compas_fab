@@ -1,43 +1,61 @@
 # Testing Grasshopper components without the GUI
 
-**BLUF.** Grasshopper components have historically been tested by hand — drop one
-on a canvas, wire it, eyeball the output. This project tests them **rigorously
-and automatically, with no GUI in the loop**, by splitting the problem across
-three layers: the marshalling logic runs against the *real backend* under a fake
-Grasshopper host in ordinary `pytest`; the metadata contracts are static
-assertions; and the one thing only Grasshopper's solver can decide — `DataTree`
-access-lifting — is driven in a **live Rhino** through the `rhinocode` CLI. The
-result is **107 automated tests over 19 components**, most running in plain CI
-with no Rhino at all, and the irreducible GUI-only behaviour reached
-head-on rather than deferred to manual clicking.
+**BLUF.** Grasshopper components are tested in three layers, and it matters to be
+exact about what each one actually does. Layers 1–2 — the large majority — run in
+plain `pytest` with the Grasshopper kernel **faked**: they call `RunScript`
+directly and pin the component's marshalling *logic*, but they exercise **nothing
+Grasshopper's solver does**. Layer 3 (`tests/rhino/`, opt-in) runs a component in
+a **real `GH_Document` solved by the actual Grasshopper kernel** via the
+`rhinocode` CLI, and asserts the kernel-only behaviour — access-lifting — that
+Layers 1–2 cannot see. Keep the split in mind: most of the suite covers *logic*;
+a small live-Rhino suite covers *Grasshopper's execution*.
 
 ## Evidence
 
-Every claim below traces to a file, a count, or a commit — nothing is asserted
-without a source.
+Every claim traces to a file, a count, or a commit.
 
 | Claim | Evidence | Source |
 |---|---|---|
-| Marshalling tested against the real backend (no mocks of our code) | 42 equivalence/behaviour tests | `tests/backends/tesseract/test_grasshopper_runscript_contract.py` |
-| ABB read + mutation components tested the same way | 14 + 18 tests | `test_abb_read_components.py`, `test_abb_mutation_components.py` |
+| Marshalling logic tested against the real backend (kernel faked, no mocks of our code) | 42 tests | `tests/backends/tesseract/test_grasshopper_runscript_contract.py` |
+| ABB read + mutation components, same fake-host method | 14 + 18 tests | `test_abb_read_components.py`, `test_abb_mutation_components.py` |
 | Metadata + `scriptParamAccess` pinned statically | 8 + 17 assertions | `test_grasshopper_access.py`, `test_grasshopper_components.py` |
 | Connection-state semantics (wire, not truthiness) | 8 tests | `test_grasshopper_input_semantics.py` |
-| Fire-once on recompute (a held button never re-commands the robot) | edge tests | `test_abb_mutation_components.py` |
-| Grasshopper's `DataTree` model is reachable & driveable in live Rhino | built + read a 3-branch `GH_Structure` (paths `{0}{1}{2}`, lengths `[1,2,3]`) | commit `35ff4320`, `scripts/rhino_harness/probe_datatree.py` |
-| 19 components under test | 12 Tesseract + 7 ABB `Cf_*` dirs | `src/compas_fab/ghpython/components_cpython/` |
+| **Access-lifting proven under the ACTUAL kernel** — list access → one call per branch, item → one per item | 2 passing tests, real `GH_Document` solve | `tests/rhino/test_gh_access_lifting.py`, commit `ccd4e88f` |
+| Plain RhinoCommon runs under the live interpreter (no GH) | 2 tests (exact 3-4-5 distance, analytic sphere volume) | `tests/rhino/test_rhino_python.py` |
 
 !!! success "Confirmed"
-    Layers 1 and 2 run green in the standard suite (part of the 809-test run).
-    The live-Rhino transport is confirmed end-to-end: scripts execute in Rhino's
-    CPython 3.9.10 and Grasshopper's `DataTree` is constructed and read back.
+    Layers 1–2 run green in the standard suite. The Layer-3 live-Rhino suite
+    passes against an open Rhino 8: a GhPython component with a **list**-access
+    input, fed a 3-branch tree, is solved by the kernel and returns one result per
+    branch (`{0}=1 {1}=2 {2}=3`); the **item** variant returns one per item. That
+    is Grasshopper's real solver running a real component, asserted in `pytest`.
 
-!!! warning "Under verification"
-    The **full component-solve** in live Rhino — instantiating a Script component
-    with `scriptParamAccess=1`, feeding it a tree, solving, and confirming one
-    call *per branch* — is not yet automated. The data model it needs is proven
-    reachable (above); the component-solve wiring is the next step. Until then,
-    list-access lifting is asserted at the *declaration* level (Layer 2), not the
-    *behaviour* level.
+!!! warning "The honest remaining gap"
+    The Layer-3 test proves the kernel's *access-lifting mechanism* using a
+    generic GhPython component. It does **not** yet run *our compiled* `Cf_*`
+    components under the kernel — Rhino's Python ships an old `compas_fab` and
+    lacks our branch/deps (the env skew in [Rhino harness](rhino_harness.md)). So:
+    the behaviour our components rely on is proven; running *those specific
+    components* end-to-end under the kernel is still gated by the env skew.
+
+## How Grasshopper is invoked — and where it is not
+
+Be precise about this, because it is easy to overclaim:
+
+| Layer | How the component is invoked | Is the real GH kernel running it? |
+|---|---|---|
+| **1** | `exec` the `code.py`, instantiate the class, call `RunScript(...)` **as a plain Python method** under faked `Grasshopper`/`Rhino`/`scriptcontext` | **No.** The kernel is bypassed entirely — access-lifting, casting, data matching, param handling never happen. Only the marshalling logic inside `RunScript` is exercised. |
+| **2** | Not invoked; `metadata.json` + source are read as data | No. |
+| **3** | A component is instantiated in a real `GH_Document` and solved by Grasshopper's kernel, driven via `rhinocode` (`tests/rhino/`) | **Yes.** The kernel runs the component and lifts access; asserted in `pytest`. (Running our *compiled* `Cf_*` specifically is still env-skew-gated — see the warning above.) |
+
+!!! note "Layer 1 is a monkeypatch — by design, and it is not the kernel"
+    Every Layer-1 test calls `RunScript` **directly** with the kernel faked. That
+    is deliberate: it isolates and pins the marshalling logic cheaply, in plain CI
+    with no Rhino. But it covers the component's *logic*, **not** Grasshopper's
+    *execution* of it — item/list/tree lifting, casting, and data matching happen
+    in the kernel, which Layer 1 never touches. Those are covered separately by
+    the Layer-3 live-Rhino suite above. Do not read Layer 1 as evidence the kernel
+    runs the component correctly; that is Layer 3's job.
 
 ## Why this works: thin adapter over a tested core
 
@@ -161,7 +179,7 @@ and its ports can never silently disagree.
     ABB write component's fire-once test presses the arm button, recomputes with
     it still held, and asserts the controller is commanded **exactly once**.
 
-## Layer 3 — the breakthrough: driving live Grasshopper from the CLI
+## Layer 3 — running a component under the real kernel
 
 GH's item/list/tree lifting happens in its **solver, before** `RunScript` is
 called. No fake host can observe it — only a real GH solve can. The enabling
@@ -178,18 +196,22 @@ transport has three non-obvious properties, each of which cost real time to find
 - **The path must be a real `.py` file** — rhinocode picks the language by
   extension; a process-substitution FD fails with `CodeLanguageNotFoundException`.
 
-With those pinned, the harness genuinely drives Grasshopper. The validation run
-(`scripts/rhino_harness/probe_datatree.py`, commit `35ff4320`) built a 3-branch
-`GH_Structure[GH_Integer]` in the live interpreter and read back its exact shape:
+With those pinned, `tests/rhino/test_gh_access_lifting.py` does the real thing: a
+`GH_Document`, a GhPython component whose code is `a = len(x)`, its input `x` set
+to `GH_ParamAccess.list`, fed a 3-branch integer tree, and `doc.NewSolution(True)`
+— Grasshopper's own solver. The output is read back and asserted:
 
-```json
-{ "path_count": 3, "data_count": 6, "branch_lengths": [1, 2, 3], "paths": ["{0}", "{1}", "{2}"] }
+```python
+assert result["phase"] == "Computed"            # the kernel solved it
+assert result["branches"] == [["1"], ["2"], ["3"]]  # list access → one call per branch, x = the branch
 ```
 
-That establishes the data model the access-lifting test needs. The one remaining
-piece — a full Script-component solve — is tracked under *Under verification*
-above. Locally this runs against a persistent Rhino instance; the reproducible
-CI gate runs the same driver on the self-hosted Windows Rhino runner.
+An item-access companion (`a = x + 100`) returns one result per item, proving the
+contrast. `tests/rhino/test_rhino_python.py` does the same for plain RhinoCommon
+(no GH). Locally these run against an open Rhino instance; the reproducible CI
+gate runs the same `pytest` on the self-hosted Windows Rhino runner. The
+remaining gap — running our *compiled* `Cf_*` components under the kernel — is the
+env skew noted at the top, not the harness.
 
 ## Do not reinvent compas tooling
 
@@ -208,12 +230,14 @@ pixi run pytest tests/backends/tesseract/test_grasshopper_runscript_contract.py 
                 tests/backends/tesseract/test_abb_mutation_components.py \
                 tests/backends/tesseract/test_grasshopper_access.py -n auto -q
 
-# Layer 3 transport — live Rhino must be open; find the instance, run the probe:
-RC="/Applications/Rhino 8.app/Contents/Resources/bin/rhinocode"
-"$RC" list                                   # → rhinocode_remotepipe_<PID>
-"$RC" -r <instance> script "$PWD/scripts/rhino_harness/probe_datatree.py"
-cat /Users/Shared/rh_gh.json                 # the DataTree shape, read back
+# Layer 3 — real kernel; Rhino 8 must be open. Opt-in: the default suite excludes
+# tests/rhino (root conftest.pytest_ignore_collect), so pass the files explicitly:
+pixi run pytest tests/rhino/test_gh_access_lifting.py tests/rhino/test_rhino_python.py -v
 ```
+
+The Layer-3 fixture (`tests/rhino/conftest.py`) finds the instance via `rhinocode
+list`, submits the driver, waits for its result file, and returns the JSON — and
+**fails loudly** if no Rhino is running rather than skipping.
 
 ## Add a test for a new component
 
@@ -232,5 +256,7 @@ cat /Users/Shared/rh_gh.json                 # the DataTree shape, read back
 run heavy backend paths (native compile, planning, a live client). They are
 tested at the reachable wiring boundary — guard clauses, `sticky` cache eviction,
 the real client build and isolated-clone exposure — while deep execution is left
-to the backend suite and the installed examples. And the Layer-3 component-solve
-is not yet automated (above). Both limits are documented rather than papered over.
+to the backend suite and the installed examples. And Layer 3 proves the kernel's
+access-lifting with a generic component; running our *compiled* `Cf_*` components
+under the kernel is still gated by the Rhino env skew. Both limits are stated
+rather than papered over.
