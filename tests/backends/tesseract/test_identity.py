@@ -36,7 +36,7 @@ def test_identity_records_component_versions():
 
     assert identity.schema_version == "1"
     assert identity.compas_fab_version
-    assert identity.tesseract_version == "0.35.0.6"
+    assert identity.tesseract_version == "0.35.0.7"
 
 
 @pytest.mark.parametrize(("urdf", "srdf"), [("", SRDF), (URDF, ""), ("  ", SRDF)])
@@ -48,9 +48,9 @@ def test_empty_robot_description_fails_loudly(urdf, srdf):
 @pytest.mark.parametrize(
     ("digest", "schema_version", "compas_fab_version", "tesseract_version"),
     [
-        ("not-a-sha", "1", "2.0.1", "0.35.0.6"),
-        ("0" * 64, "unknown", "2.0.1", "0.35.0.6"),
-        ("0" * 64, "1", "", "0.35.0.6"),
+        ("not-a-sha", "1", "2.0.1", "0.35.0.7"),
+        ("0" * 64, "unknown", "2.0.1", "0.35.0.7"),
+        ("0" * 64, "1", "", "0.35.0.7"),
         ("0" * 64, "1", "2.0.1", ""),
     ],
 )

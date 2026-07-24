@@ -1,5 +1,5 @@
 # r: compas_fab>=2.0.1
-# r: tesseract-robotics-nanobind==0.35.0.6
+# r: tesseract-robotics-nanobind==0.35.0.7
 """Build an exact native ProfileDictionary for Descartes pipelines.
 
 Every released native factory argument is exposed. Unconnected controls remain

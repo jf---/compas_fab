@@ -1,5 +1,5 @@
 # r: compas_fab>=2.0.1
-# r: tesseract-robotics-nanobind==0.35.0.6
+# r: tesseract-robotics-nanobind==0.35.0.7
 """Bind exact Tesseract profile names to native ABB RAPID variables.
 
 The output remains a native RapidProfile map. Each RAPID variable kind uses

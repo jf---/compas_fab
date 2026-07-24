@@ -1,5 +1,5 @@
 # r: compas_fab>=2.0.1
-# r: tesseract-robotics-nanobind==0.35.0.6
+# r: tesseract-robotics-nanobind==0.35.0.7
 """Emit ABB RAPID from one exact native CompositeInstruction.
 
 Tesseract remains the instruction dispatcher, unit converter, and formatter.

@@ -1,5 +1,5 @@
 # r: compas_fab>=2.0.1
-# r: tesseract-robotics-nanobind==0.35.0.6
+# r: tesseract-robotics-nanobind==0.35.0.7
 """Inspect a complete native planning result without projecting it to COMPAS.
 
 Exact request, PlanningResult, raw program, and trajectory points remain exposed.

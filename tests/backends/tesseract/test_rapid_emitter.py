@@ -160,7 +160,7 @@ def test_adapter_serializes_native_global_writer(monkeypatch):
     active_calls = 0
     maximum_active_calls = 0
 
-    def instrumented_emit(program, profiles, *, module_name, proc_name):
+    def instrumented_emit(program, profiles, *, module_name, proc_name, external_axes=None):
         nonlocal active_calls, maximum_active_calls
         with state_lock:
             active_calls += 1

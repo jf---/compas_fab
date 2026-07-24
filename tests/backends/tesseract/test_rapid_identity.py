@@ -16,7 +16,7 @@ def test_identity_is_deterministic_and_versioned():
     assert len(left.digest) == 64
     assert left.schema_version == RAPID_IDENTITY_SCHEMA_VERSION
     assert left.compas_fab_version
-    assert left.tesseract_version == "0.35.0.6"
+    assert left.tesseract_version == "0.35.0.7"
 
 
 @pytest.mark.parametrize(
@@ -41,7 +41,7 @@ def test_identity_changes_with_tesseract_distribution_version(monkeypatch):
     def changed_version(distribution):
         versions = {
             "compas-fab": baseline.compas_fab_version,
-            "tesseract-robotics-nanobind": "0.35.0.7",
+            "tesseract-robotics-nanobind": "0.35.0.8",
         }
         return versions[distribution]
 
@@ -50,15 +50,15 @@ def test_identity_changes_with_tesseract_distribution_version(monkeypatch):
     changed = RapidProgramIdentity.build(SOURCE, "M", "main")
 
     assert changed.digest != baseline.digest
-    assert changed.tesseract_version == "0.35.0.7"
+    assert changed.tesseract_version == "0.35.0.8"
 
 
 @pytest.mark.parametrize(
     ("digest", "schema_version", "compas_fab_version", "tesseract_version"),
     [
-        ("not-a-sha", RAPID_IDENTITY_SCHEMA_VERSION, "2.0.1", "0.35.0.6"),
-        ("0" * 64, "unknown", "2.0.1", "0.35.0.6"),
-        ("0" * 64, RAPID_IDENTITY_SCHEMA_VERSION, "", "0.35.0.6"),
+        ("not-a-sha", RAPID_IDENTITY_SCHEMA_VERSION, "2.0.1", "0.35.0.7"),
+        ("0" * 64, "unknown", "2.0.1", "0.35.0.7"),
+        ("0" * 64, RAPID_IDENTITY_SCHEMA_VERSION, "", "0.35.0.7"),
         ("0" * 64, RAPID_IDENTITY_SCHEMA_VERSION, "2.0.1", ""),
     ],
 )

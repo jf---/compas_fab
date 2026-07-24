@@ -1,5 +1,5 @@
 # r: compas_fab>=2.0.1
-# r: tesseract-robotics-nanobind==0.35.0.6
+# r: tesseract-robotics-nanobind==0.35.0.7
 """Build exact native MotionProgram and CompositeInstruction values.
 
 The native robot resolves group joint order and an omitted TCP. Ordered target

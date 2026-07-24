@@ -165,7 +165,7 @@ def test_native_authoring_component_contract(
     assert [item["name"] for item in metadata["ghpython"]["inputParameters"]] == inputs
     assert [item["name"] for item in metadata["ghpython"]["outputParameters"]] == outputs
     assert factory in code
-    assert "# r: tesseract-robotics-nanobind==0.35.0.6" in code
+    assert "# r: tesseract-robotics-nanobind==0.35.0.7" in code
     assert "except TesseractBackendError" in code
     assert "except Exception" not in code
     assert _png_size(COMPONENTS / component / "icon.png") == (24, 24)
@@ -343,7 +343,7 @@ def test_tesseract_components_require_nanobind_distribution_only():
         "Cf_TesseractNativeResult",
     ):
         code, _ = _component(name)
-        assert "# r: tesseract-robotics-nanobind==0.35.0.6" in code
+        assert "# r: tesseract-robotics-nanobind==0.35.0.7" in code
         assert ".dev" not in code
         assert "# r: tesseract-python" not in code
         assert "except Exception" not in code
@@ -374,8 +374,8 @@ def test_rhino_lock_contains_released_windows_python39_nanobind_wheel():
     locators = [next(iter(package.values())) for package in packages]
 
     assert any("/python-3.9." in locator for locator in locators)
-    assert any("tesseract_robotics_nanobind-0.35.0.6-cp39-cp39-win_amd64.whl" in locator for locator in locators)
-    assert all("tesseract_robotics_nanobind-0.35.0.6.dev" not in locator for locator in locators)
+    assert any("tesseract_robotics_nanobind-0.35.0.7-cp39-cp39-win_amd64.whl" in locator for locator in locators)
+    assert all("tesseract_robotics_nanobind-0.35.0.7.dev" not in locator for locator in locators)
 
 
 def test_windows_ci_requires_all_tesseract_user_objects_before_upload():
