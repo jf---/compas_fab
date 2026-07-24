@@ -7,8 +7,14 @@ directly and pin the component's marshalling *logic*, but they exercise **nothin
 Grasshopper's solver does**. Layer 3 (`tests/rhino/`, opt-in) runs a component in
 a **real `GH_Document` solved by the actual Grasshopper kernel** via the
 `rhinocode` CLI, and asserts the kernel-only behaviour — access-lifting — that
-Layers 1–2 cannot see. Keep the split in mind: most of the suite covers *logic*;
-a small live-Rhino suite covers *Grasshopper's execution*.
+Layers 1–2 cannot see. And because "it runs in Rhino" invites the question *how do
+you know that isn't a fake too*, two Layer-3 tests settle it **by falsification**:
+one forces a genuine .NET `System.FormatException` (the interpreter is real Rhino);
+one makes a component `raise` and shows the Grasshopper solver re-emit it in its
+own `"Solution exception:"` idiom (the kernel is real). Neither can run at all
+outside Rhino — off-Rhino they raise `ModuleNotFoundError: No module named
+'System'`. Keep the split in mind: most of the suite covers *logic*; a small
+live-Rhino suite covers *Grasshopper's execution*, with an unfakeable anchor.
 
 ## Evidence
 
@@ -21,7 +27,9 @@ Every claim traces to a file, a count, or a commit.
 | Metadata + `scriptParamAccess` pinned statically | 8 + 17 assertions | `test_grasshopper_access.py`, `test_grasshopper_components.py` |
 | Connection-state semantics (wire, not truthiness) | 8 tests | `test_grasshopper_input_semantics.py` |
 | **Access-lifting proven under the ACTUAL kernel** — list access → one call per branch, item → one per item | 2 passing tests, real `GH_Document` solve | `tests/rhino/test_gh_access_lifting.py`, commit `ccd4e88f` |
+| **Falsification — the real Grasshopper solver runs it** — a component's `raise` re-emitted by the kernel as `"Solution exception:…"` at `Error` level | 1 test | `tests/rhino/test_gh_kernel_proof.py` |
 | Plain RhinoCommon runs under the live interpreter (no GH) | 2 tests (exact 3-4-5 distance, analytic sphere volume) | `tests/rhino/test_rhino_python.py` |
+| **Falsification — the real Rhino/.NET interpreter runs it** — forced `System.FormatException`, live `Rhino.Geometry.Brep`, interpreter is `…/Rhinoceros` | 1 test | `tests/rhino/test_rhino_python.py::test_dotnet_exception_proves_real_rhino_execution` |
 | Our ABB backend runs in Rhino (real deps, real `scriptcontext.sticky`) | 1 test — builds a real fork `RWS`, sticky-cached | `tests/rhino/test_abb_backend_in_rhino.py`, commit `06c2d3c1` |
 
 !!! success "Confirmed"
@@ -43,6 +51,51 @@ Every claim traces to a file, a count, or a commit.
     (Rhino ships 0.34), and by design the heavy native deps stay in pixi, not
     Rhino (see [Rhino harness](rhino_harness.md)). ABB (pure deps) runs in Rhino;
     Tesseract (heavy) does not, on purpose.
+
+## Proof, by falsification: the interpreter and the kernel are real
+
+The fair objection to any "it runs in Rhino" claim is *how do you know it isn't
+another fake?* Two Layer-3 tests answer it adversarially — each forces an artifact
+that **only** the real thing can produce, and that the off-Rhino `pytest` process
+provably cannot. Run the same driver in our pixi Python and it doesn't fail an
+assertion, it fails to import: `ModuleNotFoundError: No module named 'System'` /
+`No module named 'Rhino'`. There is nothing to stub, because the artifacts are the
+runtime's own.
+
+**The .NET / RhinoCommon interpreter is real** —
+`test_rhino_python.py::test_dotnet_exception_proves_real_rhino_execution`. The
+driver forces a genuine .NET fault and reads a live RhinoCommon type:
+
+```python
+System.Int32.Parse("this-is-not-an-int")   # raises a .NET exception, not a Python one
+```
+
+Captured from live Rhino, and asserted:
+
+| Evidence | Value | Why it can't be faked |
+|---|---|---|
+| `net_exception_fullname` | `System.FormatException` | a .NET exception type, caught as `System.Exception` |
+| `rhinocommon_brep_type` | `Rhino.Geometry.Brep` | a live RhinoCommon .NET type via `GetType().FullName` |
+| `python_executable` | `…/Rhino 8.app/Contents/MacOS/Rhinoceros` | the interpreter **is** Rhino, not `python3.12` |
+
+**The Grasshopper solver is real** —
+`test_gh_kernel_proof.py::test_kernel_surfaces_a_raise_as_grasshopper_error`. A
+GhPython component whose body is `raise ValueError('proof-of-grasshopper-kernel')`
+is solved in a real `GH_Document`. The kernel catches the Python exception *during
+its solution* and re-emits it in the solver's own words:
+
+| Evidence | Value | Why it can't be faked |
+|---|---|---|
+| `error_messages` | `["Solution exception:proof-of-grasshopper-kernel"]` | the `"Solution exception:"` prefix is written inside Grasshopper's `SolveInstance` try/catch — **we** never write it |
+| `message_level` | `Error` | a `GH_RuntimeMessageLevel` the kernel *escalated to*; the driver never sets it |
+| `component_type` | `GhPython.Component.ZuiPythonComponent` | the real GhPython .NET type |
+| `proxy_count` | `2837` | the live `ComponentServer`'s loaded component library |
+
+The distinction that matters: a monkeypatch could echo our own `ValueError` text
+back to us. It cannot invent Grasshopper's *solver-level* error-wrapping, escalate
+a `GH_RuntimeMessageLevel` we never touched, or stand up a 2837-proxy
+`ComponentServer`. The proof is not "Python ran" — it is "Grasshopper's solver ran
+and handled our fault in its own idiom."
 
 ## How Grasshopper is invoked — and where it is not
 
@@ -213,11 +266,16 @@ assert result["branches"] == [["1"], ["2"], ["3"]]  # list access → one call p
 ```
 
 An item-access companion (`a = x + 100`) returns one result per item, proving the
-contrast. `tests/rhino/test_rhino_python.py` does the same for plain RhinoCommon
-(no GH). Locally these run against an open Rhino instance; the reproducible CI
-gate runs the same `pytest` on the self-hosted Windows Rhino runner. The
-remaining gap — running our *compiled* `Cf_*` components under the kernel — is the
-env skew noted at the top, not the harness.
+contrast. A second kernel-only fact is pinned by `tests/rhino/test_gh_kernel_proof.py`
+(see the falsification section above): a component whose body `raise`s comes back
+carrying the solver's *own* `"Solution exception:"` message at `Error` level —
+behaviour that exists nowhere but inside a real Grasshopper solution.
+`tests/rhino/test_rhino_python.py` does the same for plain RhinoCommon (no GH), and
+its `test_dotnet_exception_proves_real_rhino_execution` forces a real .NET fault to
+prove the interpreter itself. Locally these run against an open Rhino instance; the
+reproducible CI gate runs the same `pytest` on the self-hosted Windows Rhino runner.
+The remaining gap — running our *compiled* `Cf_*` components under the kernel — is
+the env skew noted at the top, not the harness.
 
 ## Do not reinvent compas tooling
 
@@ -238,7 +296,9 @@ pixi run pytest tests/backends/tesseract/test_grasshopper_runscript_contract.py 
 
 # Layer 3 — real kernel; Rhino 8 must be open. Opt-in: the default suite excludes
 # tests/rhino (root conftest.pytest_ignore_collect), so pass the files explicitly:
-pixi run pytest tests/rhino/test_gh_access_lifting.py tests/rhino/test_rhino_python.py -v
+pixi run pytest tests/rhino/test_gh_access_lifting.py \
+                tests/rhino/test_gh_kernel_proof.py \
+                tests/rhino/test_rhino_python.py -v
 ```
 
 The Layer-3 fixture (`tests/rhino/conftest.py`) finds the instance via `rhinocode
