@@ -7,7 +7,6 @@ Anything less than a real coupled solve would leave external axes as decoupled
 values, which is exactly what world-class support must not do.
 """
 
-import gc
 from pathlib import Path
 
 import pytest
@@ -171,19 +170,12 @@ def test_emitted_yaml_loads_coordinated_seven_dof_solver():
     scene_graph = env.getSceneGraph()
     scene_state = env.getState()
     solver = factory.createInvKin(_FULL_GROUP, "ROPInvKin", scene_graph, scene_state)
-    try:
-        num_joints = solver.numJoints()
-        joint_names = list(solver.getJointNames())
-    finally:
-        # The native solver holds raw pointers into the scene graph/state; if the
-        # scene is freed before the solver, teardown double-frees and segfaults.
-        # Release in reverse dependency order (solver -> scene -> env) so pytest's
-        # GC of these locals cannot crash the interpreter mid-suite. This is a
-        # tesseract_nanobind ownership gap (createInvKin should keep the scene
-        # alive); the ordered release is the workaround until the binding is fixed.
-        del solver, scene_state, scene_graph, factory, env, locator
-        gc.collect()
+    num_joints = solver.numJoints()
+    joint_names = list(solver.getJointNames())
 
+    # createInvKin keeps the scene graph, scene state, and plugin factory alive
+    # (nb::keep_alive, tesseract 0.35.0.7 / PR #126), so pytest's GC of these locals
+    # can no longer double-free the interpreter mid-suite — no ordered release needed.
     # A single coordinated solver spanning the positioner joint + the six arm joints.
     assert num_joints == 7
     assert joint_names == _EXPECTED_JOINTS
