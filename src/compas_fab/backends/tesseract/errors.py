@@ -73,6 +73,10 @@ class InvalidKinematicsConfigError(TesseractBackendError):
     """A typed Tesseract kinematics configuration violates its contract."""
 
 
+class UnknownKinematicTopologyError(TesseractBackendError):
+    """A coupled group's joints cannot be split into a known arm/external topology."""
+
+
 class KinematicsPluginConflictError(TesseractBackendError):
     """An exact SRDF already selects a kinematics plugin resource."""
 
