@@ -22,6 +22,7 @@ Every claim traces to a file, a count, or a commit.
 | Connection-state semantics (wire, not truthiness) | 8 tests | `test_grasshopper_input_semantics.py` |
 | **Access-lifting proven under the ACTUAL kernel** — list access → one call per branch, item → one per item | 2 passing tests, real `GH_Document` solve | `tests/rhino/test_gh_access_lifting.py`, commit `ccd4e88f` |
 | Plain RhinoCommon runs under the live interpreter (no GH) | 2 tests (exact 3-4-5 distance, analytic sphere volume) | `tests/rhino/test_rhino_python.py` |
+| Our ABB backend runs in Rhino (real deps, real `scriptcontext.sticky`) | 1 test — builds a real fork `RWS`, sticky-cached | `tests/rhino/test_abb_backend_in_rhino.py`, commit `06c2d3c1` |
 
 !!! success "Confirmed"
     Layers 1–2 run green in the standard suite. The Layer-3 live-Rhino suite
@@ -31,12 +32,17 @@ Every claim traces to a file, a count, or a commit.
     is Grasshopper's real solver running a real component, asserted in `pytest`.
 
 !!! warning "The honest remaining gap"
-    The Layer-3 test proves the kernel's *access-lifting mechanism* using a
-    generic GhPython component. It does **not** yet run *our compiled* `Cf_*`
-    components under the kernel — Rhino's Python ships an old `compas_fab` and
-    lacks our branch/deps (the env skew in [Rhino harness](rhino_harness.md)). So:
-    the behaviour our components rely on is proven; running *those specific
-    components* end-to-end under the kernel is still gated by the env skew.
+    Two Layer-3 things are proven under the live interpreter: the kernel's
+    *access-lifting* (with a generic component), and **our own ABB backend code**
+    running against real deps and the real `scriptcontext.sticky`
+    (`tests/rhino/test_abb_backend_in_rhino.py` — our branch on `sys.path`, the
+    fork's `abb_robot_client`, unused native backends stubbed). What is **not**
+    covered: (1) our **compiled** `Cf_*` `.ghuser` components solved by the kernel
+    end-to-end — that needs the componentizer, i.e. the Windows CI job; (2) the
+    **Tesseract** backend in Rhino — it needs native `tesseract_robotics 0.35`
+    (Rhino ships 0.34), and by design the heavy native deps stay in pixi, not
+    Rhino (see [Rhino harness](rhino_harness.md)). ABB (pure deps) runs in Rhino;
+    Tesseract (heavy) does not, on purpose.
 
 ## How Grasshopper is invoked — and where it is not
 
