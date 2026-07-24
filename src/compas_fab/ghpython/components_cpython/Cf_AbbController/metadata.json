@@ -3,7 +3,7 @@
     "nickname": "ABB Controller",
     "category": "COMPAS FAB",
     "subcategory": "ABB",
-    "description": "Connect to an ABB controller and acquire a reusable, sticky-cached read/observe owner. Lazy: no connection opens on solve; the session connects and errors surface at the first downstream read. The credential handle is a name, never a secret.",
+    "description": "Connect to an ABB controller and expose a reusable, sticky-cached RWS session for the READ and mutation components. The session is reused across recomputes and rebuilt only when endpoint, version, or handle changes. The credential handle is a name, never a secret.",
     "exposure": 2,
     "ghpython": {
         "isAdvancedMode": true,
@@ -28,7 +28,7 @@
         "outputParameters": [
             {
                 "name": "controller",
-                "description": "Reusable ControllerOwner for the READ/observe components. Not yet connected: acquisition is lazy and cached per component across solves."
+                "description": "Reusable RWS session for the READ and mutation components. Sticky-cached per component and reused across solves; rebuilt only when the endpoint, version, or handle changes."
             },
             {
                 "name": "summary",

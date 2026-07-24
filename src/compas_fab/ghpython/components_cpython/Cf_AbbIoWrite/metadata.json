@@ -1,0 +1,47 @@
+{
+    "name": "ABB IO Write",
+    "nickname": "ABB IO Write",
+    "category": "COMPAS FAB",
+    "subcategory": "ABB",
+    "description": "Write a digital or analog I/O signal to an ABB controller once per button press. Sets the signal only on the rising edge of the arm button, then reads it back and errors on a mismatch. The analog toggle selects float (analog) versus int (digital); defaults to digital.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "controller",
+                "description": "RWS session from the ABB Controller component. Unconnected writes nothing and yields no error."
+            },
+            {
+                "name": "signal",
+                "description": "I/O signal name to write."
+            },
+            {
+                "name": "value",
+                "description": "Value to write. Coerced to int for a digital signal, kept as a float for an analog one.",
+                "typeHintID": "float"
+            },
+            {
+                "name": "analog",
+                "description": "Write an analog signal (float) instead of a digital one (int). Auto-creates a boolean toggle; defaults to false (digital).",
+                "typeHintID": "bool"
+            },
+            {
+                "name": "arm",
+                "description": "Connect a Button; a True fires the write once. A held or recomputed True never re-commands the controller.",
+                "typeHintID": "bool"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "receipt",
+                "description": "Short confirmation string of the write that just fired, e.g. 'wrote DO_1=1'. Empty until the next press."
+            },
+            {
+                "name": "readback",
+                "description": "The signal value read straight back from the controller after the write, confirming the setpoint took."
+            }
+        ]
+    }
+}

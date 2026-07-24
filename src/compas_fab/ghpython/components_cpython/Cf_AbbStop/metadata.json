@@ -1,0 +1,29 @@
+{
+    "name": "ABB Stop",
+    "nickname": "ABB Stop",
+    "category": "COMPAS FAB",
+    "subcategory": "ABB",
+    "description": "Stop RAPID execution on an ABB controller once per button press. Calls stop on the rising edge of the stop button, so a held or recomputed True never re-issues it. The stop is immediate: no arming ceremony and no readback.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "controller",
+                "description": "RWS session from the ABB Controller component. Unconnected stops nothing and yields no error."
+            },
+            {
+                "name": "stop",
+                "description": "Connect a Button; a True fires the stop once. A held or recomputed True never re-issues the stop.",
+                "typeHintID": "bool"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "status",
+                "description": "Short status string of the stop that just fired, e.g. 'stopped'. Empty until the next press."
+            }
+        ]
+    }
+}

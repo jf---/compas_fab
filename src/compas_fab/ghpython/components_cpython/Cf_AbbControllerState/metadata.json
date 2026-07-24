@@ -3,7 +3,7 @@
     "nickname": "ABB Controller State",
     "category": "COMPAS FAB",
     "subcategory": "ABB",
-    "description": "Read an ABB controller's state, operating mode, and RAPID execution state through the owner's serialized worker thread. Pure observe: never mutates the controller. Connects lazily on the first read.",
+    "description": "Read an ABB controller's state, operating mode, and RAPID execution state with three direct synchronous RWS reads. Pure observe: never mutates the controller.",
     "exposure": 2,
     "ghpython": {
         "isAdvancedMode": true,
@@ -11,7 +11,7 @@
         "inputParameters": [
             {
                 "name": "controller",
-                "description": "ControllerOwner from the ABB Controller component. Unconnected yields empty outputs with no error."
+                "description": "RWS session from the ABB Controller component. Unconnected yields empty outputs with no error."
             }
         ],
         "outputParameters": [

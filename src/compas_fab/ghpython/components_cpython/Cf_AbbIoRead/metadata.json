@@ -3,7 +3,7 @@
     "nickname": "ABB IO Read",
     "category": "COMPAS FAB",
     "subcategory": "ABB",
-    "description": "Read a digital or analog I/O signal from an ABB controller through the owner's serialized worker thread. Pure observe: never sets a signal. The analog toggle selects float (analog) versus int (digital); defaults to digital.",
+    "description": "Read a digital or analog I/O signal from an ABB controller with a single direct synchronous RWS read. Pure observe: never sets a signal. The analog toggle selects float (analog) versus int (digital); defaults to digital.",
     "exposure": 2,
     "ghpython": {
         "isAdvancedMode": true,
@@ -11,7 +11,7 @@
         "inputParameters": [
             {
                 "name": "controller",
-                "description": "ControllerOwner from the ABB Controller component. Unconnected yields no output and no error."
+                "description": "RWS session from the ABB Controller component. Unconnected yields no output and no error."
             },
             {
                 "name": "signal",

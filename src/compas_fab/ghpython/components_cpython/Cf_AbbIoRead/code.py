@@ -2,9 +2,9 @@
 # r: abb-robot-client
 """Read a digital or analog I/O signal from an ABB controller.
 
-A pure observe component: the read runs through the owner's serialized worker
-thread and never sets a signal. The ``analog`` toggle routes the read to
-get_analog_io (a float) versus get_digital_io (an int); it defaults to digital.
+A pure observe component: the read is a single direct synchronous RWS call and
+never sets a signal. The ``analog`` toggle routes the read to ``get_analog_io`` (a
+float) versus ``get_digital_io`` (an int); it defaults to digital.
 
 COMPAS FAB v2.0.1
 """
@@ -12,6 +12,7 @@ COMPAS FAB v2.0.1
 import Grasshopper
 import Rhino
 import System
+from abb_robot_client.rws import ABBException
 from compas_ghpython import error
 
 from compas_fab.backends.abb.errors import AbbControllerError
@@ -35,8 +36,8 @@ class AbbIoReadComponent(Grasshopper.Kernel.GH_ScriptInstance):
 
         try:
             if read_analog:
-                return controller.submit_read(lambda session: session.get_analog_io(resolved_signal))
-            return controller.submit_read(lambda session: session.get_digital_io(resolved_signal))
-        except AbbControllerError as controller_error:
+                return controller.get_analog_io(resolved_signal)
+            return controller.get_digital_io(resolved_signal)
+        except (ABBException, AbbControllerError) as controller_error:
             error(ghenv.Component, str(controller_error))  # noqa: F821
             return None

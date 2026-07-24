@@ -1,0 +1,29 @@
+{
+    "name": "ABB Reset PP",
+    "nickname": "ABB Reset PP",
+    "category": "COMPAS FAB",
+    "subcategory": "ABB",
+    "description": "Reset the RAPID program pointer to main on an ABB controller once per button press. Calls resetpp only on the rising edge of the arm button, so a held or recomputed True never re-resets the pointer.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "controller",
+                "description": "RWS session from the ABB Controller component. Unconnected resets nothing and yields no error."
+            },
+            {
+                "name": "arm",
+                "description": "Connect a Button; a True fires the reset once. A held or recomputed True never re-resets the program pointer.",
+                "typeHintID": "bool"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "status",
+                "description": "Short status string of the reset that just fired. Empty until the next press."
+            }
+        ]
+    }
+}

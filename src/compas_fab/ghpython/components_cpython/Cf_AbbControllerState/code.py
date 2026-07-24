@@ -2,10 +2,9 @@
 # r: abb-robot-client
 """Read an ABB controller's state, operating mode, and RAPID execution state.
 
-A pure observe component: it drives three reads through the owner's serialized
-worker thread and never mutates the controller. The owner connects lazily, so
-the session is established on the first read here and a connection failure
-surfaces as a named AbbControllerError at that point.
+A pure observe component: it calls three synchronous RWS reads directly and never
+mutates the controller. An unconnected session yields empty outputs with no
+error; a controller communication failure surfaces via ``error(...)``.
 
 COMPAS FAB v2.0.1
 """
@@ -13,6 +12,7 @@ COMPAS FAB v2.0.1
 import Grasshopper
 import Rhino
 import System
+from abb_robot_client.rws import ABBException
 from compas_ghpython import error
 
 from compas_fab.backends.abb.errors import AbbControllerError
@@ -24,10 +24,11 @@ class AbbControllerStateComponent(Grasshopper.Kernel.GH_ScriptInstance):
             return (None, None, None)
 
         try:
-            controller_state = controller.submit_read(lambda session: session.get_controller_state())
-            operation_mode = controller.submit_read(lambda session: session.get_operation_mode())
-            execution_state = controller.submit_read(lambda session: session.get_execution_state())
-            return (controller_state, operation_mode, execution_state)
-        except AbbControllerError as controller_error:
+            return (
+                controller.get_controller_state(),
+                controller.get_operation_mode(),
+                controller.get_execution_state(),
+            )
+        except (ABBException, AbbControllerError) as controller_error:
             error(ghenv.Component, str(controller_error))  # noqa: F821
             return (None, None, None)
