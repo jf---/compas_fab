@@ -201,6 +201,10 @@ rhino39 = ["rhino"]
 
 [tool.pixi.pypi-dependencies]
 build = "*"
+# autobahn 26.6.2 (uv's default resolution, a transitive dep via abb_robot_client)
+# ships a source-only sdist that fails to build on macOS / py3.12. Pin to the last
+# known-good wheel release so any re-resolve stays installable.
+autobahn = "==24.4.2"
 compas_fab = { path = ".", editable = true }
 abb_robot_client = { git = "https://github.com/jf---/abb_robot_client.git", branch = "rws2" }
 compas_invocations2 = { version = ">=1.1.2,<2", extras = ["mkdocs"] }
