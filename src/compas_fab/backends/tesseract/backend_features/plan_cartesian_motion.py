@@ -130,8 +130,15 @@ class TesseractPlanCartesianMotion(PlanCartesianMotion):
             start_state.robot_configuration,
             "complete Cartesian planning start configuration",
         )
-        working_frame = robot_cell.get_base_link_name(group_name)
-        tcp_frame = robot_cell.get_end_effector_link_name(group_name)
+        coupled_frames = client.artifact.coupled_group_frames(group_name)
+        if coupled_frames is not None:
+            # A coordinated ROP/REP group: COMPAS's joint-group accessors cannot report
+            # the working/TCP frames of a cross-branch group (they give the wrong tip),
+            # so source them from the coupled config -- the authoritative emitted bytes.
+            working_frame, tcp_frame = coupled_frames
+        else:
+            working_frame = robot_cell.get_base_link_name(group_name)
+            tcp_frame = robot_cell.get_end_effector_link_name(group_name)
 
         world_pcf_frames = cast(
             "list[Frame]",
