@@ -82,10 +82,12 @@ The twc code targets an older tesseract C++ generation. The concepts port cleanl
 | coupled-solver selection | `profile.manipulator_ik_solver = "REPInvKin"` | ✅ |
 | `DescartesVertexEvaluator` / `descartes_light::EdgeEvaluator` base | `DescartesStateEvaluatorD` / `DescartesEdgeEvaluatorD`, override `evaluate(state)->(bool,cost)` | ✅ subclassable |
 | `CompoundEdgeEvaluator` | **not bound** — fold both checks into one `evaluate` | ⚠ adapt |
-| `getRobotConfig` / `getJointTurns` / `RobotConfig` | **not bound in any submodule** — reimplement in Python or rely on `use_redundant_joint_solutions=False` | ⚠ gap |
+| `getRobotConfig` / `getJointTurns` / `RobotConfig` | `tesseract_motion_planners.{getRobotConfig, getJointTurns, RobotConfig}` | ✅ bound (this session) |
+| `sampleToolZAxis` / `sampleToolXAxis` | `tesseract_motion_planners_descartes.{sampleToolZAxis, sampleToolXAxis}` | ✅ bound (this session) |
+| `satisfiesLimits` (was `satisfiesPositionLimits`) | `tesseract_common.satisfiesLimits(values, limits, ...)` | ✅ bound (this session) |
 
 !!! note "Verified vs illustrative"
-    The class names, `evaluate` signatures (`evaluate(self, start, end) -> tuple[bool, float]`, `DescartesStateD.values` → joint vector), subclass trampolines, and profile fields are **verified by live introspection**. The `WeightedEuclideanEdge` body is behaviourally 1:1 with the reference; the NUT/FUT + wrist-turn filter depends on helpers Tesseract does not bind in Python.
+    The class names, `evaluate` signatures (`evaluate(self, start, end) -> tuple[bool, float]`, `DescartesStateD.values` → joint vector), subclass trampolines, and profile fields are **verified by live introspection**. The `WeightedEuclideanEdge` body is behaviourally 1:1 with the reference; the NUT/FUT + wrist-turn filter uses `getRobotConfig`/`getJointTurns`/`satisfiesLimits`, now bound upstream (see the binding-gap note below).
 
 ```python
 import numpy as np
@@ -125,7 +127,8 @@ class CoordinatedPositionerProfile(DescartesDefaultPlanProfileD):
     # needs getRobotConfig / getJointTurns, which are NOT bound at 0.35.0.7.
 ```
 
-The one piece that does not port as a bound call — `getRobotConfig`/`getJointTurns` (the arm-configuration + redundant-turn guard against flips mid-raster) — is the remaining work for backend gap #4: either reimplement that classification in Python or get the helpers bound in the tesseract binding repo.
+!!! note "Binding gap closed (2026-07-25)"
+    The helpers the twc `DescartesStateValidator` needs are **now bound** in the tesseract binding repo (this session): `tesseract_motion_planners.getRobotConfig` / `getJointTurns` / `RobotConfig`, `tesseract_common.satisfiesLimits`, and `tesseract_motion_planners_descartes.sampleToolZAxis` / `sampleToolXAxis` — each a thin wrapper over the existing header-only C++ (`robot_config.h`, `kinematic_limits.h`, `descartes/descartes_utils.h`), with regenerated `.pyi` stubs. Verified end-to-end (`getRobotConfig(IRB2400, q)` classifies `FUT`/`NUT` correctly). So the full twc `DescartesStateValidator` now ports 1:1; it reaches compas_fab on the next wheel release (the local override pattern in the meantime).
 
 ## Canonical REP recipe (from the reference workcell)
 
@@ -146,7 +149,7 @@ The one piece that does not port as a bound call — `getRobotConfig`/`getJointT
 1. **Positioner joint order (correctness-critical).** Emit the coupled REP group as a `<joint>` list in positioner-forward / KDL order — not the shipped cross-fork `<chain>`. Proven to flip tracking from 2.12 m to 1 mm.
 2. **Coupled working/TCP frames.** In `plan_cartesian_motion.py:133-134`, source `working_frame` = the positioner tip / attached-part frame and `tcp_frame` = `manipulator_tip_link` from the coupled config — not COMPAS's SRDF-derived base/tip (which give `positioner_base_link` / `link_5`).
 3. **`min`/`max` sample bounds.** `CoupledKinematics` + `_coupled_plugin_yaml` (`artifact.py:213, 261, 649`) emit only `{name, value}`; add optional `min`/`max` per positioner sample to match the reference and bound the ladder graph.
-4. **Descartes coordination evaluators.** `build_descartes_profiles` (`descartes_profiles.py`) builds a stock profile (sampling + collision + `use_redundant_joint_solutions`) and never installs the reference's `vertex`/`edge` evaluators. The Python hooks **are** reachable — subclass `DescartesDefaultPlanProfileD` and override `createStateEvaluator`/`createEdgeEvaluator` (+ `target_pose_sample_*` fields, `manipulator_ik_solver`) — see the translation above. The only true binding gap is `getRobotConfig`/`getJointTurns` (unbound at 0.35.0.7), needed for the NUT/FUT + wrist-turn guard; reimplement in Python or bind upstream.
+4. **Descartes coordination evaluators.** `build_descartes_profiles` (`descartes_profiles.py`) builds a stock profile (sampling + collision + `use_redundant_joint_solutions`) and never installs the reference's `vertex`/`edge` evaluators. The Python hooks **are** reachable — subclass `DescartesDefaultPlanProfileD` and override `createStateEvaluator`/`createEdgeEvaluator` (+ `target_pose_sample_*` fields, `manipulator_ik_solver`) — see the translation above. The classification helpers (`getRobotConfig`/`getJointTurns`/`RobotConfig`/`satisfiesLimits`/`sampleToolZAxis`) are **now bound upstream** (this session), so the twc evaluators port 1:1 once the new wheel lands; the remaining backend work is wiring the coupled-profile subclass into `build_descartes_profiles`.
 
 ## Reference paths
 
