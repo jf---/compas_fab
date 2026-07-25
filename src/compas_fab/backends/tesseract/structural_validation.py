@@ -20,8 +20,16 @@ def validate_robot_cell_structure(
     native_robot: Robot,
     robot_cell: RobotCell,
     artifact_groups: dict[str, Optional[tuple[str, str]]],
+    coupled_groups: frozenset[str] = frozenset(),
 ) -> None:
-    """Validate every unit-bearing kinematic field consumed by the backend."""
+    """Validate every unit-bearing kinematic field consumed by the backend.
+
+    A coordinated (coupled ROP/REP) group named in ``coupled_groups`` spans two
+    scene-graph branches; its native kinematic root is not the COMPAS joint-group base
+    and no single serial chain walks it, so for such a group the base-link and chain-walk
+    checks that assume a serial group are skipped -- joint names, order, and per-joint
+    properties are still validated. Non-coupled groups take the serial path.
+    """
     model = robot_cell.robot_model
     semantics = robot_cell.robot_semantics
     if model is None or semantics is None:
@@ -33,8 +41,9 @@ def validate_robot_cell_structure(
     for group in robot_cell.group_names:
         if group not in artifact_groups:
             raise RobotArtifactMismatchError("Exact Tesseract SRDF has no semantic group {!r}.".format(group))
+        coupled = group in coupled_groups
         artifact_chain = artifact_groups[group]
-        if artifact_chain is not None:
+        if artifact_chain is not None and not coupled:
             artifact_base, artifact_tip = artifact_chain
             compas_base = robot_cell.get_base_link_name(group)
             compas_tip = robot_cell.get_end_effector_link_name(group)
@@ -66,6 +75,19 @@ def validate_robot_cell_structure(
         native_names = list(native_group.getJointNames())
         if native_names != compas_names:
             raise RobotArtifactMismatchError("Planning group {!r} joint order differs: Tesseract {}, COMPAS {}.".format(group, native_names, compas_names))
+
+        if coupled:
+            # A coupled ROP/REP group spans two scene-graph branches: its native root
+            # (world) is not the COMPAS joint-group base and no serial chain walks it.
+            # Validate each configurable joint directly by name; the base-link and
+            # chain-walk checks below assume a serial group and do not apply.
+            for compas_joint in compas_joints:
+                try:
+                    native_joint = native_robot.env.getJoint(compas_joint.name)
+                except (KeyError, RuntimeError) as error:
+                    raise RobotArtifactMismatchError("Tesseract coupled group {!r} is missing joint {!r}.".format(group, compas_joint.name)) from error
+                _validate_joint(group, native_joint, compas_joint)
+            continue
 
         native_base = native_group.getBaseLinkName()
         compas_base = robot_cell.get_base_link_name(group)

@@ -45,7 +45,8 @@ class TesseractSetRobotCell(SetRobotCell):
         native_robot = client.environment.robot
         artifact_root = ElementTree.fromstring(client.artifact.srdf)
         artifact_groups = _artifact_group_chains(artifact_root)
-        validate_robot_cell_structure(native_robot, robot_cell, artifact_groups)
+        coupled_groups = frozenset(group for group in robot_cell.group_names if client.artifact.is_coupled_group(group))
+        validate_robot_cell_structure(native_robot, robot_cell, artifact_groups, coupled_groups)
         if robot_cell_state is not None:
             require_matching_cell_state(
                 robot_cell,
