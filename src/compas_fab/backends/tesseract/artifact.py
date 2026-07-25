@@ -90,6 +90,12 @@ def native_coupled_ik_solver_name(topology: CoupledTopology) -> str:
     return topology.value.removesuffix("Factory")
 
 
+# The native coordinated (coupled) inverse-kinematics solver names, for classifying a
+# planning group as coordinated. Derived from the topology enum so the set cannot drift.
+_COUPLED_SOLVER_NAMES = frozenset(native_coupled_ik_solver_name(topology) for topology in CoupledTopology)
+_REP_SOLVER_NAME = native_coupled_ik_solver_name(CoupledTopology.ROBOT_WITH_EXTERNAL_POSITIONER)
+
+
 @define(frozen=True, slots=True)
 class KdlKinematics:
     """Explicit KDL plugin configuration for one semantic group."""
@@ -581,6 +587,55 @@ class RobotArtifact:
             return None
         default_solver = group_plugins.get("default")
         return default_solver if isinstance(default_solver, str) else None
+
+    def is_coupled_group(self, group: str) -> bool:
+        """Whether a group's default solver is a coordinated ROP/REP solver.
+
+        Args:
+            group: Exact SRDF planning-group name.
+
+        Returns:
+            True when the emitted kinematics plugin makes the group's default
+            inverse-kinematics solver the coordinated ``ROPInvKin``/``REPInvKin``.
+        """
+        return self.default_inv_kin_solver(group) in _COUPLED_SOLVER_NAMES
+
+    def coupled_group_frames(self, group: str) -> Optional[tuple[str, str]]:
+        """Return a coordinated group's ``(working_frame, tcp_frame)`` link names.
+
+        For a coordinated group the TCP is the manipulator tip and the working frame is
+        the positioner link the coordinated target references: the positioner **tip** for
+        a robot-with-external-positioner cell (the workpiece rides it and targets are
+        authored relative to it -- ``REPInvKin`` accepts only this frame) and the
+        positioner **base** for a robot-on-positioner cell (a fixed reference the moving
+        robot base is measured against). The links are read from the emitted
+        kinematics-plugin YAML -- the same authoritative bytes the native solver loads --
+        so they cannot drift. COMPAS's joint-group accessors cannot report these for a
+        cross-branch coupled group.
+
+        Args:
+            group: Exact SRDF planning-group name.
+
+        Returns:
+            ``(working_frame, tcp_frame)`` for a coordinated group, else ``None``.
+
+        Raises:
+            InvalidKinematicsConfigError: The group is coordinated but its plugin config
+                lacks the positioner/manipulator link names.
+        """
+        solver = self.default_inv_kin_solver(group)
+        if solver not in _COUPLED_SOLVER_NAMES:
+            return None
+        document = yaml.safe_load(self.resource(KINEMATICS_PLUGIN_URL).content.decode("utf-8"))
+        group_plugins = document.get("kinematic_plugins", {}).get("inv_kin_plugins", {}).get(group, {})
+        plugin_config = group_plugins.get("plugins", {}).get(solver, {}).get("config", {})
+        positioner = plugin_config.get("positioner", {}).get("config", {})
+        manipulator = plugin_config.get("manipulator", {}).get("config", {})
+        tcp_frame = manipulator.get("tip_link")
+        working_frame = positioner.get("tip_link") if solver == _REP_SOLVER_NAME else positioner.get("base_link")
+        if not isinstance(working_frame, str) or not isinstance(tcp_frame, str):
+            raise InvalidKinematicsConfigError("Coupled group {!r} plugin config lacks positioner/manipulator link names.".format(group))
+        return working_frame, tcp_frame
 
 
 def _validate_resource(url: object, content: object) -> tuple[str, bytes]:
