@@ -2,6 +2,9 @@
 
 **Date:** 2026-07-24 · **Status:** planning-time discovery; reshapes the E2 design's deliverable #5 and #7. Evidence from live probes of the shipped `abb_irb2400_external_positioner` cell (tesseract-robotics-nanobind 0.35.0.7).
 
+!!! warning "Partially superseded by [`w4-e2-rep-coordination-resolved.md`](w4-e2-rep-coordination-resolved.md) (2026-07-25)"
+    The coupled **working frame** here (`positioner_base_link` / "a `world`-fixed link, not `positioner_tool0`", §The fix B and Consequences) is **wrong**. `REPInvKin` accepts **only** `positioner_tool0` (the moving positioner tip / attached-part frame) and rejects any `world`-fixed frame. The joint-defined-group requirement and config-sourced base/tip conclusions below still hold; the follow-up doc adds the joint-**order** fix, the working-frame correction, and the reference-workcell recipe.
+
 The REP coupled group needs a **joint-defined SRDF group** *plus* a **backend that sources the coupled group's base/tip links from the `CoupledKinematics` config** (not from COMPAS's joint-group accessors), applied in both `structural_validation` and `plan_cartesian_motion`. An SRDF-only fix is provably impossible. This is the single sound approach; the spike ruled out the alternatives.
 
 ## Root cause
@@ -49,6 +52,6 @@ The native emitter's `ExternalAxisLayout` is **purely positional with trailing-s
 ## Consequences for the design
 
 - Deliverable #5 is reshaped: joint-defined SRDF + backend config-sourced coupled base/tip (bigger than "reconcile base links", but the only correct fix). The ROP-precedent single-group path stays un-regressed.
-- The REP target-authoring story is corrected: coupled working frame is a `world`-fixed link, not `positioner_tool0`.
+- The REP target-authoring story is corrected: the coupled working frame is the **positioner tip** `positioner_tool0` (the workpiece frame), authored workpiece-relative — full detail + the joint-order fix + the reference recipe are in the resolution doc linked in the banner above.
 - `cell_assembly` must emit coupled groups as `<joint>` lists (drives the synthesis contract).
 - Deliverable #7 is deferred until the native leading-pad emitter support ships (tracked like E1's T5, which was gated on the emitter refactor).
