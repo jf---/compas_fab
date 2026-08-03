@@ -224,10 +224,7 @@ def test_native_authoring_uses_grasshopper_vectorization():
     }
     for component, access in expected.items():
         _, metadata = _component(component)
-        assert {
-            item["name"]: item.get("scriptParamAccess", 0)
-            for item in metadata["ghpython"]["inputParameters"]
-        } == access
+        assert {item["name"]: item.get("scriptParamAccess", 0) for item in metadata["ghpython"]["inputParameters"]} == access
 
 
 def test_pose_component_is_the_only_new_geometry_unit_boundary():

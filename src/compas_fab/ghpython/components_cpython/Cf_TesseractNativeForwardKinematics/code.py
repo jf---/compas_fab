@@ -1,5 +1,5 @@
 # r: compas_fab>=2.0.1
-# r: tesseract-robotics-nanobind==0.35.0.6
+# r: tesseract-robotics-nanobind==0.35.0.7
 """Run exact native Tesseract forward kinematics.
 
 COMPAS FAB v2.0.1

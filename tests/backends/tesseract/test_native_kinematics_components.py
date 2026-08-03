@@ -76,7 +76,7 @@ def test_native_component_contract(directory, class_name, inputs, outputs, nativ
     assert [item["name"] for item in metadata["ghpython"]["inputParameters"]] == inputs
     assert [item["name"] for item in metadata["ghpython"]["outputParameters"]] == outputs
     assert all(item.get("scriptParamAccess", 0) == 0 for item in metadata["ghpython"]["inputParameters"])
-    assert "# r: tesseract-robotics-nanobind==0.35.0.6" in code
+    assert "# r: tesseract-robotics-nanobind==0.35.0.7" in code
     assert "planner.{}(".format(native_call) in code
     assert "planner.{}(".format(conventional_call) not in code
     assert "except TesseractBackendError" in code
