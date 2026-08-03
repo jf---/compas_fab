@@ -69,7 +69,12 @@ def test_all_five_exact_declarations_and_adapters() -> None:
             TesseractPlanner,
             "compas_fab.tesseract/v1",
             TesseractPlanOptions,
-            {PlannerOperation.INVERSE_KINEMATICS, PlannerOperation.PLAN_MOTION, PlannerOperation.CHECK_COLLISION},
+            {
+                PlannerOperation.INVERSE_KINEMATICS,
+                PlannerOperation.PLAN_MOTION,
+                PlannerOperation.PLAN_CARTESIAN_MOTION,
+                PlannerOperation.CHECK_COLLISION,
+            },
             ConfigurationTolerancePolicy.PRESERVE_ABSENT,
         ),
     )
