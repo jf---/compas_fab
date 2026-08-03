@@ -1,0 +1,226 @@
+import numpy as np
+import pytest
+from compas.geometry import Frame
+from tesseract_robotics.planning import CartesianTarget
+from tesseract_robotics.planning import JointTarget
+from tesseract_robotics.planning import MoveType
+from tesseract_robotics.planning import Pose
+from tesseract_robotics.planning import StateTarget
+
+from compas_fab.backends.tesseract.errors import InvalidTesseractTargetError
+from compas_fab.backends.tesseract.native_quantities import NativeJointNames
+from compas_fab.backends.tesseract.native_quantities import NativeJointPositions
+from compas_fab.backends.tesseract.native_quantities import NativeJointVelocities
+from compas_fab.backends.tesseract.native_pose import WorkingFrameUserUnits
+from compas_fab.backends.tesseract.native_pose import pose_from_working_frame
+from compas_fab.backends.tesseract.native_targets import build_cartesian_target
+from compas_fab.backends.tesseract.native_targets import cartesian_target_from_native
+from compas_fab.backends.tesseract.native_targets import build_joint_target
+from compas_fab.backends.tesseract.native_targets import build_state_target
+from compas_fab.backends.tesseract.native_targets import joint_target_from_native
+from compas_fab.backends.tesseract.native_targets import move_type_from_name
+from compas_fab.backends.tesseract.native_targets import WorkingFrameCartesianTarget
+
+
+@pytest.mark.parametrize("move_type", list(MoveType))
+def test_cartesian_target_retains_exact_pose_and_every_move_type(move_type):
+    pose = Pose.from_xyz(0.1, 0.2, 0.3)
+
+    target = build_cartesian_target(pose, move_type, "CARTESIAN")
+
+    assert isinstance(target, CartesianTarget)
+    assert target.pose is pose
+    assert target.move_type is move_type
+    assert target.profile == "CARTESIAN"
+
+
+def test_joint_target_preserves_explicit_name_order():
+    target = build_joint_target(
+        [1.0, 2.0],
+        ["joint_b", "joint_a"],
+        MoveType.FREESPACE,
+        "DEFAULT",
+    )
+
+    assert isinstance(target, JointTarget)
+    np.testing.assert_array_equal(target.positions, [1.0, 2.0])
+    assert target.names == ["joint_b", "joint_a"]
+
+
+def test_joint_target_keeps_omitted_names_absent():
+    target = build_joint_target(
+        [1.0, 2.0],
+        None,
+        MoveType.FREESPACE,
+        "DEFAULT",
+    )
+
+    assert target.names is None
+
+
+def test_state_target_keeps_unconnected_dynamics_absent():
+    target = build_state_target(
+        [1.0],
+        None,
+        None,
+        None,
+        None,
+        MoveType.LINEAR,
+        "DEFAULT",
+    )
+
+    assert isinstance(target, StateTarget)
+    assert target.names is None
+    assert target.velocities is None
+    assert target.accelerations is None
+    assert target.time is None
+
+
+def test_state_target_retains_complete_native_state():
+    target = build_state_target(
+        [1.0, 2.0],
+        ["joint_1", "joint_2"],
+        [0.1, 0.2],
+        [0.01, 0.02],
+        1.5,
+        MoveType.CIRCULAR,
+        "TIMED",
+    )
+
+    np.testing.assert_array_equal(target.positions, [1.0, 2.0])
+    np.testing.assert_array_equal(target.velocities, [0.1, 0.2])
+    np.testing.assert_array_equal(target.accelerations, [0.01, 0.02])
+    assert target.names == ["joint_1", "joint_2"]
+    assert target.time == 1.5
+    assert target.move_type is MoveType.CIRCULAR
+    assert target.profile == "TIMED"
+
+
+@pytest.mark.parametrize("move_type", list(MoveType))
+def test_move_type_name_resolves_exact_native_enum(move_type):
+    assert move_type_from_name(move_type.name.lower()) is move_type
+
+
+@pytest.mark.parametrize("value", [None, object(), "", "spline"])
+def test_unknown_move_type_name_fails(value):
+    with pytest.raises(InvalidTesseractTargetError):
+        move_type_from_name(value)
+
+
+@pytest.mark.parametrize(
+    "pose,move_type,profile",
+    [
+        (object(), MoveType.FREESPACE, "DEFAULT"),
+        (Pose(), object(), "DEFAULT"),
+        (Pose(), MoveType.FREESPACE, ""),
+        (Pose(), MoveType.FREESPACE, "   "),
+    ],
+)
+def test_cartesian_target_rejects_invalid_native_inputs(
+    pose,
+    move_type,
+    profile,
+):
+    with pytest.raises(InvalidTesseractTargetError):
+        build_cartesian_target(pose, move_type, profile)
+
+
+@pytest.mark.parametrize(
+    "positions,names",
+    [
+        ([], None),
+        (0.0, None),
+        ([[0.0]], None),
+        ([0.0, float("nan")], None),
+        ([0.0, float("inf")], None),
+        ([True], None),
+        ([0.0], ["joint", "extra"]),
+        ([0.0, 1.0], ["joint", "joint"]),
+        ([0.0], [""]),
+        ([0.0], "joint"),
+    ],
+)
+def test_joint_target_rejects_invalid_positions_or_names(positions, names):
+    with pytest.raises(InvalidTesseractTargetError):
+        build_joint_target(
+            positions,
+            names,
+            MoveType.FREESPACE,
+            "DEFAULT",
+        )
+
+
+@pytest.mark.parametrize(
+    "velocities,accelerations,time",
+    [
+        ([0.0, 1.0], None, None),
+        (None, [0.0, 1.0], None),
+        ([float("nan")], None, None),
+        (None, [float("inf")], None),
+        (None, None, -1.0),
+        (None, None, float("nan")),
+        (None, None, True),
+    ],
+)
+def test_state_target_rejects_malformed_optional_dynamics(
+    velocities,
+    accelerations,
+    time,
+):
+    with pytest.raises(InvalidTesseractTargetError):
+        build_state_target(
+            [0.0],
+            ["joint"],
+            velocities,
+            accelerations,
+            time,
+            MoveType.FREESPACE,
+            "DEFAULT",
+        )
+
+
+def test_typed_joint_target_path_rejects_wrong_quantity_type():
+    positions = NativeJointPositions.build([0.0])
+    names = NativeJointNames.build(["joint"], 1)
+
+    target = joint_target_from_native(
+        positions,
+        names,
+        MoveType.FREESPACE,
+        "DEFAULT",
+    )
+
+    assert target.names == ["joint"]
+    with pytest.raises(InvalidTesseractTargetError, match="NativeJointPositions"):
+        joint_target_from_native(
+            NativeJointVelocities.build([0.0]),
+            names,
+            MoveType.FREESPACE,
+            "DEFAULT",
+        )
+
+
+def test_typed_cartesian_target_retains_working_frame_identity():
+    pose = pose_from_working_frame(WorkingFrameUserUnits.build(Frame.worldXY(), 1.0, "world"))
+
+    target = cartesian_target_from_native(
+        pose,
+        MoveType.LINEAR,
+        "DEFAULT",
+    )
+
+    assert target.working_frame == "world"
+
+
+@pytest.mark.parametrize(
+    ("move_type", "profile"),
+    [(object(), "DEFAULT"), (MoveType.LINEAR, "")],
+)
+def test_typed_cartesian_raw_constructor_revalidates_native_fields(
+    move_type,
+    profile,
+):
+    pose = pose_from_working_frame(WorkingFrameUserUnits.build(Frame.worldXY(), 1.0, "world"))
+
+    with pytest.raises(InvalidTesseractTargetError):
+        WorkingFrameCartesianTarget(pose, move_type, profile)

@@ -1,0 +1,61 @@
+{
+    "name": "Tesseract Motion Program",
+    "nickname": "Tesseract Motion Program",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Build exact native MotionProgram and CompositeInstruction values while preserving target order and move types and validating retained Cartesian working frames.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "native_robot",
+                "description": "Exact isolated native tesseract_robotics.planning.Robot clone from Tesseract Planner."
+            },
+            {
+                "name": "targets",
+                "description": "Non-empty ordered native CartesianTarget, JointTarget, or StateTarget sequence. Target order and move types are preserved.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "group_name",
+                "description": "Exact native kinematic-group name used to resolve joint order and TCP.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "tcp_frame",
+                "description": "Optional exact native TCP link name. When omitted, the selected native group resolves its active tip.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "working_frame",
+                "description": "Exact native working-frame link name. Defaults visibly to base_link.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "profile",
+                "description": "Exact native composite program-profile name. Defaults visibly to DEFAULT.",
+                "typeHintID": "str"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "motion_program",
+                "description": "Exact native tesseract_robotics.planning.MotionProgram retaining the authored targets."
+            },
+            {
+                "name": "program",
+                "description": "Exact native CompositeInstruction ready for Tesseract Native Plan or Tesseract RAPID."
+            },
+            {
+                "name": "joint_names",
+                "description": "Native group joint order used for unnamed joint/state targets."
+            },
+            {
+                "name": "tcp_frame",
+                "description": "Exact TCP link resolved by the native robot."
+            }
+        ]
+    }
+}

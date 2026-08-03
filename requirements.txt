@@ -1,3 +1,0 @@
-compas >= 2.3, < 3
-compas_robots >= 1, < 2
-roslibpy >=2

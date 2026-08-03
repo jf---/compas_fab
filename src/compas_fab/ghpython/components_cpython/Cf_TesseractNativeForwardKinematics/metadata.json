@@ -1,0 +1,38 @@
+{
+    "name": "Tesseract Native Forward Kinematics",
+    "nickname": "Tesseract Native FK",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Return one exact native Tesseract robot-relative metre pose.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "planner",
+                "description": "TesseractPlanner from Tesseract Planner. Only forward_kinematics_native is used."
+            },
+            {
+                "name": "robot_cell_state",
+                "description": "Exact RobotCellState supplying the native joint configuration."
+            },
+            {
+                "name": "link_name",
+                "description": "Exact native link name whose pose is requested.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "group",
+                "description": "Optional planning-group name. Unconnected uses the cell main group.",
+                "typeHintID": "str"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "pose",
+                "description": "Exact native Pose in robot-relative metres."
+            }
+        ]
+    }
+}

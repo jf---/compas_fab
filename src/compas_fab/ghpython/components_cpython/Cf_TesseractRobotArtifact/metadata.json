@@ -1,0 +1,68 @@
+{
+    "name": "Tesseract Robot Artifact",
+    "nickname": "Tesseract Artifact",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Build an exact content-addressed Tesseract artifact from URDF/SRDF and local package roots. KDL, collision-mesh, and contact-manager selections remain explicit and become part of the artifact identity.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "robot_cell",
+                "description": "RobotCell loaded from the same exact URDF/SRDF; used to validate group chains."
+            },
+            {
+                "name": "urdf_filename",
+                "description": "Absolute path to the exact UTF-8 URDF file.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "srdf_filename",
+                "description": "Absolute path to the exact UTF-8 SRDF file.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "resource_roots",
+                "description": "Directories whose immediate children are package:// package directories. Every file in each referenced package is retained.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "planning_groups",
+                "description": "Groups receiving KDL plugins. Defaults to robot_cell.main_group_name.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "collision_mesh_policy",
+                "description": "preserve or convex_hull. Explicitly controls Tesseract collision-mesh conversion; defaults to convex_hull.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "inverse_kinematics",
+                "description": "kdl_lma or kdl_newton_raphson. Defaults to kdl_lma.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "discrete_contact_manager",
+                "description": "bullet_bvh, bullet_simple, or fcl_bvh. Defaults to bullet_bvh.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "continuous_contact_manager",
+                "description": "bullet_cast_bvh or bullet_cast_simple. Defaults to bullet_cast_bvh.",
+                "typeHintID": "str"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "artifact",
+                "description": "Exact RobotArtifact. Retain or inspect this object; it is never reduced to a COMPAS-only projection."
+            },
+            {
+                "name": "artifact_id",
+                "description": "SHA-256 build identity covering descriptions, package resources, generated plugins, and component versions."
+            }
+        ]
+    }
+}

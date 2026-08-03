@@ -1,0 +1,63 @@
+{
+    "name": "Tesseract Native Result",
+    "nickname": "Tesseract Native Result",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Inspect a complete native Tesseract result while retaining exact objects and absent dynamics.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "result",
+                "description": "Exact TesseractPlanningResult from Tesseract Native Plan."
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "request",
+                "description": "Exact TesseractPlanningRequest that produced this result."
+            },
+            {
+                "name": "native_result",
+                "description": "Exact native tesseract_robotics PlanningResult with full native access."
+            },
+            {
+                "name": "raw_program",
+                "description": "Exact raw native CompositeInstruction returned by the pipeline."
+            },
+            {
+                "name": "message",
+                "description": "Exact native planning diagnostic message."
+            },
+            {
+                "name": "trajectory_points",
+                "description": "Exact native TrajectoryPoint objects in result order.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "joint_names",
+                "description": "Consistent native joint-name order used by every convenience row.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "positions",
+                "description": "Grasshopper tree with one native-unit position row per trajectory point."
+            },
+            {
+                "name": "velocities",
+                "description": "Grasshopper tree with one native-unit velocity row per point, or None when absent. Never zero-filled."
+            },
+            {
+                "name": "accelerations",
+                "description": "Grasshopper tree with one native-unit acceleration row per point, or None when absent. Never zero-filled."
+            },
+            {
+                "name": "times",
+                "description": "Native time-from-start seconds in point order, or None when absent. Never zero-filled.",
+                "scriptParamAccess": 1
+            }
+        ]
+    }
+}

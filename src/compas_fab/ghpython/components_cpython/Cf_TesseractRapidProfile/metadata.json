@@ -1,0 +1,46 @@
+{
+    "name": "Tesseract RAPID Profile",
+    "nickname": "RAPID Profile",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Bind exact Tesseract motion-profile names to native typed ABB RAPID speed, zone, tool, and workobject variables.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "profile_names",
+                "description": "Exact Tesseract profile names used by CompositeInstruction moves. Duplicate names fail loudly.",
+                "scriptParamAccess": 1,
+                "typeHintID": "str"
+            },
+            {
+                "name": "speed",
+                "description": "ABB speeddata variable name. Defaults to controller built-in v200.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "zone",
+                "description": "ABB zonedata variable name. Defaults to controller built-in z10.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "tool",
+                "description": "ABB tooldata variable name. Defaults to controller built-in tool0.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "workobject",
+                "description": "ABB wobjdata variable name. Defaults to controller built-in wobj0.",
+                "typeHintID": "str"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "profiles",
+                "description": "Native dict[str, RapidProfile] retaining exact Tesseract profile names and typed RAPID variable references."
+            }
+        ]
+    }
+}

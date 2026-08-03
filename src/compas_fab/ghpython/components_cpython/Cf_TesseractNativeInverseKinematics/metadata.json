@@ -1,0 +1,62 @@
+{
+    "name": "Tesseract Native Inverse Kinematics",
+    "nickname": "Tesseract Native IK",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Return the exact native Tesseract IK result, including an empty solution list.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "planner",
+                "description": "TesseractPlanner from Tesseract Planner. Only inverse_kinematics_native is used."
+            },
+            {
+                "name": "target",
+                "description": "Exact COMPAS FAB FrameTarget to solve."
+            },
+            {
+                "name": "robot_cell_state",
+                "description": "Exact RobotCellState supplying the native IK seed."
+            },
+            {
+                "name": "group",
+                "description": "Optional planning-group name. Unconnected uses the cell main group.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "ik_solver_name",
+                "description": "Optional exact native IK plugin name. Unconnected uses the configured default.",
+                "typeHintID": "str"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "result",
+                "description": "Exact TesseractInverseKinematicsResult wrapper retaining every native object."
+            },
+            {
+                "name": "target_pose",
+                "description": "Exact native target Pose in robot-relative metres."
+            },
+            {
+                "name": "native_input",
+                "description": "Exact native KinGroupIKInput submitted to the selected solver."
+            },
+            {
+                "name": "group",
+                "description": "Resolved planning-group name used by the native solve."
+            },
+            {
+                "name": "joint_names",
+                "description": "Native solution joint-name order."
+            },
+            {
+                "name": "solutions",
+                "description": "Every native solution array in solver order; empty when no solution exists."
+            }
+        ]
+    }
+}

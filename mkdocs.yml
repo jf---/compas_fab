@@ -141,6 +141,7 @@ plugins:
               modules: false
             type_parameter_headings: true
             unwrap_annotated: true
+  - autorefs
   - print-site
 
 nav:
@@ -149,9 +150,12 @@ nav:
   - CAD front-ends:
       - Overview: frontends.md
       - Grasshopper: frontends/ghpython.md
+      - Tesseract series: frontends/ghpython-tesseract-series.md
+      - Configuration Target: frontends/ghpython-configuration-target.md
   - Concepts: concepts.md
   - Backends:
       - Choosing a backend: backends/index.md
+      - Tesseract: backends/tesseract.md
       - Analytical IK: backends/analytical.md
       - Analytical IK + PyBullet: backends/analytical_pybullet.md
       - PyBullet: backends/pybullet.md
@@ -179,6 +183,8 @@ nav:
           - compas_fab.backends.kinematics.backend_features: api/compas_fab.backends.kinematics.backend_features.md
           - ActionChain design notes: developer/action.md
           - Grasshopper components: developer/grasshopper.md
+          - Rhino harness (rhinocode): developer/rhino_harness.md
+          - Testing Grasshopper (no GUI): developer/testing_grasshopper_components.md
           - Icon system: developer/icons/index.md
   - Changelog: changelog.md
   - Citing: citing.md

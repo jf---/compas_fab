@@ -1,0 +1,39 @@
+{
+    "name": "ABB Start",
+    "nickname": "ABB Start",
+    "category": "COMPAS FAB",
+    "subcategory": "ABB",
+    "description": "Start RAPID execution on an ABB controller once per button press. Calls start only on the rising edge of the arm button, so a held or recomputed True never restarts execution. Cycle defaults to asis; tasks default to the RWS task set when unwired.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "controller",
+                "description": "RWS session from the ABB Controller component. Unconnected starts nothing and yields no error."
+            },
+            {
+                "name": "cycle",
+                "description": "RAPID run cycle, e.g. asis, once, or forever. Unconnected/blank defaults to asis.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "tasks",
+                "description": "Optional list of RAPID task names to start. Unwired uses the RWS default task set.",
+                "scriptParamAccess": 1
+            },
+            {
+                "name": "arm",
+                "description": "Connect a Button; a True fires start once. A held or recomputed True never restarts execution.",
+                "typeHintID": "bool"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "status",
+                "description": "Short status string of the start that just fired, e.g. 'started asis'. Empty until the next press."
+            }
+        ]
+    }
+}

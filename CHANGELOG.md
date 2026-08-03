@@ -9,9 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+* New pixi tasks `build-docs` (delegates to `invoke docs`, the same command `compas-actions.docs@v5` runs in CI) and `serve-docs` (`mkdocs serve` with live reload).
+
 ### Changed
 
+* Runtime dependencies are now declared statically in `[project].dependencies` in `pyproject.toml` instead of being pulled from `requirements.txt` via setuptools dynamic metadata. Resolved requirements are unchanged — `attrs`, `compas`, `compas_robots`, `platformdirs`, `pyyaml`, `roslibpy`, and the exact `tesseract-robotics-nanobind==0.35.0.7` pin — but the nanobind pin, the most ABI-sensitive dependency in the project, is now visible in the file it belongs in. `optional-dependencies` still resolves the `dev` extra from `requirements-dev.txt`, so `pip install -e ".[dev]"` is unaffected. `tests/backends/tesseract/test_install_contract.py` now reads the pin from `[project].dependencies`; if the declaration ever regresses to dynamic metadata the key vanishes and the test fails loudly.
+
 ### Removed
+
+* `requirements.txt` — merged into `[project].dependencies` (see above) and dropped from `MANIFEST.in`.
 
 
 ## [2.0.1] 2026-06-18

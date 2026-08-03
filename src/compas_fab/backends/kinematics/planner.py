@@ -1,6 +1,10 @@
 from typing import Optional
 
 from compas_fab.backends.interfaces.planner import PlannerInterface
+from compas_fab.backends.interfaces.planner_capabilities import ConfigurationTolerancePolicy
+from compas_fab.backends.interfaces.planner_capabilities import PlannerCapabilities
+from compas_fab.backends.interfaces.planner_capabilities import PlannerImplementationId
+from compas_fab.backends.interfaces.planner_operation import PlannerOperation
 from compas_fab.backends.kinematics.backend_features import AnalyticalForwardKinematics
 from compas_fab.backends.kinematics.backend_features import AnalyticalInverseKinematics
 from compas_fab.backends.kinematics.backend_features import AnalyticalPlanCartesianMotion
@@ -8,7 +12,8 @@ from compas_fab.backends.kinematics.backend_features import AnalyticalPybulletIn
 from compas_fab.backends.kinematics.backend_features import AnalyticalSetRobotCell
 from compas_fab.backends.kinematics.backend_features import AnalyticalSetRobotCellState
 from compas_fab.backends.kinematics.client import AnalyticalKinematicsClient
-from compas_fab.backends.kinematics.solvers import AnalyticalKinematics
+from compas_fab.backends.kinematics.options import UnsupportedPlanMotionOptions
+from compas_fab.backends.kinematics.solvers.analytical_kinematics import AnalyticalKinematics
 from compas_fab.backends.pybullet.backend_features import PyBulletCheckCollision
 from compas_fab.backends.pybullet.backend_features import PyBulletForwardKinematics
 from compas_fab.backends.pybullet.backend_features import PyBulletSetRobotCell
@@ -48,14 +53,22 @@ class AnalyticalKinematicsPlanner(
 
     """
 
-    def __init__(self, kinematics_solver: AnalyticalKinematics, verbose: Optional[bool] = False):
+    implementation_id = PlannerImplementationId.build("compas_fab.analytical/v1")
+    capabilities = PlannerCapabilities.build(
+        implementation_id,
+        (PlannerOperation.INVERSE_KINEMATICS, PlannerOperation.PLAN_CARTESIAN_MOTION),
+        ConfigurationTolerancePolicy.LEGACY_DEFAULTS,
+    )
+    plan_motion_options = UnsupportedPlanMotionOptions
+
+    def __init__(self, kinematics_solver: AnalyticalKinematics, verbose: Optional[bool] = False) -> None:
         self.kinematics_solver = kinematics_solver
 
         # Initialize all mixins
-        super(AnalyticalKinematicsPlanner, self).__init__()
+        super(AnalyticalKinematicsPlanner, self).__init__()  # type: ignore[no-untyped-call]
 
         # Initialize the dummy client
-        self._client = AnalyticalKinematicsClient(verbose=verbose)
+        self._client = AnalyticalKinematicsClient(verbose=verbose)  # type: ignore[no-untyped-call]
 
 
 class AnalyticalPyBulletPlanner(
@@ -79,9 +92,21 @@ class AnalyticalPyBulletPlanner(
 
     """
 
-    def __init__(self, client: PyBulletClient, kinematics_solver: AnalyticalKinematics):
+    implementation_id = PlannerImplementationId.build("compas_fab.analytical_pybullet/v1")
+    capabilities = PlannerCapabilities.build(
+        implementation_id,
+        (
+            PlannerOperation.INVERSE_KINEMATICS,
+            PlannerOperation.PLAN_CARTESIAN_MOTION,
+            PlannerOperation.CHECK_COLLISION,
+        ),
+        ConfigurationTolerancePolicy.LEGACY_DEFAULTS,
+    )
+    plan_motion_options = UnsupportedPlanMotionOptions
+
+    def __init__(self, client: PyBulletClient, kinematics_solver: AnalyticalKinematics) -> None:
         # Initialize all mixins
-        super(AnalyticalPyBulletPlanner, self).__init__()
+        super(AnalyticalPyBulletPlanner, self).__init__()  # type: ignore[no-untyped-call]
 
         self._client = client
         self.kinematics_solver = kinematics_solver

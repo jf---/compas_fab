@@ -1,0 +1,39 @@
+{
+    "name": "ABB Controller",
+    "nickname": "ABB Controller",
+    "category": "COMPAS FAB",
+    "subcategory": "ABB",
+    "description": "Connect to an ABB controller and expose a reusable, sticky-cached RWS session for the READ and mutation components. The session is reused across recomputes and rebuilt only when endpoint, version, or handle changes. The credential handle is a name, never a secret.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "endpoint",
+                "description": "Controller base URL. Unconnected defaults to http://127.0.0.1:80, the local RobotStudio virtual controller.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "rw_version",
+                "description": "RobotWare version, RW6 or RW7. Auto-creates a dropdown; defaults to RW6. Passed explicitly so RWS skips its blocking auto-detect probe.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "credential_handle",
+                "description": "Optional credential NAME (never a secret). Unconnected/blank uses the RobotStudio VC defaults; a named handle resolves ABB_<HANDLE>_USERNAME/PASSWORD from the environment at connect time.",
+                "typeHintID": "str"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "controller",
+                "description": "Reusable RWS session for the READ and mutation components. Sticky-cached per component and reused across solves; rebuilt only when the endpoint, version, or handle changes."
+            },
+            {
+                "name": "summary",
+                "description": "Human-readable endpoint / rw_version / credential-handle-name line. Never contains a password."
+            }
+        ]
+    }
+}

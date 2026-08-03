@@ -31,19 +31,56 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v6
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .[dev]
+    - name: Install Rhino 8 CPython environment
+      uses: prefix-dev/setup-pixi@v0.9.3
+      with:
+        environments: rhino39
+        locked: true
 
     - name: Create CPython Grasshopper user objects
       run: |
-        invoke build-cpython-ghuser-components
+        pixi run -e rhino39 build-gh-components
+
+    - name: Require Tesseract Grasshopper user objects
+      shell: pwsh
+      run: |
+        $target = "src/compas_fab/ghpython/components_cpython/ghuser"
+        $required = @(
+          "Cf_TesseractRobotArtifact.ghuser",
+          "Cf_TesseractPlanner.ghuser",
+          "Cf_TesseractRapidProfile.ghuser",
+          "Cf_TesseractRapid.ghuser",
+          "Cf_TesseractPose.ghuser",
+          "Cf_TesseractCartesianTarget.ghuser",
+          "Cf_TesseractJointTarget.ghuser",
+          "Cf_TesseractStateTarget.ghuser",
+          "Cf_TesseractMotionProgram.ghuser",
+          "Cf_TesseractDescartesProfile.ghuser",
+          "Cf_TesseractNativePlan.ghuser",
+          "Cf_TesseractNativeResult.ghuser",
+          "Cf_TesseractNativeForwardKinematics.ghuser",
+          "Cf_TesseractNativeInverseKinematics.ghuser",
+          "Cf_TesseractNativeCollision.ghuser",
+          "Cf_TesseractContactRequest.ghuser",
+          "Cf_AbbController.ghuser",
+          "Cf_AbbControllerState.ghuser",
+          "Cf_AbbIoRead.ghuser",
+          "Cf_AbbIoWrite.ghuser",
+          "Cf_AbbStart.ghuser",
+          "Cf_AbbReset.ghuser",
+          "Cf_AbbStop.ghuser"
+        )
+        foreach ($name in $required) {
+          $path = Join-Path $target $name
+          if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Missing compiled Grasshopper user object: $path"
+          }
+        }
 
     - name: Create Rhino8 Yak package
       shell: pwsh
       run: |
-        invoke yakerize -m $Env:YAK_TEMPLATE\manifest.yml -l $Env:YAK_TEMPLATE\icon.png -g $Env:USER_OBJECTS -t rh8
+        pixi run -e rhino39 invoke yakerize -m $Env:YAK_TEMPLATE\manifest.yml -l $Env:YAK_TEMPLATE\icon.png -g $Env:USER_OBJECTS -t rh8
       env:
         USER_OBJECTS: src\compas_fab\ghpython\components_cpython\ghuser
         YAK_TEMPLATE: src\compas_fab\ghpython\yak_template
@@ -53,7 +90,7 @@ jobs:
       run: |
         $test_flag = if ($Env:TEST_FLAG) { $Env:TEST_FLAG } else { "" }
         $file = Get-ChildItem -Path dist\yak_package\*rh8*.yak -File | Select-Object -ExpandProperty Name
-        $command = "invoke publish-yak -y dist\yak_package\$file $test_flag".Trim()
+        $command = "pixi run -e rhino39 invoke publish-yak -y dist\yak_package\$file $test_flag".Trim()
         Invoke-Expression $command
       env:
         YAK_TOKEN: ${{ secrets.YAK_DF_TOKEN }}

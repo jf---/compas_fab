@@ -16,7 +16,19 @@ authors = [
 license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.9"
-dynamic = ['dependencies', 'optional-dependencies', 'version']
+dynamic = ['optional-dependencies', 'version']
+dependencies = [
+    "attrs>=23,<26",
+    "compas>=2.3,<3",
+    "compas_robots>=1,<2",
+    "platformdirs>=4,<5",
+    "pyyaml>=6,<7",
+    "roslibpy>=2",
+    # Exact pin, never a range: these are nanobind C++ ABI wheels. A version bump can
+    # change the ABI and segfault at call time rather than fail loudly at import.
+    # `tests/backends/tesseract/test_install_contract.py` enforces this equality.
+    "tesseract-robotics-nanobind==0.35.0.7",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -35,7 +47,8 @@ classifiers = [
 
 [tool.setuptools.dynamic]
 version = { attr = "compas_fab.__version__.__version__" }
-dependencies = { file = "requirements.txt" }
+# Runtime dependencies are declared statically in `[project].dependencies` above.
+# Only the `dev` extra still resolves from a requirements file.
 optional-dependencies = { dev = { file = "requirements-dev.txt" } }
 
 [tool.setuptools.packages.find]
@@ -151,3 +164,82 @@ replace = "# r: compas_fab>={new_version}"
 glob = "src/compas_fab/ghpython/components_cpython/**/code.py"
 search = "COMPAS FAB v{current_version}"
 replace = "COMPAS FAB v{new_version}"
+
+# ============================================================================
+# Pixi development environment
+# ============================================================================
+
+[[tool.mypy.overrides]]
+# The abb_robot_client fork ships no py.typed marker; treat it as untyped so the
+# strict gate checks our adapter's own annotations without erroring on the import.
+module = "abb_robot_client.*"
+ignore_missing_imports = true
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "win-64"]
+
+[tool.pixi.system-requirements]
+# Released nanobind macOS ARM64 wheels target macOS 14 or newer.
+macos = "14.0"
+
+[tool.pixi.dependencies]
+attrs = ">=23,<26"
+hypothesis = ">=6"
+invoke = ">=2"
+# The released macOS nanobind wheel bundles libomp for Descartes. Pthreads
+# OpenBLAS prevents NumPy from initializing a second OpenMP runtime.
+libopenblas = { version = ">=0.3.30,<0.4", build = "*pthreads*" }
+mypy = ">=1.11"
+pybullet = "*"
+pytest = ">=8"
+pytest-cov = ">=5"
+pytest-mock = ">=3"
+pytest-xdist = ">=3"
+pythonnet = ">=3"
+ruff = ">=0.8"
+tomlkit = "*"
+twine = "*"
+
+[tool.pixi.feature.dev.dependencies]
+librsvg = "*"
+python = "3.12.*"
+
+[tool.pixi.feature.rhino.dependencies]
+python = "3.9.*"
+
+[tool.pixi.environments]
+default = ["dev"]
+rhino39 = ["rhino"]
+
+[tool.pixi.pypi-dependencies]
+build = "*"
+# autobahn 26.6.2 (uv's default resolution, a transitive dep via abb_robot_client)
+# ships a source-only sdist that fails to build on macOS / py3.12. Pin to the last
+# known-good wheel release so any re-resolve stays installable.
+autobahn = "==24.4.2"
+compas_fab = { path = ".", editable = true }
+abb_robot_client = { git = "https://github.com/jf---/abb_robot_client.git", branch = "rws2" }
+compas_invocations2 = { version = ">=1.1.2,<2", extras = ["mkdocs"] }
+mkdocs-print-site-plugin = "*"
+pytest-testmon = ">=2"
+types-PyYAML = "*"
+
+[tool.pixi.tasks]
+test = { cmd = "pytest -n auto", description = "Run tests in parallel" }
+testmon = { cmd = "pytest --testmon -n auto", description = "Run affected tests in parallel" }
+lint-tesseract = { cmd = "ruff check src/compas_fab/backends/tesseract tests/backends/tesseract docs/backends/tesseract/files", description = "Lint the Tesseract backend" }
+format-tesseract = { cmd = "ruff format src/compas_fab/backends/tesseract tests/backends/tesseract docs/backends/tesseract/files", description = "Format the Tesseract backend" }
+_typecheck-tesseract-source = { cmd = "mypy --strict src/compas_fab/backends/tesseract" }
+typecheck-tesseract = { depends-on = ["_typecheck-tesseract-source"], description = "Strict type gate for the Tesseract backend source (contract test files are not strict-gated)" }
+lint-abb = { cmd = "ruff check src/compas_fab/backends/abb tests/backends/abb", description = "Lint the ABB controller backend" }
+format-abb = { cmd = "ruff format src/compas_fab/backends/abb tests/backends/abb", description = "Format the ABB controller backend" }
+typecheck-abb = { cmd = "mypy --strict src/compas_fab/backends/abb", description = "Strict type gate for the ABB controller safety core" }
+build-gh-components = { cmd = "invoke build-cpython-ghuser-components", description = "Compile CPython Grasshopper components on Windows" }
+# Delegates to `invoke docs` (compas_invocations2.mkdocs) rather than calling mkdocs
+# directly, because that is verbatim what compas-actions.docs@v5 runs in the `docs`
+# workflow — so a local build cannot silently diverge from the deployed site.
+build-docs = { cmd = "invoke docs", description = "Build the MkDocs site into dist/docs (same command CI deploys)" }
+# mkdocs serve binds its own default (127.0.0.1:8000) and honours site_url, so the
+# live site is served under /compas_fab/ exactly as on GitHub Pages.
+serve-docs = { cmd = "mkdocs serve", description = "Serve the docs locally with live reload" }

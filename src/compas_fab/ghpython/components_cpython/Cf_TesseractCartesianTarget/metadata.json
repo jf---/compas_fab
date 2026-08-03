@@ -1,0 +1,34 @@
+{
+    "name": "Tesseract Cartesian Target",
+    "nickname": "Tesseract Cartesian Target",
+    "category": "COMPAS FAB",
+    "subcategory": "Backends",
+    "description": "Build an exact native Tesseract CartesianTarget without converting geometry or units.",
+    "exposure": 2,
+    "ghpython": {
+        "isAdvancedMode": true,
+        "iconDisplay": 2,
+        "inputParameters": [
+            {
+                "name": "pose",
+                "description": "Exact native Pose. WorkingFramePose retains its frame identity; a plain native Pose remains accepted without COMPAS reinterpretation."
+            },
+            {
+                "name": "move_type",
+                "description": "Exact native move type: FREESPACE, LINEAR, or CIRCULAR. Defaults to FREESPACE.",
+                "typeHintID": "str"
+            },
+            {
+                "name": "profile",
+                "description": "Exact non-empty Tesseract motion-profile name. Defaults to DEFAULT.",
+                "typeHintID": "str"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "target",
+                "description": "Exact native CartesianTarget retaining the input Pose and, when supplied, its working-frame identity."
+            }
+        ]
+    }
+}

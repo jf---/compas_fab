@@ -15,6 +15,9 @@ import Grasshopper
 import Rhino
 import System
 
+from compas_fab.ghpython.configuration_target_policy import parse_configuration_tolerance_policy
+from compas_fab.ghpython.configuration_target_policy import resolve_configuration_tolerances
+from compas_fab.ghpython.input_semantics import optional_connected_input
 from compas_fab.robots import ConfigurationTarget
 
 
@@ -22,18 +25,36 @@ class ConfigurationTargetComponent(Grasshopper.Kernel.GH_ScriptInstance):
     DEFAULT_TOLERANCE_METERS = 0.001
     DEFAULT_TOLERANCE_RADIANS = math.radians(1)
 
-    def RunScript(self, target_configuration, tolerance_above, tolerance_below):
+    def RunScript(self, target_configuration, tolerance_above, tolerance_below, tolerance_policy):
         if target_configuration is None:
             return None
 
-        default_above, default_below = ConfigurationTarget.generate_default_tolerances(
-            target_configuration,
-            self.DEFAULT_TOLERANCE_METERS,
-            self.DEFAULT_TOLERANCE_RADIANS,
-        )
+        component = ghenv.Component  # noqa: F821
+        policy_input = optional_connected_input(component, "tolerance_policy", tolerance_policy)
 
+        if policy_input is None:
+            default_above, default_below = ConfigurationTarget.generate_default_tolerances(
+                target_configuration,
+                self.DEFAULT_TOLERANCE_METERS,
+                self.DEFAULT_TOLERANCE_RADIANS,
+            )
+            return ConfigurationTarget(
+                target_configuration=target_configuration,
+                tolerance_above=tolerance_above or default_above,
+                tolerance_below=tolerance_below or default_below,
+            )
+
+        above = optional_connected_input(component, "tolerance_above", tolerance_above)
+        below = optional_connected_input(component, "tolerance_below", tolerance_below)
+        policy = parse_configuration_tolerance_policy(policy_input)
+        resolved_above, resolved_below = resolve_configuration_tolerances(
+            target_configuration,
+            above,
+            below,
+            policy,
+        )
         return ConfigurationTarget(
             target_configuration=target_configuration,
-            tolerance_above=tolerance_above or default_above,
-            tolerance_below=tolerance_below or default_below,
+            tolerance_above=resolved_above,
+            tolerance_below=resolved_below,
         )
