@@ -223,3 +223,10 @@ lint-abb = { cmd = "ruff check src/compas_fab/backends/abb tests/backends/abb", 
 format-abb = { cmd = "ruff format src/compas_fab/backends/abb tests/backends/abb", description = "Format the ABB controller backend" }
 typecheck-abb = { cmd = "mypy --strict src/compas_fab/backends/abb", description = "Strict type gate for the ABB controller safety core" }
 build-gh-components = { cmd = "invoke build-cpython-ghuser-components", description = "Compile CPython Grasshopper components on Windows" }
+# Delegates to `invoke docs` (compas_invocations2.mkdocs) rather than calling mkdocs
+# directly, because that is verbatim what compas-actions.docs@v5 runs in the `docs`
+# workflow — so a local build cannot silently diverge from the deployed site.
+build-docs = { cmd = "invoke docs", description = "Build the MkDocs site into dist/docs (same command CI deploys)" }
+# mkdocs serve binds its own default (127.0.0.1:8000) and honours site_url, so the
+# live site is served under /compas_fab/ exactly as on GitHub Pages.
+serve-docs = { cmd = "mkdocs serve", description = "Serve the docs locally with live reload" }
