@@ -4,13 +4,13 @@ from importlib.metadata import version
 from pathlib import Path
 
 import pytest
+import tomlkit
 import yaml
 from packaging.version import Version
 from packaging.requirements import Requirement
 
 
 SOURCE = Path(__file__).parents[3] / "src" / "compas_fab" / "backends" / "tesseract"
-REQUIREMENTS = Path(__file__).parents[3] / "requirements.txt"
 PYPROJECT = Path(__file__).parents[3] / "pyproject.toml"
 PIXI_LOCK = Path(__file__).parents[3] / "pixi.lock"
 TESSERACT_DOC = Path(__file__).parents[3] / "docs" / "backends" / "tesseract.md"
@@ -26,13 +26,16 @@ def test_nanobind_runtime_is_installed_as_hard_dependency():
 
 
 def test_public_dependency_requires_released_nanobind_build():
-    requirements = REQUIREMENTS.read_text(encoding="utf-8")
+    # Reads `[project].dependencies` directly. Should the declaration ever regress to
+    # setuptools dynamic metadata, the key disappears and this test fails loudly rather
+    # than silently stopping to check anything — the pin must stay visible in pyproject.
+    dependencies = tomlkit.parse(PYPROJECT.read_text(encoding="utf-8"))["project"]["dependencies"]
 
-    dependency = next(Requirement(line) for line in requirements.splitlines() if line.startswith("tesseract-robotics-nanobind"))
+    dependency = next(Requirement(line) for line in dependencies if line.startswith("tesseract-robotics-nanobind"))
 
     assert dependency.specifier == Requirement("tesseract-robotics-nanobind==0.35.0.7").specifier
     assert Version("0.35.0.8") not in dependency.specifier
-    assert ".dev" not in requirements
+    assert not any(".dev" in line for line in dependencies)
 
 
 def test_documentation_pins_exact_nanobind_build():

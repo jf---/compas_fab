@@ -1,7 +1,0 @@
-attrs >= 23, < 26
-compas >= 2.3, < 3
-compas_robots >= 1, < 2
-platformdirs >= 4, < 5
-pyyaml >= 6, < 7
-roslibpy >=2
-tesseract-robotics-nanobind == 0.35.0.7

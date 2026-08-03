@@ -16,7 +16,19 @@ authors = [
 license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.9"
-dynamic = ['dependencies', 'optional-dependencies', 'version']
+dynamic = ['optional-dependencies', 'version']
+dependencies = [
+    "attrs>=23,<26",
+    "compas>=2.3,<3",
+    "compas_robots>=1,<2",
+    "platformdirs>=4,<5",
+    "pyyaml>=6,<7",
+    "roslibpy>=2",
+    # Exact pin, never a range: these are nanobind C++ ABI wheels. A version bump can
+    # change the ABI and segfault at call time rather than fail loudly at import.
+    # `tests/backends/tesseract/test_install_contract.py` enforces this equality.
+    "tesseract-robotics-nanobind==0.35.0.7",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -35,7 +47,8 @@ classifiers = [
 
 [tool.setuptools.dynamic]
 version = { attr = "compas_fab.__version__.__version__" }
-dependencies = { file = "requirements.txt" }
+# Runtime dependencies are declared statically in `[project].dependencies` above.
+# Only the `dev` extra still resolves from a requirements file.
 optional-dependencies = { dev = { file = "requirements-dev.txt" } }
 
 [tool.setuptools.packages.find]
